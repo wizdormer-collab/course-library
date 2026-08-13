@@ -462,7 +462,11 @@ function render() {
 function authShell(card) {
   return `
     <div class="auth-wrap">
-      <p class="auth-tag">Learn smarter. Everything you need in one place.</p>
+      <div class="auth-brand">
+        <span class="auth-logo">${icon("grad")}</span>
+        <span class="auth-name"><span class="n-course">Course</span> <span class="n-lib">Library</span></span>
+        <p class="auth-tag">Learn smarter. Everything you need in one place.</p>
+      </div>
       ${card}
       <p class="auth-secure">${icon("shield")}<span>Your data is secure and encrypted</span></p>
     </div>`;
