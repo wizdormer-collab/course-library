@@ -1024,7 +1024,13 @@ function serveStatic(req, res, pathname) {
   let rel = pathname === "/" ? "index.html" : pathname.slice(1);
   let fp = path.join(PUBLIC_DIR, rel);
   if (!fp.startsWith(PUBLIC_DIR)) return send(res, 403, { error: "Forbidden" });
-  if (!fs.existsSync(fp) || fs.statSync(fp).isDirectory()) return send(res, 404, { error: "Not found" });
+  if (!fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
+    if (!path.extname(rel)) {
+      fp = path.join(PUBLIC_DIR, "index.html");
+    } else {
+      return send(res, 404, { error: "Not found" });
+    }
+  }
   const ext = path.extname(fp).toLowerCase();
   res.writeHead(200, {
     "Content-Type": MIME[ext] || "application/octet-stream",
