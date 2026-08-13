@@ -74,7 +74,8 @@ const ICONS = {
   home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h6M9 9h1"/>',
-  search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+  search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  grad: '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>'
 };
 
 function icon(name, cls) {
@@ -447,21 +448,32 @@ function render() {
 
 /* ---------- auth views ---------- */
 
+function authShell(card) {
+  return `
+    <div class="auth-wrap">
+      <div class="auth-brand">
+        <span class="auth-logo">${icon("grad")}</span>
+        <span class="auth-name">Course Library</span>
+        <p class="auth-tag">Learn smarter. Everything you need in one place.</p>
+      </div>
+      ${card}
+    </div>`;
+}
+
 function renderLogin() {
   if (state.user) return (location.hash = "#/");
-  app.innerHTML = `
-    <div class="auth-wrap">
-      <form class="auth-card" id="login-form">
-        <h1>Welcome back</h1>
-        <p class="muted">Log in to access your course materials.</p>
-        <label>Student email or username <input id="login-email" autofocus /></label>
-        <label>Password <input id="login-pass" type="password" /></label>
-        <p class="error" id="login-error"></p>
-        <button class="btn btn-primary btn-block">Log in</button>
-        <p class="muted"><a href="#/forgot">Forgot password?</a></p>
-        <p class="muted">No account? <a href="#/register">Sign up</a></p>
-      </form>
-    </div>`;
+  app.innerHTML = authShell(`
+    <form class="auth-card" id="login-form">
+      <h1>Welcome back <span class="wave">&#128075;</span></h1>
+      <p class="muted">Log in to continue learning.</p>
+      <label>Email / Username <input id="login-email" autofocus autocomplete="username" /></label>
+      <label>Password <input id="login-pass" type="password" autocomplete="current-password" /></label>
+      <div class="auth-row"><a href="#/forgot">Forgot password?</a></div>
+      <p class="error" id="login-error"></p>
+      <button class="btn btn-primary btn-block btn-lg">Log in</button>
+      <div class="auth-or"><span></span><em>or</em><span></span></div>
+      <p class="auth-switch">Don't have an account? <a href="#/register">Sign up</a></p>
+    </form>`);
   document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
@@ -488,8 +500,7 @@ function renderLogin() {
 
 function renderRegister() {
   if (state.user) return (location.hash = "#/");
-  app.innerHTML = `
-    <div class="auth-wrap">
+  app.innerHTML = authShell(`
       <form class="auth-card" id="reg-form">
         <h1>Create account</h1>
         <p class="muted">Sign up with your student email. Enter the admin invite code to join as an administrator.</p>
@@ -504,10 +515,9 @@ function renderRegister() {
           <label>Answer <input id="reg-a" placeholder="your answer" /></label>
         </div>
         <p class="error" id="reg-error"></p>
-        <button class="btn btn-primary btn-block">Sign up</button>
-        <p class="muted">Already registered? <a href="#/login">Log in</a></p>
-      </form>
-    </div>`;
+        <button class="btn btn-primary btn-block btn-lg">Sign up</button>
+        <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
+      </form>`);
   document.getElementById("reg-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const pw = document.getElementById("reg-pass").value;
@@ -541,8 +551,7 @@ function renderVerify() {
   if (state.user) return (location.hash = "#/");
   const email = localStorage.getItem("pendingEmail") || "";
   let devCode = localStorage.getItem("devCode") || "";
-  app.innerHTML = `
-    <div class="auth-wrap">
+  app.innerHTML = authShell(`
       <div class="auth-card">
         <h1>Verify your email</h1>
         <p class="muted">Enter the 6-digit code we sent to your email to activate your account.</p>
@@ -552,10 +561,9 @@ function renderVerify() {
           Dev mode — no email server configured. Your code is <strong>${esc(devCode)}</strong>.
         </p>
         <p class="error" id="vf-error"></p>
-        <button class="btn btn-primary btn-block" id="vf-btn">Verify &amp; continue</button>
-        <p class="muted"><a href="#" id="vf-resend">Resend code</a> · <a href="#/login">Log in</a></p>
-      </div>
-    </div>`;
+        <button class="btn btn-primary btn-block btn-lg" id="vf-btn">Verify &amp; continue</button>
+        <p class="auth-switch"><a href="#" id="vf-resend">Resend code</a> &middot; <a href="#/login">Log in</a></p>
+      </div>`);
   const errEl = document.getElementById("vf-error");
   const devEl = document.getElementById("vf-dev");
   document.getElementById("vf-btn").addEventListener("click", async () => {
@@ -603,8 +611,7 @@ function renderVerify() {
 
 function renderForgot() {
   if (state.user) return (location.hash = "#/");
-  app.innerHTML = `
-    <div class="auth-wrap">
+  app.innerHTML = authShell(`
       <form class="auth-card" id="forgot-form">
         <h1>Reset password</h1>
         <p class="muted">Enter your email or username and answer your recovery question to set a new password.</p>
@@ -616,10 +623,9 @@ function renderForgot() {
           <label>Confirm new password <input id="fg-pass2" type="password" /></label>
         </div>
         <p class="error" id="fg-error"></p>
-        <button class="btn btn-primary btn-block" id="fg-btn">Continue</button>
-        <p class="muted">Remembered it? <a href="#/login">Log in</a></p>
-      </form>
-    </div>`;
+        <button class="btn btn-primary btn-block btn-lg" id="fg-btn">Continue</button>
+        <p class="auth-switch">Remembered it? <a href="#/login">Log in</a></p>
+      </form>`);
 
   let question = null;
   const btn = document.getElementById("fg-btn");
