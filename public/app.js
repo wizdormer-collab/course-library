@@ -1142,8 +1142,6 @@ async function renderAdmin() {
     </div>`);
 
   bindRowActions();
-  document.querySelectorAll("[data-preview]").forEach((btn) =>
-    btn.addEventListener("click", () => openPdf(btn.dataset.preview, false)));
 
   document.querySelectorAll("[data-approve]").forEach((btn) =>
     btn.addEventListener("click", async () => {
