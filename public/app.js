@@ -78,7 +78,11 @@ const ICONS = {
   grad: '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
   mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
   lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-  eyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+  eyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+  more: '<circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>',
+  chevronRight: '<polyline points="9 18 15 12 9 6"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  play: '<polygon points="5 3 19 12 5 21 5 3"/>'
 };
 
 function icon(name, cls) {
@@ -365,8 +369,7 @@ async function renderNav() {
       ${state.user.role === "admin" ? '<a href="#/admin" class="nav-link">Admin</a>' : ""}
       ${notifHtml}
       <button class="icon-btn" id="theme-btn" title="Toggle theme">${state.theme === "dark" ? icon("sun") : icon("moon")}</button>
-      <span class="nav-user">${esc(state.user.username)} <small>(${esc(state.user.role)})</small></span>
-      <button class="btn btn-outline" id="logout-btn">Log out</button>`
+      <span class="nav-user">${esc(state.user.username)} <small>(${esc(state.user.role)})</small></span>`
     : `
       <a href="#/login" class="nav-link">Log in</a>
       <a href="#/register" class="btn btn-primary">Sign up</a>`;
@@ -383,11 +386,10 @@ async function renderNav() {
       bottomNav.style.display = "";
       const items = state.user
         ? [
-            { path: "/", label: "Courses", icon: "book" },
+            { path: "/", label: "Home", icon: "home" },
+            { path: "/courses", label: "Courses", icon: "book" },
             { path: "/saved", label: "Saved", icon: "star" },
-            { path: "/settings", label: "Settings", icon: "settings" },
-            ...(state.user.role === "admin" ? [{ path: "/admin", label: "Admin", icon: "shield" }] : []),
-            { path: "/logout", label: "Log out", icon: "logout" }
+            { path: "/settings", label: "Profile", icon: "user" }
           ]
         : [
             { path: "/login", label: "Log in", icon: "key" },
@@ -395,23 +397,14 @@ async function renderNav() {
           ];
       bottomNav.innerHTML = items
         .map((it) => {
-          const active = cur.split("/").filter(Boolean)[0] === it.path.split("/").filter(Boolean)[0] || (cur === "/" && it.path === "/");
+          const seg = cur.split("?")[0].split("/").filter(Boolean)[0];
+          const itSeg = it.path.split("/").filter(Boolean)[0];
+          const active = seg === itSeg || (cur.split("?")[0] === "/" && it.path === "/");
           return `<a href="#${it.path}" class="bn-item${active ? " active" : ""}" data-path="${it.path}"><span class="bn-icon">${icon(it.icon)}</span><span>${it.label}</span></a>`;
         })
         .join("");
-      bottomNav.querySelector('[data-path="/logout"]')?.addEventListener("click", (e) => {
-        e.preventDefault();
-        clearAuth();
-        location.hash = "#/login";
-      });
     }
   }
-
-  const logoutBtn = document.getElementById("logout-btn");
-  if (logoutBtn) logoutBtn.addEventListener("click", () => {
-    clearAuth();
-    location.hash = "#/login";
-  });
 
   const themeBtn = document.getElementById("theme-btn");
   if (themeBtn) themeBtn.addEventListener("click", () => {
@@ -453,6 +446,7 @@ function render() {
   if (hash === "/saved") return renderSaved();
   if (hash === "/settings") return renderSettings();
   if (hash === "/admin") return renderAdmin();
+  if (hash.startsWith("/courses")) return renderCourses(hash);
   if (hash.startsWith("/course/")) return renderCourseDetail(hash);
   return renderHome();
 }
@@ -755,6 +749,12 @@ async function renderSettings() {
           <button class="btn btn-primary">Save recovery question</button>
         </form>
       </div>
+      <div class="card">
+        <h3>Account</h3>
+        <p class="muted small">Signed in as ${esc(state.user.username)}${state.user.role === "admin" ? " (admin)" : ""}</p>
+        ${state.user.role === "admin" ? '<p class="muted small"><a href="#/admin" class="view-all">Open admin panel</a></p>' : ""}
+        <button class="btn btn-danger" id="settings-logout">${icon("logout")} Log out</button>
+      </div>
     </div>`);
 
   document.getElementById("pw-form").addEventListener("submit", async (e) => {
@@ -793,6 +793,12 @@ async function renderSettings() {
       document.getElementById("sq-error").textContent = err.message;
     }
   });
+
+  const so = document.getElementById("settings-logout");
+  if (so) so.addEventListener("click", () => {
+    clearAuth();
+    location.hash = "#/login";
+  });
 }
 
 /* ---------- home ---------- */
@@ -811,32 +817,143 @@ function greeting() {
   return "Good evening";
 }
 
+function relTime(iso) {
+  if (!iso) return "";
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return days + " days ago";
+  return fmtDate(iso);
+}
+
+function qaTile(href, cls, ic, label) {
+  return `
+    <a href="${href}" class="qa-tile ${cls}">
+      <span class="qa-ico">${icon(ic)}</span>
+      <span>${label}</span>
+      <span class="qa-arrow">${icon("chevronRight")}</span>
+    </a>`;
+}
+
+function continueCardHTML(c, prog) {
+  if (!c) return `
+    <div class="continue-card">
+      <div class="continue-icon">${icon("grad")}</div>
+      <div class="continue-main">
+        <p class="muted">No courses yet. Start building your library.</p>
+        <a class="btn btn-primary continue-btn" href="#/courses">Browse courses</a>
+      </div>
+    </div>`;
+  const p = prog || { viewed: 0, total: 0, pct: 0 };
+  const label = p.viewed > 0
+    ? esc(c.description || "Keep going — you're making great progress.")
+    : "No progress yet. Open this course to start learning.";
+  return `
+    <div class="continue-card">
+      <div class="continue-icon">${icon("grad")}</div>
+      <div class="continue-main">
+        <span class="continue-code">${esc(c.code)}</span>
+        <h3>${esc(c.name)}</h3>
+        <p class="muted">${label}</p>
+        <div class="progress-row">
+          <span class="muted small">${p.viewed}/${p.total} files viewed</span>
+          <span class="muted small">${p.pct}% complete</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${p.pct}%"></div></div>
+        <a class="btn btn-primary continue-btn" href="#/course/${c.id}">Continue &rarr;</a>
+      </div>
+    </div>`;
+}
+
+function ycardHTML(c, meta, prog) {
+  const m = meta || { materials: 0, pdfs: 0, lastUpdated: "" };
+  const p = prog || { viewed: 0, total: 0, pct: 0 };
+  return `
+    <div class="ycard">
+      <div class="ycard-top">
+        <span class="course-code">${esc(c.code)}</span>
+        <button class="icon-btn ymenu" data-menu="${c.id}" aria-label="Course menu">${icon("more")}</button>
+      </div>
+      <div class="ycard-icon">${icon("grad")}</div>
+      <h3>${esc(c.name)}</h3>
+      <p class="muted small">${m.materials} materials &middot; ${m.pdfs} PDFs</p>
+      <div class="progress-row">
+        <span class="muted small">${p.viewed}/${p.total} viewed</span>
+        <span class="muted small">${p.pct}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p.pct}%"></div></div>
+      <p class="muted small">${m.lastUpdated ? "Last updated " + relTime(m.lastUpdated) : "No materials yet"}</p>
+      <div class="ycard-menu hidden" id="ymenu-${c.id}">
+        <a href="#/course/${c.id}">${icon("book")} Open course</a>
+        <button data-zip="${c.id}" data-name="${esc(c.code || c.name)}.zip">${icon("download")} Download all (.zip)</button>
+      </div>
+    </div>`;
+}
+
+let courseMenuDocBound = false;
+function bindCourseMenus() {
+  document.querySelectorAll(".ymenu").forEach((btn) =>
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const menu = document.getElementById("ymenu-" + btn.dataset.menu);
+      document.querySelectorAll(".ycard-menu:not(.hidden)").forEach((m) => {
+        if (m !== menu) m.classList.add("hidden");
+      });
+      if (menu) menu.classList.toggle("hidden");
+    }));
+  document.querySelectorAll("[data-zip]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      document.getElementById("ymenu-" + btn.dataset.zip)?.classList.add("hidden");
+      downloadPath("/api/courses/" + btn.dataset.zip + "/zip", btn.dataset.name || "course.zip");
+    }));
+  if (!courseMenuDocBound) {
+    courseMenuDocBound = true;
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".ycard")) {
+        document.querySelectorAll(".ycard-menu").forEach((m) => m.classList.add("hidden"));
+      }
+    });
+  }
+}
+
 async function renderHome() {
   if (!state.user) return (location.hash = "#/login");
   await loadCourses();
   let feed = [];
-  let popular = [];
   let saved = [];
   try {
     feed = (await api("/api/feed")).files;
   } catch {}
   try {
-    popular = (await api("/api/popular")).files;
-  } catch {}
-  try {
     saved = (await api("/api/files/saved")).files;
   } catch {}
 
-  let viewedTotal = 0;
-  let filesTotal = 0;
-  await Promise.allSettled(state.courses.slice(0, 40).map(async (c) => {
-    try {
-      const p = await api("/api/courses/" + c.id + "/progress");
-      viewedTotal += p.viewed || 0;
-      filesTotal += p.total || 0;
-    } catch {}
+  state.progressMap = {};
+  state.courseMeta = {};
+  await Promise.allSettled(state.courses.slice(0, 12).map(async (c) => {
+    const pr = await api("/api/courses/" + c.id + "/progress").catch(() => null);
+    const fl = await api("/api/files?courseId=" + encodeURIComponent(c.id)).catch(() => null);
+    const files = (fl && fl.files) || [];
+    state.progressMap[c.id] = {
+      viewed: (pr && pr.viewed) || 0,
+      total: (pr && pr.total) || files.length,
+      pct: (pr && pr.pct) || 0
+    };
+    state.courseMeta[c.id] = {
+      materials: files.length,
+      pdfs: files.filter((f) => /\.pdf$/i.test(f.originalName || f.name)).length,
+      lastUpdated: files.length
+        ? files.reduce((m, f) => (new Date(f.uploadedAt) > new Date(m) ? f.uploadedAt : m), files[0].uploadedAt)
+        : ""
+    };
   }));
-  const pct = filesTotal ? Math.round((viewedTotal / filesTotal) * 100) : 0;
+
+  const materialsTotal = state.courses.reduce((s, c) => s + (state.progressMap[c.id]?.total || 0), 0);
+
+  let cont = state.courses[0] || null;
+  for (const c of state.courses) {
+    if ((state.progressMap[c.id]?.viewed || 0) > (state.progressMap[cont.id]?.viewed || 0)) cont = c;
+  }
 
   const cats = [...new Set(state.courses.map((c) => c.category).filter(Boolean))];
   const sems = [...new Set(state.courses.map((c) => c.semester).filter(Boolean))];
@@ -844,118 +961,122 @@ async function renderHome() {
   const first = (state.user.username || "friend").split(/\s+/)[0];
 
   app.innerHTML = shell(`
-    <section class="hero">
-      <div class="hero-inner">
-        <div class="hero-copy">
-          <span class="hero-eyebrow">${icon("grad")} Course Library</span>
-          <h1>${greeting()}, ${esc(first)} <span class="wave">&#128075;</span></h1>
-          <p>Every course. Every PDF. One place — pick up right where you left off.</p>
-          <div class="hero-actions">
-            <button class="btn btn-light" id="browse-btn">Browse courses</button>
-            ${isAdmin ? `<button class="btn btn-light-outline" id="new-course-btn">${icon("plus")} New course</button>` : ""}
-          </div>
-        </div>
-        <div class="hero-side">
-          <div class="hero-stats">
-            <div class="hero-stat"><span class="hero-stat-num">${state.courses.length}</span><span class="hero-stat-label">Courses</span></div>
-            <div class="hero-stat"><span class="hero-stat-num">${filesTotal}</span><span class="hero-stat-label">Files</span></div>
-            <div class="hero-stat"><span class="hero-stat-num">${saved.length}</span><span class="hero-stat-label">Saved</span></div>
-          </div>
-          <div class="hero-progress">
-            <div class="progress-row"><span>Your progress</span><span class="muted">${viewedTotal}/${filesTotal} files &middot; ${pct}%</span></div>
-            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-          </div>
-        </div>
+    <div class="welcome">
+      <h1>${greeting()}, ${esc(first)} <span class="wave">&#128075;</span></h1>
+      <p>Find the materials you need and keep learning.</p>
+    </div>
+
+    <div class="search-bar">
+      <span class="search-icon">${icon("search")}</span>
+      <input id="search-input" type="search" placeholder="Search across all course PDFs..." autocomplete="off" />
+      <button class="icon-btn search-filter" id="filter-toggle" aria-label="Filters">${icon("settings")}</button>
+    </div>
+    <div class="filters filters-panel hidden" id="filters-panel">
+      <select id="filter-cat"><option value="">All categories</option>${cats.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
+      <select id="filter-sem"><option value="">All semesters</option>${sems.map((s) => `<option>${esc(s)}</option>`).join("")}</select>
+    </div>
+    <div id="search-results"></div>
+
+    <div class="stats-card">
+      <div class="stat-item"><span class="stat-ico ico-book">${icon("book")}</span><div><span class="stat-num">${state.courses.length}</span><span class="stat-lab">Courses</span></div></div>
+      <div class="stat-item"><span class="stat-ico ico-files">${icon("pdf")}</span><div><span class="stat-num">${materialsTotal}</span><span class="stat-lab">Materials</span></div></div>
+      <div class="stat-item"><span class="stat-ico ico-saved">${icon("star")}</span><div><span class="stat-num">${saved.length}</span><span class="stat-lab">Saved</span></div></div>
+      <div class="stat-item"><span class="stat-ico ico-recent">${icon("clock")}</span><div><span class="stat-num">${feed.length}</span><span class="stat-lab">Recent</span></div></div>
+    </div>
+
+    <section class="home-section">
+      <div class="section-head">
+        <h2>Continue learning</h2>
+        <a href="#/courses" class="view-all">View all</a>
       </div>
-      <div class="hero-search">
-        <div class="search-bar">
-          <span class="search-icon">${icon("search")}</span>
-          <input id="search-input" type="search" placeholder="Search across every course PDF..." autocomplete="off" />
-        </div>
-        <div id="search-results"></div>
-      </div>
+      ${continueCardHTML(cont, state.progressMap[cont ? cont.id : ""])}
     </section>
 
-    <section class="quick-access">
-      <a href="#/saved" class="qa-card">
-        <span class="qa-icon qa-saved">${icon("star")}</span>
-        <span class="qa-label">Saved for later</span>
-        ${saved.length ? `<span class="qa-count">${saved.length}</span>` : ""}
-      </a>
-      <a href="#/settings" class="qa-card">
-        <span class="qa-icon qa-settings">${icon("settings")}</span>
-        <span class="qa-label">Settings</span>
-      </a>
-      ${isAdmin ? `
-      <a href="#/admin" class="qa-card">
-        <span class="qa-icon qa-admin">${icon("shield")}</span>
-        <span class="qa-label">Admin panel</span>
-      </a>
-      <button class="qa-card qa-btn" id="new-course-btn-2">
-        <span class="qa-icon qa-add">${icon("plus")}</span>
-        <span class="qa-label">New course</span>
-      </button>` : ""}
-    </section>
-
-    <section id="browse">
-      <h2 class="section-title">Browse courses</h2>
-      <div class="filters">
-        <select id="filter-cat"><option value="">All categories</option>${cats.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
-        <select id="filter-sem"><option value="">All semesters</option>${sems.map((s) => `<option>${esc(s)}</option>`).join("")}</select>
+    <section class="home-section">
+      <div class="section-head">
+        <h2>Your courses</h2>
+        <div class="section-head-actions">
+          ${isAdmin ? '<button class="btn btn-primary btn-sm" id="new-course-btn">+ New course</button>' : ""}
+          <a href="#/courses" class="view-all">View all</a>
+        </div>
       </div>
-      <div class="grid" id="course-grid">
+      <div class="course-scroll" id="course-scroll">
         ${state.courses.length
-          ? state.courses.map((c) => courseCard(c)).join("")
-          : '<p class="muted">No courses yet. Check back soon.</p>'}
+          ? state.courses.map((c) => ycardHTML(c, state.courseMeta[c.id], state.progressMap[c.id])).join("")
+          : '<p class="muted">No courses yet.</p>'}
       </div>
     </section>
 
-    ${feed.length ? `
-      <div class="discovery">
-        ${listSection("Recent uploads", feed.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "")}
-      </div>` : ""}
-
-    ${popular.length ? `
-      <div class="discovery">
-        ${listSection("Popular this week", popular.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "")}
-      </div>` : ""}
-
-    <section class="features">
-      <h2 class="section-title">Why Course Library</h2>
-      <div class="feature-grid">
-        <div class="feature-card">
-          <span class="feature-icon">${icon("book")}</span>
-          <h3>Organized by course</h3>
-          <p>Every lecture, note and past paper filed under the course it belongs to — nothing scattered.</p>
-        </div>
-        <div class="feature-card">
-          <span class="feature-icon">${icon("download")}</span>
-          <h3>Instant downloads</h3>
-          <p>Grab a single PDF or the whole course as one zip file. No queues, no hoops.</p>
-        </div>
-        <div class="feature-card">
-          <span class="feature-icon">${icon("check")}</span>
-          <h3>Track your progress</h3>
-          <p>Save materials for later and see what you've already covered, at a glance.</p>
-        </div>
+    <section class="home-section">
+      <h2 class="section-title">Quick access</h2>
+      <div class="qa-grid">
+        ${qaTile("#/courses", "t-all", "book", "All Materials")}
+        ${qaTile("#/courses?q=notes", "t-notes", "edit", "My Notes")}
+        ${qaTile("#/courses?q=videos", "t-videos", "play", "Videos")}
+        ${qaTile("#/courses?q=past question", "t-past", "archive", "Past Questions")}
       </div>
     </section>
 
     ${courseModalHTML()}`);
 
   bindSearch();
-  bindFilters();
+  bindFilters("course-scroll");
+  bindFilterToggle();
+  bindRowActions({ showCourse: true, counts: true });
+  bindCourseMenus();
+  bindCourseModal();
+
+  const newBtn = document.getElementById("new-course-btn");
+  if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
+}
+
+async function renderCourses(hash) {
+  if (!state.user) return (location.hash = "#/login");
+  await loadCourses();
+  const q = new URLSearchParams((hash.split("?")[1] || "")).get("q") || "";
+  const cats = [...new Set(state.courses.map((c) => c.category).filter(Boolean))];
+  const sems = [...new Set(state.courses.map((c) => c.semester).filter(Boolean))];
+  const isAdmin = state.user.role === "admin";
+
+  app.innerHTML = shell(`
+    <div class="page-head">
+      <div>
+        <h1>Courses</h1>
+        <p class="muted">Every course and every material in one place.</p>
+      </div>
+      ${isAdmin ? '<button class="btn btn-primary" id="new-course-btn">+ New course</button>' : ""}
+    </div>
+
+    <div class="search-bar">
+      <span class="search-icon">${icon("search")}</span>
+      <input id="search-input" type="search" value="${esc(q)}" placeholder="Search across all course PDFs..." autocomplete="off" />
+      <button class="icon-btn search-filter" id="filter-toggle" aria-label="Filters">${icon("settings")}</button>
+    </div>
+    <div class="filters filters-panel hidden" id="filters-panel">
+      <select id="filter-cat"><option value="">All categories</option>${cats.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
+      <select id="filter-sem"><option value="">All semesters</option>${sems.map((s) => `<option>${esc(s)}</option>`).join("")}</select>
+    </div>
+    <div id="search-results"></div>
+
+    <h2 class="section-title">All courses</h2>
+    <div class="grid" id="course-grid">
+      ${state.courses.length
+        ? state.courses.map((c) => courseCard(c)).join("")
+        : '<p class="muted">No courses yet.</p>'}
+    </div>
+
+    ${courseModalHTML()}`);
+
+  bindSearch();
+  bindFilters("course-grid");
+  bindFilterToggle();
   bindRowActions({ showCourse: true, counts: true });
   bindCourseModal();
 
-  const browseBtn = document.getElementById("browse-btn");
-  if (browseBtn) browseBtn.addEventListener("click", () => {
-    document.getElementById("browse").scrollIntoView({ behavior: "smooth" });
-  });
+  const newBtn = document.getElementById("new-course-btn");
+  if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
 
-  [document.getElementById("new-course-btn"), document.getElementById("new-course-btn-2")].forEach((btn) => {
-    if (btn) btn.addEventListener("click", () => showModal("course-modal"));
-  });
+  if (q) document.getElementById("search-input").dispatchEvent(new Event("input"));
 }
 
 function courseCard(c) {
@@ -972,16 +1093,30 @@ function courseCard(c) {
     </a>`;
 }
 
-function bindFilters() {
+function bindFilterToggle() {
+  const btn = document.getElementById("filter-toggle");
+  const panel = document.getElementById("filters-panel");
+  if (btn && panel) btn.addEventListener("click", () => panel.classList.toggle("hidden"));
+}
+
+function bindFilters(targetId) {
   const cat = document.getElementById("filter-cat");
   const sem = document.getElementById("filter-sem");
   if (!cat || !sem) return;
   const apply = () => {
-    const grid = document.getElementById("course-grid");
+    const grid = document.getElementById(targetId || "course-grid");
+    if (!grid) return;
     const list = state.courses.filter(
       (c) => (!cat.value || c.category === cat.value) && (!sem.value || c.semester === sem.value)
     );
-    grid.innerHTML = list.length ? list.map(courseCard).join("") : '<p class="muted">No courses match.</p>';
+    if (targetId === "course-scroll") {
+      grid.innerHTML = list.length
+        ? list.map((c) => ycardHTML(c, state.courseMeta[c.id], state.progressMap[c.id])).join("")
+        : '<p class="muted">No courses match.</p>';
+      bindCourseMenus();
+    } else {
+      grid.innerHTML = list.length ? list.map(courseCard).join("") : '<p class="muted">No courses match.</p>';
+    }
   };
   cat.addEventListener("change", apply);
   sem.addEventListener("change", apply);
