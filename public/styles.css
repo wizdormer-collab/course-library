@@ -104,24 +104,29 @@ body::before {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-weight: 800;
-  font-size: 1.12rem;
+  font-size: 1.32rem;
   letter-spacing: -0.02em;
   text-decoration: none;
   color: var(--text);
 }
 
 .brand-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
   color: #fff;
-  font-size: 1.05rem;
+  font-size: 1.35rem;
   background: linear-gradient(135deg, var(--primary), var(--primary-2));
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.45);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45);
+}
+
+.brand-icon .ic {
+  width: 1.5em;
+  height: 1.5em;
 }
 
 .brand-name {
@@ -1209,7 +1214,7 @@ main {
   }
 
   .brand {
-    font-size: 1rem;
+    font-size: 1.18rem;
     flex: 1;
     min-width: 0;
     overflow: hidden;
