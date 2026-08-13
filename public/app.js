@@ -75,7 +75,10 @@ const ICONS = {
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h6M9 9h1"/>',
   search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
-  grad: '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>'
+  grad: '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
+  mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  eyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
 };
 
 function icon(name, cls) {
@@ -370,30 +373,38 @@ async function renderNav() {
 
   const bottomNav = document.getElementById("bottom-nav");
   if (bottomNav) {
-    const items = state.user
-      ? [
-          { path: "/", label: "Courses", icon: "book" },
-          { path: "/saved", label: "Saved", icon: "star" },
-          { path: "/settings", label: "Settings", icon: "settings" },
-          ...(state.user.role === "admin" ? [{ path: "/admin", label: "Admin", icon: "shield" }] : []),
-          { path: "/logout", label: "Log out", icon: "logout" }
-        ]
-      : [
-          { path: "/login", label: "Log in", icon: "key" },
-          { path: "/register", label: "Sign up", icon: "edit" }
-        ];
     const cur = location.hash.replace(/^#/, "") || "/";
-    bottomNav.innerHTML = items
-      .map((it) => {
-        const active = cur.split("/").filter(Boolean)[0] === it.path.split("/").filter(Boolean)[0] || (cur === "/" && it.path === "/");
-        return `<a href="#${it.path}" class="bn-item${active ? " active" : ""}" data-path="${it.path}"><span class="bn-icon">${icon(it.icon)}</span><span>${it.label}</span></a>`;
-      })
-      .join("");
-    bottomNav.querySelector('[data-path="/logout"]')?.addEventListener("click", (e) => {
-      e.preventDefault();
-      clearAuth();
-      location.hash = "#/login";
-    });
+    const isAuthPage = !state.user && ["/login", "/register", "/verify", "/forgot"].includes(cur);
+    document.body.classList.toggle("auth-page", isAuthPage);
+    if (isAuthPage) {
+      bottomNav.style.display = "none";
+      bottomNav.innerHTML = "";
+    } else {
+      bottomNav.style.display = "";
+      const items = state.user
+        ? [
+            { path: "/", label: "Courses", icon: "book" },
+            { path: "/saved", label: "Saved", icon: "star" },
+            { path: "/settings", label: "Settings", icon: "settings" },
+            ...(state.user.role === "admin" ? [{ path: "/admin", label: "Admin", icon: "shield" }] : []),
+            { path: "/logout", label: "Log out", icon: "logout" }
+          ]
+        : [
+            { path: "/login", label: "Log in", icon: "key" },
+            { path: "/register", label: "Sign up", icon: "edit" }
+          ];
+      bottomNav.innerHTML = items
+        .map((it) => {
+          const active = cur.split("/").filter(Boolean)[0] === it.path.split("/").filter(Boolean)[0] || (cur === "/" && it.path === "/");
+          return `<a href="#${it.path}" class="bn-item${active ? " active" : ""}" data-path="${it.path}"><span class="bn-icon">${icon(it.icon)}</span><span>${it.label}</span></a>`;
+        })
+        .join("");
+      bottomNav.querySelector('[data-path="/logout"]')?.addEventListener("click", (e) => {
+        e.preventDefault();
+        clearAuth();
+        location.hash = "#/login";
+      });
+    }
   }
 
   const logoutBtn = document.getElementById("logout-btn");
@@ -453,10 +464,11 @@ function authShell(card) {
     <div class="auth-wrap">
       <div class="auth-brand">
         <span class="auth-logo">${icon("grad")}</span>
-        <span class="auth-name">Course Library</span>
+        <span class="auth-name"><span class="n-course">Course</span> <span class="n-lib">Library</span></span>
         <p class="auth-tag">Learn smarter. Everything you need in one place.</p>
       </div>
       ${card}
+      <p class="auth-secure">${icon("shield")}<span>Your data is secure and encrypted</span></p>
     </div>`;
 }
 
@@ -465,17 +477,43 @@ function renderLogin() {
   app.innerHTML = authShell(`
     <form class="auth-card" id="login-form">
       <h1>Welcome back <span class="wave">&#128075;</span></h1>
-      <p class="muted">Log in to continue learning.</p>
-      <label>Email / Username <input id="login-email" autofocus autocomplete="username" /></label>
-      <label>Password <input id="login-pass" type="password" autocomplete="current-password" /></label>
+      <p class="muted">Log in to continue your learning journey.</p>
+      <div class="field">
+        <label for="login-email">Email / Username</label>
+        <div class="input-wrap">
+          <span class="input-icon">${icon("mail")}</span>
+          <input id="login-email" placeholder="Enter your email or username" autocomplete="username" autofocus />
+        </div>
+      </div>
+      <div class="field">
+        <label for="login-pass">Password</label>
+        <div class="input-wrap has-toggle">
+          <span class="input-icon">${icon("lock")}</span>
+          <input id="login-pass" type="password" placeholder="Enter your password" autocomplete="current-password" />
+          <button type="button" class="pass-toggle" id="pass-toggle" aria-label="Show password">${icon("eye")}</button>
+        </div>
+      </div>
       <div class="auth-row"><a href="#/forgot">Forgot password?</a></div>
       <p class="error" id="login-error"></p>
-      <button class="btn btn-primary btn-block btn-lg">Log in</button>
+      <button class="btn btn-primary btn-block btn-lg" id="login-btn">Log in</button>
       <div class="auth-or"><span></span><em>or</em><span></span></div>
-      <p class="auth-switch">Don't have an account? <a href="#/register">Sign up</a></p>
+      <p class="auth-switch">Don't have an account?</p>
+      <button type="button" class="btn btn-ghost btn-block btn-lg" id="signup-btn">Sign up</button>
     </form>`);
+  document.getElementById("pass-toggle").addEventListener("click", () => {
+    const input = document.getElementById("login-pass");
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    document.getElementById("pass-toggle").innerHTML = icon(show ? "eyeOff" : "eye");
+  });
+  const loginBtn = document.getElementById("login-btn");
   document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const errEl = document.getElementById("login-error");
+    errEl.textContent = "";
+    loginBtn.disabled = true;
+    const original = loginBtn.textContent;
+    loginBtn.textContent = "Logging in…";
     try {
       const d = await api("/api/auth/login", {
         method: "POST",
@@ -493,9 +531,13 @@ function renderLogin() {
         location.hash = "#/verify";
         return;
       }
-      document.getElementById("login-error").textContent = err.message;
+      errEl.textContent = err.message;
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = original;
     }
   });
+  document.getElementById("signup-btn").addEventListener("click", () => (location.hash = "#/register"));
 }
 
 function renderRegister() {
