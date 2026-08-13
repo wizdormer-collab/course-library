@@ -803,62 +803,159 @@ async function loadCourses() {
   } catch {}
 }
 
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 5) return "Working late";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 async function renderHome() {
   if (!state.user) return (location.hash = "#/login");
   await loadCourses();
   let feed = [];
   let popular = [];
+  let saved = [];
   try {
     feed = (await api("/api/feed")).files;
   } catch {}
   try {
     popular = (await api("/api/popular")).files;
   } catch {}
+  try {
+    saved = (await api("/api/files/saved")).files;
+  } catch {}
+
+  let viewedTotal = 0;
+  let filesTotal = 0;
+  await Promise.allSettled(state.courses.slice(0, 40).map(async (c) => {
+    try {
+      const p = await api("/api/courses/" + c.id + "/progress");
+      viewedTotal += p.viewed || 0;
+      filesTotal += p.total || 0;
+    } catch {}
+  }));
+  const pct = filesTotal ? Math.round((viewedTotal / filesTotal) * 100) : 0;
 
   const cats = [...new Set(state.courses.map((c) => c.category).filter(Boolean))];
   const sems = [...new Set(state.courses.map((c) => c.semester).filter(Boolean))];
+  const isAdmin = state.user.role === "admin";
+  const first = (state.user.username || "friend").split(/\s+/)[0];
 
   app.innerHTML = shell(`
-      <div class="page-head">
-        <div>
-          <h1 class="brand-title">Course Library</h1>
-          <p class="muted">Every course. Every PDF. One place.</p>
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <span class="hero-eyebrow">${icon("grad")} Course Library</span>
+          <h1>${greeting()}, ${esc(first)} <span class="wave">&#128075;</span></h1>
+          <p>Every course. Every PDF. One place — pick up right where you left off.</p>
+          <div class="hero-actions">
+            <button class="btn btn-light" id="browse-btn">Browse courses</button>
+            ${isAdmin ? `<button class="btn btn-light-outline" id="new-course-btn">${icon("plus")} New course</button>` : ""}
+          </div>
         </div>
-        ${state.user.role === "admin" ? '<button class="btn btn-primary" id="new-course-btn">+ New course</button>' : ""}
+        <div class="hero-side">
+          <div class="hero-stats">
+            <div class="hero-stat"><span class="hero-stat-num">${state.courses.length}</span><span class="hero-stat-label">Courses</span></div>
+            <div class="hero-stat"><span class="hero-stat-num">${filesTotal}</span><span class="hero-stat-label">Files</span></div>
+            <div class="hero-stat"><span class="hero-stat-num">${saved.length}</span><span class="hero-stat-label">Saved</span></div>
+          </div>
+          <div class="hero-progress">
+            <div class="progress-row"><span>Your progress</span><span class="muted">${viewedTotal}/${filesTotal} files &middot; ${pct}%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          </div>
+        </div>
       </div>
+      <div class="hero-search">
+        <div class="search-bar">
+          <span class="search-icon">${icon("search")}</span>
+          <input id="search-input" type="search" placeholder="Search across every course PDF..." autocomplete="off" />
+        </div>
+        <div id="search-results"></div>
+      </div>
+    </section>
 
-    <div class="search-bar">
-      <span class="search-icon">${icon("search")}</span>
-      <input id="search-input" type="search" placeholder="Search across all course PDFs..." autocomplete="off" />
-    </div>
-    <div id="search-results"></div>
+    <section class="quick-access">
+      <a href="#/saved" class="qa-card">
+        <span class="qa-icon qa-saved">${icon("star")}</span>
+        <span class="qa-label">Saved for later</span>
+        ${saved.length ? `<span class="qa-count">${saved.length}</span>` : ""}
+      </a>
+      <a href="#/settings" class="qa-card">
+        <span class="qa-icon qa-settings">${icon("settings")}</span>
+        <span class="qa-label">Settings</span>
+      </a>
+      ${isAdmin ? `
+      <a href="#/admin" class="qa-card">
+        <span class="qa-icon qa-admin">${icon("shield")}</span>
+        <span class="qa-label">Admin panel</span>
+      </a>
+      <button class="qa-card qa-btn" id="new-course-btn-2">
+        <span class="qa-icon qa-add">${icon("plus")}</span>
+        <span class="qa-label">New course</span>
+      </button>` : ""}
+    </section>
 
-    <h2 class="section-title">Courses</h2>
-    <div class="filters">
-      <select id="filter-cat"><option value="">All categories</option>${cats.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
-      <select id="filter-sem"><option value="">All semesters</option>${sems.map((s) => `<option>${esc(s)}</option>`).join("")}</select>
-    </div>
-    <div class="grid" id="course-grid">
-      ${state.courses.map((c) => courseCard(c)).join("")}
-    </div>
+    <section id="browse">
+      <h2 class="section-title">Browse courses</h2>
+      <div class="filters">
+        <select id="filter-cat"><option value="">All categories</option>${cats.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
+        <select id="filter-sem"><option value="">All semesters</option>${sems.map((s) => `<option>${esc(s)}</option>`).join("")}</select>
+      </div>
+      <div class="grid" id="course-grid">
+        ${state.courses.length
+          ? state.courses.map((c) => courseCard(c)).join("")
+          : '<p class="muted">No courses yet. Check back soon.</p>'}
+      </div>
+    </section>
 
     ${feed.length ? `
       <div class="discovery">
-        ${listSection("New this week", feed.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "")}
+        ${listSection("Recent uploads", feed.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "")}
       </div>` : ""}
+
     ${popular.length ? `
       <div class="discovery">
         ${listSection("Popular this week", popular.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "")}
       </div>` : ""}
+
+    <section class="features">
+      <h2 class="section-title">Why Course Library</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <span class="feature-icon">${icon("book")}</span>
+          <h3>Organized by course</h3>
+          <p>Every lecture, note and past paper filed under the course it belongs to — nothing scattered.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">${icon("download")}</span>
+          <h3>Instant downloads</h3>
+          <p>Grab a single PDF or the whole course as one zip file. No queues, no hoops.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">${icon("check")}</span>
+          <h3>Track your progress</h3>
+          <p>Save materials for later and see what you've already covered, at a glance.</p>
+        </div>
+      </div>
+    </section>
 
     ${courseModalHTML()}`);
 
   bindSearch();
   bindFilters();
   bindRowActions({ showCourse: true, counts: true });
+  bindCourseModal();
 
-  const newBtn = document.getElementById("new-course-btn");
-  if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
+  const browseBtn = document.getElementById("browse-btn");
+  if (browseBtn) browseBtn.addEventListener("click", () => {
+    document.getElementById("browse").scrollIntoView({ behavior: "smooth" });
+  });
+
+  [document.getElementById("new-course-btn"), document.getElementById("new-course-btn-2")].forEach((btn) => {
+    if (btn) btn.addEventListener("click", () => showModal("course-modal"));
+  });
 }
 
 function courseCard(c) {
