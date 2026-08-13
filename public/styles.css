@@ -1239,8 +1239,8 @@ main {
     padding: 0 14px;
   }
 
-  main {
-    padding: 18px 14px calc(96px + env(safe-area-inset-bottom));
+  main#app {
+    padding: 18px 14px calc(110px + env(safe-area-inset-bottom));
   }
 
   /* bottom tab bar */
