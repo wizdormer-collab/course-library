@@ -8,9 +8,10 @@ import { buildZip } from "./lib/zip.js";
 import { sendMail, smtpConfigured } from "./lib/mailer.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_FILE = path.join(__dirname, "data.json");
-const BACKUP_FILE = path.join(__dirname, "data.json.bak");
-const UPLOAD_DIR = path.join(__dirname, "uploads");
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const DATA_FILE = path.join(DATA_DIR, "data.json");
+const BACKUP_FILE = path.join(DATA_DIR, "data.json.bak");
+const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const SECRET = process.env.SECRET || crypto.randomBytes(32).toString("hex");
 const PORT = process.env.PORT || 3000;
@@ -53,6 +54,7 @@ if (!fs.existsSync(DATA_FILE)) {
     fs.writeFileSync(DATA_FILE, JSON.stringify({ users: [], courses: [], files: [] }, null, 2));
   }
 }
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 let db = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
 

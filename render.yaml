@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: course-library
+    runtime: docker
+    plan: free
+    envVars:
+      - key: SECRET
+        generateValue: true
+      - key: ADMIN_INVITE_CODE
+        value: admin2026
+      # Optional: restrict sign-ups to specific email domains, comma-separated
+      # - key: ALLOWED_EMAIL_DOMAINS
+      #   value: university.edu.ng,another.edu.ng
+      # Optional: real email verification via SMTP (Gmail app password works)
+      # - key: SMTP_HOST
+      #   value: smtp.gmail.com
+      # - key: SMTP_PORT
+      #   value: "587"
+      # - key: SMTP_USER
+      #   value: you@gmail.com
+      # - key: SMTP_PASS
+      #   value: your-16-char-app-password
+      # - key: SMTP_FROM
+      #   value: you@gmail.com
+    # NOTE: free/paid disk. Persists uploaded PDFs + accounts across restarts.
+    # Requires a PAID plan. Remove this block to stay on free tier.
+    # disk:
+    #   name: data
+    #   mountPath: /app/data
+    #   sizeGB: 1
