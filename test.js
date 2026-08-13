@@ -2,11 +2,13 @@ import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import os from "os";
 import zlib from "zlib";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 3999;
 const BASE = `http://localhost:${PORT}`;
+const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "courselib-test-"));
 
 function buildPdf(text) {
   const objs = [];
@@ -110,7 +112,7 @@ function waitForServer() {
 }
 
 const server = spawn(process.execPath, [path.join(__dirname, "server.js")], {
-  env: { ...process.env, PORT: String(PORT) },
+  env: { ...process.env, PORT: String(PORT), DATA_DIR: TEST_DATA_DIR },
   stdio: ["ignore", "pipe", "pipe"]
 });
 let serverLog = "";
@@ -118,7 +120,7 @@ server.stdout.on("data", (d) => (serverLog += d));
 server.stderr.on("data", (d) => (serverLog += d));
 
 let pdf = buildPdf("Course Library integration test");
-const samplePdfPath = path.join(__dirname, "sample-test.pdf");
+const samplePdfPath = path.join(TEST_DATA_DIR, "sample-test.pdf");
 fs.writeFileSync(samplePdfPath, pdf);
 
 try {
@@ -502,6 +504,7 @@ try {
 } finally {
   fs.rmSync(samplePdfPath, { force: true });
   server.kill();
+  fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
 }
 
 const out = path.join(__dirname, "test-results.txt");
