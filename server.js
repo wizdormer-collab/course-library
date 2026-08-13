@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { extractPdfText } from "./lib/pdftext.js";
 import { buildZip } from "./lib/zip.js";
 import { sendMail, smtpConfigured } from "./lib/mailer.js";
+import { supabaseConfigured, ensureBucket, supaPut, supaGet, supaGetBuf, supaDelete } from "./lib/supabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || __dirname;
@@ -46,23 +47,73 @@ async function deliverVerifyCode(user, code) {
 
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-if (!fs.existsSync(DATA_FILE)) {
+let db;
+if (fs.existsSync(DATA_FILE)) {
+  db = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+} else if (supabaseConfigured()) {
+  const remote = await loadDbFromSupabase();
+  if (remote) {
+    db = remote;
+    fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
+  } else {
+    db = seedDb();
+    saveDb();
+  }
+} else {
+  db = seedDb();
+}
+
+function seedDb() {
   const SEED_FILE = path.join(__dirname, "seed-data.json");
   if (fs.existsSync(SEED_FILE)) {
     fs.copyFileSync(SEED_FILE, DATA_FILE);
   } else {
     fs.writeFileSync(DATA_FILE, JSON.stringify({ users: [], courses: [], files: [] }, null, 2));
   }
+  return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
 }
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-let db = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+async function loadDbFromSupabase() {
+  try {
+    const raw = await supaGet("db.json");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.users)) return null;
+    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    let missing = 0;
+    for (const f of parsed.files || []) {
+      const fp = path.join(UPLOAD_DIR, f.storedName);
+      if (!fs.existsSync(fp)) {
+        const buf = await supaGetBuf("uploads/" + f.storedName);
+        if (buf && buf.length) {
+          fs.writeFileSync(fp, buf);
+        } else {
+          missing++;
+        }
+      }
+    }
+    if (missing) console.log("Supabase: " + missing + " upload(s) missing from storage");
+    console.log("Supabase: loaded database (" + (parsed.users?.length || 0) + " users, " + (parsed.files?.length || 0) + " files)");
+    return parsed;
+  } catch (err) {
+    console.log("Supabase: load failed, using seed (" + err.message + ")");
+    return null;
+  }
+}
 
 function saveDb() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
   try {
     fs.copyFileSync(DATA_FILE, BACKUP_FILE);
   } catch {}
+  if (supabaseConfigured()) {
+    supaPut("db.json", JSON.stringify(db)).catch(() => {});
+  }
+}
+
+if (supabaseConfigured()) {
+  await ensureBucket();
+  console.log("Supabase persistence enabled");
 }
 
 function hashPassword(pw) {
@@ -537,6 +588,7 @@ routes.push({
     const [removed] = db.users.splice(idx, 1);
     for (const f of db.files.filter((f) => f.uploadedBy === removed.id)) {
       fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
+      if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
     }
     db.files = db.files.filter((f) => f.uploadedBy !== removed.id);
     for (const f of db.files) {
@@ -614,6 +666,7 @@ routes.push({
     db.courses.splice(idx, 1);
     for (const f of db.files.filter((f) => f.courseId === params.id)) {
       fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
+      if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
     }
     db.files = db.files.filter((f) => f.courseId !== params.id);
     saveDb();
@@ -758,6 +811,7 @@ routes.push({
     }
     const storedName = Date.now() + "-" + Math.round(Math.random() * 1e9) + ".pdf";
     fs.writeFileSync(path.join(UPLOAD_DIR, storedName), buf);
+    if (supabaseConfigured()) supaPut("uploads/" + storedName, buf).catch(() => {});
     const text = extractPdfText(buf).slice(0, 100000);
     const file = {
       id: "f" + Date.now(),
@@ -876,6 +930,7 @@ routes.push({
     const [f] = db.files.splice(idx, 1);
     if (!f.approved) notify(f.uploadedBy, `Your file "${f.name}" was rejected by an admin.`);
     fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
+    if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
     saveDb();
     ok(res);
   }

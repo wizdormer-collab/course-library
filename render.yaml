@@ -8,6 +8,12 @@ services:
         generateValue: true
       - key: ADMIN_INVITE_CODE
         value: admin2026
+      # Free cloud persistence: create a Supabase project, then paste its
+      # Project URL + service_role key (Project Settings -> API).
+      - key: SUPABASE_URL
+        value: ""
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: ""
       # Optional: restrict sign-ups to specific email domains, comma-separated
       # - key: ALLOWED_EMAIL_DOMAINS
       #   value: university.edu.ng,another.edu.ng
