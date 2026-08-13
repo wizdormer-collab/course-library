@@ -274,6 +274,9 @@ try {
   const pending = await api("/api/files/pending", { token: adminToken });
   check("admin sees pending list", pending.status === 200 && pending.data.files.some((f) => f.id === fileId));
 
+  const adminNotifs = await api("/api/notifications", { token: adminToken });
+  check("admin notified of pending upload", adminNotifs.data.notifications.some((n) => n.text.includes("pending approval")));
+
   const asStudent = await api(`/api/files/${fileId}/inline`, { token: studentToken });
   check("uploader can preview own pending file", asStudent.status === 200);
 

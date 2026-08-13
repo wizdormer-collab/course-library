@@ -43,11 +43,20 @@
 
 html {
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ic {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: -0.125em;
+  flex: none;
 }
 
 body {
   margin: 0;
-  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
@@ -101,6 +110,36 @@ body::before {
   letter-spacing: -0.02em;
   text-decoration: none;
   color: var(--text);
+}
+
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 1.05rem;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.45);
+}
+
+.brand-name {
+  background: linear-gradient(120deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: clamp(1.7rem, 5vw, 2.3rem);
+  letter-spacing: -0.03em;
+  background: linear-gradient(120deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
 }
 
 .brand-chip {
@@ -1227,20 +1266,32 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    padding: 8px 4px 7px;
-    min-height: 56px;
+    gap: 3px;
+    padding: 6px 4px 7px;
+    min-height: 58px;
     text-decoration: none;
     color: var(--muted);
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 650;
     letter-spacing: 0.01em;
     transition: color 0.15s ease;
+    touch-action: manipulation;
   }
 
   .bn-item .bn-icon {
-    font-size: 1.25rem;
-    line-height: 1.15;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 28px;
+    font-size: 1.3rem;
+    line-height: 1;
+    border-radius: 999px;
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .bn-item .bn-icon .ic {
+    width: 1.35em;
+    height: 1.35em;
   }
 
   .bn-item.active {
@@ -1248,7 +1299,13 @@ main {
   }
 
   .bn-item.active .bn-icon {
-    transform: translateY(-1px);
+    background: rgba(79, 70, 229, 0.14);
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    transform: translateY(-1px) scale(1.04);
+  }
+
+  .bn-item:active .bn-icon {
+    transform: scale(0.92);
   }
 
   .bn-item.active::before {
@@ -1283,6 +1340,10 @@ main {
 
   .page-head h1 {
     font-size: 1.4rem;
+  }
+
+  .brand-title {
+    font-size: 1.75rem;
   }
 
   .head-actions,
@@ -1410,5 +1471,61 @@ main {
 
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* iOS-style polish */
+  .file-row {
+    border-radius: 18px;
+  }
+
+  .file-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .file-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+  }
+
+  .stat {
+    margin-left: 0;
+    margin-right: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .page-head {
+    gap: 12px;
+  }
+
+  .head-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .head-actions .btn {
+    flex: 1;
+  }
+
+  .hero {
+    border-radius: 22px;
+  }
+
+  .card {
+    border-radius: 18px;
+  }
+
+  .modal-actions .btn {
+    flex: 1;
+  }
+
+  .notif-item {
+    padding: 12px 14px;
+  }
+
+  .section-title {
+    margin-top: 22px;
   }
 }

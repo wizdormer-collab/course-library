@@ -788,6 +788,12 @@ routes.push({
         );
         if (savedCourse) notify(u.id, `New material "${file.name}" added to ${courseLabel(courseId)}`);
       }
+    } else {
+      for (const u of db.users) {
+        if (u.role === "admin" && u.id !== user.id) {
+          notify(u.id, `New upload pending approval: "${file.name}" by ${user.username} in ${courseLabel(courseId)}`);
+        }
+      }
     }
     send(res, 201, {
       file: fileInfo(file, user),

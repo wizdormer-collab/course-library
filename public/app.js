@@ -50,6 +50,37 @@ const esc = (s) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
   );
 
+const ICONS = {
+  book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+  star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  chat: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+  archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+  key: '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
+  edit: '<path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+  close: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  chevronLeft: '<polyline points="15 18 9 12 15 6"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h6M9 9h1"/>',
+  search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+};
+
+function icon(name, cls) {
+  return `<svg class="ic${cls ? " " + cls : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+}
+
 function fmtSize(b) {
   if (b < 1024) return b + " B";
   if (b < 1024 * 1024) return (b / 1024).toFixed(1) + " KB";
@@ -61,6 +92,43 @@ function fmtDate(iso) {
 }
 function fmtCount(n) {
   return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+}
+
+async function fetchBlob(path) {
+  const headers = {};
+  const t = token();
+  if (t) headers["Authorization"] = "Bearer " + t;
+  const res = await fetch(path, { headers });
+  if (!res.ok) {
+    let msg = "Request failed";
+    try {
+      const j = await res.json();
+      msg = j.error || msg;
+    } catch {}
+    throw new Error(msg);
+  }
+  return await res.blob();
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 4000);
+}
+
+async function downloadPath(path, filename) {
+  try {
+    const blob = await fetchBlob(path);
+    triggerDownload(blob, filename);
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 let toastTimer;
@@ -80,7 +148,7 @@ function fileRow(f, opts = {}) {
   const isAdmin = state.user && state.user.role === "admin";
   return `
     <div class="file-row">
-      <span class="file-icon">&#128196;</span>
+      <span class="file-icon">${icon("pdf")}</span>
       <div class="file-info">
         <button class="file-name" data-preview="${f.id}">${esc(f.name)}</button>
         <span class="muted">
@@ -91,15 +159,15 @@ function fileRow(f, opts = {}) {
         </span>
         ${opts.showCounts ? `
           <span class="muted">
-            <span class="stat" title="Views">&#128065; ${fmtCount(f.views || 0)}</span>
-            <span class="stat" title="Downloads">&#11015; ${fmtCount(f.downloads || 0)}</span>
-            <span class="stat" title="Comments">&#128172; ${f.commentCount || 0}</span>
+            <span class="stat" title="Views">${icon("eye")} ${fmtCount(f.views || 0)}</span>
+            <span class="stat" title="Downloads">${icon("download")} ${fmtCount(f.downloads || 0)}</span>
+            <span class="stat" title="Comments">${icon("chat")} ${f.commentCount || 0}</span>
           </span>` : ""}
       </div>
       <div class="file-actions">
-        <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save for later">&#11088;</button>
-        <a class="btn btn-outline btn-sm" href="/api/files/${f.id}/download">Download</a>
-        ${isAdmin ? `<button class="btn btn-danger btn-sm" data-del="${f.id}">Delete</button>` : ""}
+        <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save for later">${icon("star")}</button>
+        <button class="btn btn-outline btn-sm" data-download="${f.id}" data-name="${esc(f.originalName || f.name)}">${icon("download")} Download</button>
+        ${isAdmin ? `<button class="btn btn-danger btn-sm" data-del="${f.id}">${icon("trash")} Delete</button>` : ""}
       </div>
     </div>`;
 }
@@ -123,6 +191,22 @@ async function bindRowActions({ showCourse = false, counts = false } = {}) {
           await api("/api/files/" + btn.dataset.save + "/save", { method: "POST" });
           showToast("Saved for later");
         }
+      } catch (err) {
+        alert(err.message);
+      }
+    }));
+  document.querySelectorAll("[data-download]").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      try {
+        await downloadPath("/api/files/" + btn.dataset.download + "/download", btn.dataset.name || "file.pdf");
+      } catch (err) {
+        alert(err.message);
+      }
+    }));
+  document.querySelectorAll("[data-download-zip]").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      try {
+        await downloadPath("/api/courses/" + btn.dataset.downloadZip + "/zip", btn.dataset.name || "course.zip");
       } catch (err) {
         alert(err.message);
       }
@@ -166,9 +250,18 @@ async function openPdf(fileId, showCourse) {
     if (e.target === overlay) overlay.remove();
   });
   const frame = document.getElementById("pdf-frame");
-  frame.src = "/api/files/" + fileId + "/inline";
   const titleEl = document.getElementById("pdf-title");
   titleEl.textContent = "Loading...";
+  frame.src = "";
+
+  (async () => {
+    try {
+      const blob = await fetchBlob("/api/files/" + fileId + "/inline");
+      frame.src = URL.createObjectURL(blob);
+    } catch (err) {
+      titleEl.textContent = "Preview unavailable";
+    }
+  })();
 
   try {
     const list = await api("/api/files");
@@ -199,7 +292,7 @@ async function loadComments(fileId) {
           <strong>${esc(c.username)}</strong>
           <span class="muted">${fmtDate(c.at)}</span>
           ${isAdmin || (state.user && c.userId === state.user.id)
-            ? `<button class="comment-del" data-cid="${c.id}" title="Delete">&#10005;</button>` : ""}
+            ? `<button class="comment-del" data-cid="${c.id}" title="Delete">${icon("close")}</button>` : ""}
           <p>${esc(c.text)}</p>
         </div>`).join("") : `<p class="muted">No discussion yet. Start one!</p>`}
     </div>`;
@@ -245,7 +338,7 @@ async function renderNav() {
     const unread = notifications.filter((n) => !n.read).length;
     notifHtml = `
       <div class="notif-wrap">
-        <button class="icon-btn" id="notif-btn" title="Notifications">&#128276;</button>
+        <button class="icon-btn" id="notif-btn" title="Notifications">${icon("bell")}</button>
         ${unread ? `<span class="notif-dot">${unread > 9 ? "9+" : unread}</span>` : ""}
         <div class="notif-drop hidden" id="notif-drop">
           <div class="notif-head">
@@ -267,7 +360,7 @@ async function renderNav() {
       <a href="#/settings" class="nav-link">Settings</a>
       ${state.user.role === "admin" ? '<a href="#/admin" class="nav-link">Admin</a>' : ""}
       ${notifHtml}
-      <button class="icon-btn" id="theme-btn" title="Toggle theme">${state.theme === "dark" ? "&#9788;" : "&#9790;"}</button>
+      <button class="icon-btn" id="theme-btn" title="Toggle theme">${state.theme === "dark" ? icon("sun") : icon("moon")}</button>
       <span class="nav-user">${esc(state.user.username)} <small>(${esc(state.user.role)})</small></span>
       <button class="btn btn-outline" id="logout-btn">Log out</button>`
     : `
@@ -278,21 +371,21 @@ async function renderNav() {
   if (bottomNav) {
     const items = state.user
       ? [
-          { path: "/", label: "Courses", icon: "&#128218;" },
-          { path: "/saved", label: "Saved", icon: "&#11088;" },
-          { path: "/settings", label: "Settings", icon: "&#9881;" },
-          ...(state.user.role === "admin" ? [{ path: "/admin", label: "Admin", icon: "&#128737;" }] : []),
-          { path: "/logout", label: "Log out", icon: "&#128682;" }
+          { path: "/", label: "Courses", icon: "book" },
+          { path: "/saved", label: "Saved", icon: "star" },
+          { path: "/settings", label: "Settings", icon: "settings" },
+          ...(state.user.role === "admin" ? [{ path: "/admin", label: "Admin", icon: "shield" }] : []),
+          { path: "/logout", label: "Log out", icon: "logout" }
         ]
       : [
-          { path: "/login", label: "Log in", icon: "&#128273;" },
-          { path: "/register", label: "Sign up", icon: "&#9997;" }
+          { path: "/login", label: "Log in", icon: "key" },
+          { path: "/register", label: "Sign up", icon: "edit" }
         ];
     const cur = location.hash.replace(/^#/, "") || "/";
     bottomNav.innerHTML = items
       .map((it) => {
         const active = cur.split("/").filter(Boolean)[0] === it.path.split("/").filter(Boolean)[0] || (cur === "/" && it.path === "/");
-        return `<a href="#${it.path}" class="bn-item${active ? " active" : ""}" data-path="${it.path}"><span class="bn-icon">${it.icon}</span><span>${it.label}</span></a>`;
+        return `<a href="#${it.path}" class="bn-item${active ? " active" : ""}" data-path="${it.path}"><span class="bn-icon">${icon(it.icon)}</span><span>${it.label}</span></a>`;
       })
       .join("");
     bottomNav.querySelector('[data-path="/logout"]')?.addEventListener("click", (e) => {
@@ -678,16 +771,16 @@ async function renderHome() {
   const sems = [...new Set(state.courses.map((c) => c.semester).filter(Boolean))];
 
   app.innerHTML = shell(`
-    <div class="page-head">
-      <div>
-        <h1>Course Library</h1>
-        <p class="muted">Every course. Every PDF. One place.</p>
+      <div class="page-head">
+        <div>
+          <h1 class="brand-title">Course Library</h1>
+          <p class="muted">Every course. Every PDF. One place.</p>
+        </div>
+        ${state.user.role === "admin" ? '<button class="btn btn-primary" id="new-course-btn">+ New course</button>' : ""}
       </div>
-      ${state.user.role === "admin" ? '<button class="btn btn-primary" id="new-course-btn">+ New course</button>' : ""}
-    </div>
 
     <div class="search-bar">
-      <span class="search-icon">&#128269;</span>
+      <span class="search-icon">${icon("search")}</span>
       <input id="search-input" type="search" placeholder="Search across all course PDFs..." autocomplete="off" />
     </div>
     <div id="search-results"></div>
@@ -854,7 +947,7 @@ async function renderCourseDetail(hash) {
     : "";
 
   app.innerHTML = shell(`
-    <a href="#/" class="back-link">&larr; All courses</a>
+    <a href="#/" class="back-link">${icon("chevronLeft")} All courses</a>
     ${course ? `
       <div class="page-head">
         <div>
@@ -865,8 +958,8 @@ async function renderCourseDetail(hash) {
           </p>
         </div>
         <div class="head-actions">
-          <a class="btn btn-outline" href="/api/courses/${id}/zip">&#128230; Download all (ZIP)</a>
-          <button class="btn btn-primary" id="upload-btn">+ Upload PDF</button>
+          <button class="btn btn-outline" data-download-zip="${id}" data-name="${esc(course.code || "course")}.zip">${icon("archive")} Download all (ZIP)</button>
+          <button class="btn btn-primary" id="upload-btn">${icon("plus")} Upload PDF</button>
         </div>
       </div>
 
@@ -987,7 +1080,7 @@ async function renderAdmin() {
         <div class="file-list">
           ${stats.topFiles.map((f) => `
             <div class="file-row">
-              <span class="file-icon">&#128196;</span>
+              <span class="file-icon">${icon("file")}</span>
               <div class="file-info">
                 <div class="file-name">${esc(f.name)}</div>
                 <span class="muted">${esc(f.courseLabel)} &middot; ${f.views} views &middot; ${f.downloads} downloads</span>
@@ -999,7 +1092,7 @@ async function renderAdmin() {
   app.innerHTML = shell(`
     <div class="page-head">
       <div>
-        <h1>Admin</h1>
+        <h1>${icon("shield")} Admin</h1>
         <p class="muted">Review uploads and keep the library healthy.</p>
       </div>
     </div>
@@ -1009,15 +1102,15 @@ async function renderAdmin() {
       <div class="file-list">
         ${pending.map((f) => `
           <div class="file-row">
-            <span class="file-icon">&#128196;</span>
+            <span class="file-icon">${icon("pdf")}</span>
             <div class="file-info">
               <div class="file-name">${esc(f.name)}</div>
               <span class="muted">${esc(f.courseLabel)} &middot; by ${esc(f.uploadedByName)} &middot; ${fmtSize(f.size)}</span>
             </div>
             <div class="file-actions">
-              <a class="btn btn-outline btn-sm" href="/api/files/${f.id}/inline" target="_blank" rel="noreferrer">Preview</a>
-              <button class="btn btn-primary btn-sm" data-approve="${f.id}">Approve</button>
-              <button class="btn btn-danger btn-sm" data-reject="${f.id}">Reject</button>
+              <button class="btn btn-outline btn-sm" data-preview="${f.id}">${icon("eye")} Preview</button>
+              <button class="btn btn-primary btn-sm" data-approve="${f.id}">${icon("check")} Approve</button>
+              <button class="btn btn-danger btn-sm" data-reject="${f.id}">${icon("trash")} Reject</button>
             </div>
           </div>`).join("")}
       </div>`}
@@ -1026,7 +1119,7 @@ async function renderAdmin() {
     <div class="file-list">
       ${users.map((u) => `
         <div class="file-row">
-          <span class="file-icon">${u.role === "admin" ? "&#129513;" : "&#128100;"}</span>
+          <span class="file-icon">${u.role === "admin" ? icon("shield") : icon("user")}</span>
           <div class="file-info">
             <div class="file-name">${esc(u.username)} ${u.id === state.user.id ? '<span class="badge">you</span>' : ""}</div>
             <span class="muted">${esc(u.email || "")} &middot; Role: ${esc(u.role)}</span>
@@ -1037,10 +1130,14 @@ async function renderAdmin() {
               <option value="admin" ${u.role === "admin" ? "selected" : ""}>admin</option>
             </select>
             <button class="btn btn-outline btn-sm" data-resetpw="${u.id}">Reset password</button>
-            ${u.id !== state.user.id ? `<button class="btn btn-danger btn-sm" data-deluser="${u.id}">Delete</button>` : ""}
+            ${u.id !== state.user.id ? `<button class="btn btn-danger btn-sm" data-deluser="${u.id}">${icon("trash")} Delete</button>` : ""}
           </div>
         </div>`).join("")}
     </div>`);
+
+  bindRowActions();
+  document.querySelectorAll("[data-preview]").forEach((btn) =>
+    btn.addEventListener("click", () => openPdf(btn.dataset.preview, false)));
 
   document.querySelectorAll("[data-approve]").forEach((btn) =>
     btn.addEventListener("click", async () => {
@@ -1122,3 +1219,18 @@ async function renderAdmin() {
 window.addEventListener("hashchange", () => {
   render();
 });
+
+let lastNotifKey = "";
+async function pollNotifications() {
+  if (!state.user || !token()) return;
+  try {
+    const d = await api("/api/notifications");
+    const unread = d.notifications.filter((n) => !n.read).length;
+    const key = unread + "|" + d.notifications.length + "|" + (d.notifications[0]?.at || "");
+    if (key !== lastNotifKey) {
+      lastNotifKey = key;
+      renderNav();
+    }
+  } catch {}
+}
+setInterval(pollNotifications, 30000);
