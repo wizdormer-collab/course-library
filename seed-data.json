@@ -1,0 +1,56 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "username": "admin",
+      "email": "admin@course-library.edu.ng",
+      "hash": "0fe39ba246088dcfe91228f4e2f86615:7bac3a365995bbec4f911d84fd3fef048f100ef35ba8ea573379a74f2881a8c5",
+      "role": "admin",
+      "notifications": [],
+      "verified": true,
+      "securityQuestion": "What city were you born in?",
+      "securityAnswerHash": "c736aee7fcf2c12a594487ec49add3bd:3c377da2cf45c9f74cb177935728532bc22233dddbf681d69db31bda2a7b8016"
+    },
+    {
+      "id": "u2",
+      "username": "student1",
+      "email": "student1@university.edu.ng",
+      "hash": "796e307deba0881cd73b487180896229:93b250062b1725308f17a1b2c386796e8b6f85a6a9a9e50e75f7b955541e9e43",
+      "role": "student",
+      "notifications": [],
+      "verified": true,
+      "securityQuestion": "What city were you born in?",
+      "securityAnswerHash": "b3b21d379ef1419fbe45274299ceb83c:fe7a0b976abb481f8fbba0449200be5b5df8cfa94ef825809bb2522396ff139f"
+    }
+  ],
+  "courses": [
+    {
+      "id": "c1",
+      "code": "CS101",
+      "name": "Introduction to Computer Science",
+      "description": "Foundations of computing: algorithms, programming, and problem solving.",
+      "category": "Sciences",
+      "semester": "First",
+      "createdAt": 1786607067360
+    },
+    {
+      "id": "c2",
+      "code": "MATH101",
+      "name": "Calculus I",
+      "description": "Differential and integral calculus of functions of one variable.",
+      "category": "Sciences",
+      "semester": "First",
+      "createdAt": 1786607067360
+    },
+    {
+      "id": "c3",
+      "code": "ENG101",
+      "name": "English Composition",
+      "description": "Academic writing, rhetoric, and critical reading.",
+      "category": "Arts",
+      "semester": "Second",
+      "createdAt": 1786607067360
+    }
+  ],
+  "files": []
+}

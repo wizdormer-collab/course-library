@@ -1,0 +1,8 @@
+.git
+data.json
+data.json.bak
+uploads/
+*.log
+servercheck.txt
+test-results.txt
+sample-test.pdf
