@@ -2,6 +2,7 @@ data.json
 data.json.bak
 uploads/
 *.log
+*.log.err
 servercheck.txt
 test-results.txt
 sample-test.pdf
