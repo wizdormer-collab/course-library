@@ -1035,6 +1035,10 @@ body.auth-page::before {
     radial-gradient(640px 320px at 92% 6%, rgba(59, 130, 246, 0.1), transparent 60%);
 }
 
+body.auth-page .navbar {
+  display: none;
+}
+
 .auth-wrap {
   display: flex;
   flex-direction: column;
