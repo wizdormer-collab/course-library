@@ -1491,7 +1491,7 @@ body.auth-page .navbar {
   }
 
   main#app {
-    padding: 18px 14px calc(110px + env(safe-area-inset-bottom));
+    padding: 18px 14px calc(122px + env(safe-area-inset-bottom));
   }
 
   /* bottom tab bar */
@@ -2234,14 +2234,82 @@ body.auth-page .navbar {
     gap: 4px;
   }
 
+  .home-section {
+    margin-top: 22px;
+  }
+
+  .section-head {
+    margin-bottom: 10px;
+  }
+
+  .search-bar {
+    padding: 4px 12px;
+  }
+
+  .search-bar input {
+    font-size: 0.95rem;
+    padding: 11px 0;
+    min-width: 0;
+  }
+
   .continue-card {
-    padding: 16px;
-    gap: 14px;
+    padding: 14px;
+    gap: 12px;
   }
 
   .continue-icon {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+  }
+
+  .continue-icon .ic {
+    width: 20px;
+    height: 20px;
+  }
+
+  .continue-main h3 {
+    font-size: 1.05rem;
+    margin-bottom: 2px;
+  }
+
+  .continue-main .muted {
+    margin-bottom: 6px;
+    font-size: 0.84rem;
+  }
+
+  .continue-main .progress-row {
+    margin-bottom: 6px;
+  }
+
+  .continue-btn {
+    margin-top: 8px;
+    min-height: 38px;
+    padding: 8px 14px;
+    font-size: 0.88rem;
+  }
+
+  .course-scroll {
+    gap: 12px;
+  }
+
+  .ycard {
+    flex: 0 0 200px;
+    padding: 13px;
+    gap: 6px;
+  }
+
+  .ycard .progress-row {
+    margin-bottom: 4px;
+  }
+
+  .ycard .progress-bar {
+    height: 6px;
+  }
+
+  .ycard h3 {
+    font-size: 0.95rem;
   }
 
   .qa-grid {

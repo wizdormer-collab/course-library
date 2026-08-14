@@ -968,7 +968,7 @@ async function renderHome() {
 
     <div class="search-bar">
       <span class="search-icon">${icon("search")}</span>
-      <input id="search-input" type="search" placeholder="Search across all course PDFs..." autocomplete="off" />
+      <input id="search-input" type="search" placeholder="Search courses & PDFs..." autocomplete="off" />
       <button class="icon-btn search-filter" id="filter-toggle" aria-label="Filters">${icon("settings")}</button>
     </div>
     <div class="filters filters-panel hidden" id="filters-panel">
@@ -1049,7 +1049,7 @@ async function renderCourses(hash) {
 
     <div class="search-bar">
       <span class="search-icon">${icon("search")}</span>
-      <input id="search-input" type="search" value="${esc(q)}" placeholder="Search across all course PDFs..." autocomplete="off" />
+      <input id="search-input" type="search" value="${esc(q)}" placeholder="Search courses & PDFs..." autocomplete="off" />
       <button class="icon-btn search-filter" id="filter-toggle" aria-label="Filters">${icon("settings")}</button>
     </div>
     <div class="filters filters-panel hidden" id="filters-panel">
