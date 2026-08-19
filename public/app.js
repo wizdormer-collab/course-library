@@ -486,21 +486,21 @@ function shell(inner) {
 }
 
 async function render() {
-  window.scrollTo(0, 0);
   try { renderNav(); } catch {}
   const hash = location.hash.replace(/^#/, "") || "/";
   try {
-    if (hash === "/login") return renderLogin();
-    if (hash === "/register") return renderRegister();
-    if (hash === "/verify") return renderVerify();
-    if (hash === "/forgot") return renderForgot();
-    if (hash === "/saved") return await renderSaved();
-    if (hash === "/settings") return await renderSettings();
-    if (hash === "/admin") return await renderAdmin();
-    if (hash.startsWith("/courses")) return await renderCourses(hash);
-    if (hash.startsWith("/course/")) return await renderCourseDetail(hash);
-    if (hash.startsWith("/tag/")) return await renderTagFiles(hash);
-    return await renderHome();
+    if (hash === "/login") { renderLogin(); return; }
+    if (hash === "/register") { renderRegister(); return; }
+    if (hash === "/verify") { renderVerify(); return; }
+    if (hash === "/forgot") { renderForgot(); return; }
+    if (hash === "/saved") { await renderSaved(); }
+    else if (hash === "/settings") { await renderSettings(); }
+    else if (hash === "/admin") { await renderAdmin(); }
+    else if (hash.startsWith("/courses")) { await renderCourses(hash); }
+    else if (hash.startsWith("/course/")) { await renderCourseDetail(hash); }
+    else if (hash.startsWith("/tag/")) { await renderTagFiles(hash); }
+    else { await renderHome(); }
+    window.scrollTo({ top: 0 });
   } catch (err) {
     console.error("render error:", err);
     app.innerHTML = `<div style="padding:40px 20px;text-align:center">
@@ -508,6 +508,7 @@ async function render() {
       <p style="color:var(--muted)">${esc(err.message)}</p>
       <button class="btn btn-primary" onclick="location.reload()" style="margin-top:12px">Retry</button>
     </div>`;
+    window.scrollTo({ top: 0 });
   }
 }
 
