@@ -2411,6 +2411,8 @@ body.auth-page main {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  width: 100%;
+  overflow: hidden;
 }
 
 .qa-tile {
@@ -2427,6 +2429,8 @@ body.auth-page main {
   background: var(--card);
   box-shadow: var(--shadow-sm);
   transition: transform 0.16s ease, box-shadow 0.16s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .qa-tile:hover {
