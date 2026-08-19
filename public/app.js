@@ -485,20 +485,29 @@ function shell(inner) {
     : `<div aria-live="polite" class="sr-only" id="toast-region"></div>`);
 }
 
-function render() {
-  renderNav();
+async function render() {
+  try { renderNav(); } catch {}
   const hash = location.hash.replace(/^#/, "") || "/";
-  if (hash === "/login") return renderLogin();
-  if (hash === "/register") return renderRegister();
-  if (hash === "/verify") return renderVerify();
-  if (hash === "/forgot") return renderForgot();
-  if (hash === "/saved") return renderSaved();
-  if (hash === "/settings") return renderSettings();
-  if (hash === "/admin") return renderAdmin();
-  if (hash.startsWith("/courses")) return renderCourses(hash);
-  if (hash.startsWith("/course/")) return renderCourseDetail(hash);
-  if (hash.startsWith("/tag/")) return renderTagFiles(hash);
-  return renderHome();
+  try {
+    if (hash === "/login") return renderLogin();
+    if (hash === "/register") return renderRegister();
+    if (hash === "/verify") return renderVerify();
+    if (hash === "/forgot") return renderForgot();
+    if (hash === "/saved") return await renderSaved();
+    if (hash === "/settings") return await renderSettings();
+    if (hash === "/admin") return await renderAdmin();
+    if (hash.startsWith("/courses")) return await renderCourses(hash);
+    if (hash.startsWith("/course/")) return await renderCourseDetail(hash);
+    if (hash.startsWith("/tag/")) return await renderTagFiles(hash);
+    return await renderHome();
+  } catch (err) {
+    console.error("render error:", err);
+    app.innerHTML = `<div style="padding:40px 20px;text-align:center">
+      <h2>Something went wrong</h2>
+      <p style="color:var(--muted)">${esc(err.message)}</p>
+      <button class="btn btn-primary" onclick="location.reload()" style="margin-top:12px">Retry</button>
+    </div>`;
+  }
 }
 
 /* ---------- auth views ---------- */
@@ -998,6 +1007,7 @@ function bindCourseMenus() {
 
 async function renderHome() {
   if (!state.user) return (location.hash = "#/login");
+  try {
   await loadCourses();
   let feed = [];
   let saved = [];
@@ -1114,6 +1124,14 @@ async function renderHome() {
 
   const newBtn = document.getElementById("new-course-btn");
   if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
+  } catch (err) {
+    console.error("renderHome error:", err);
+    app.innerHTML = `<div style="padding:40px 20px;text-align:center">
+      <h2>Something went wrong</h2>
+      <p style="color:var(--muted)">${esc(err.message)}</p>
+      <button class="btn btn-primary" onclick="location.reload()" style="margin-top:12px">Retry</button>
+    </div>`;
+  }
 }
 
 async function renderCourses(hash) {
@@ -2023,8 +2041,18 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e)
   }
 });
 
+window.addEventListener("error", (e) => {
+  console.error("Uncaught error:", e.error || e.message);
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("Unhandled promise rejection:", e.reason);
+});
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
   });
 }
