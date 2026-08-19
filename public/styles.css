@@ -403,6 +403,189 @@ main {
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
+.heart .ic {
+  width: 1.1em;
+  height: 1.1em;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.heart.on {
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+}
+
+.heart.on .ic {
+  color: var(--danger);
+  fill: var(--danger);
+  transform: scale(1.15);
+}
+
+.heart:active .ic {
+  transform: scale(0.85);
+}
+
+.like-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/* announcement, collection, leaderboard cards */
+.ann-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ann-card .ann-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ann-card .ann-author {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--primary);
+}
+
+.ann-card .ann-date {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ann-card .ann-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.col-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.col-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.col-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(14, 165, 233, 0.12));
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.col-info h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.col-info p {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.lb-rank {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.lb-rank.gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #fff; }
+.lb-rank.silver { background: linear-gradient(135deg, #94a3b8, #64748b); color: #fff; }
+.lb-rank.bronze { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; }
+.lb-rank.normal { background: var(--card-2); color: var(--muted); }
+
+.lb-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lb-info h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.lb-info p {
+  margin: 1px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.lb-score {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.modal-col-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.modal-col-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--card-2);
+  transition: background 0.15s ease;
+}
+
+.modal-col-item:hover {
+  background: var(--card);
+}
+
+.modal-col-item.in-col {
+  border-color: var(--primary);
+  background: rgba(79, 70, 229, 0.06);
+}
+
 /* ---------- cards & grids ---------- */
 
 .grid {
@@ -1999,6 +2182,14 @@ body.auth-page main {
   margin-top: 30px;
 }
 
+.ann-list,
+.lb-list,
+.col-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .section-head {
   display: flex;
   align-items: center;
@@ -2398,6 +2589,32 @@ body.auth-page main {
   .qa-tile {
     padding: 13px 14px;
     font-size: 0.9rem;
+  }
+
+  .col-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .lb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ann-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .heart .like-count {
+    display: none;
+  }
+
+  .file-actions {
+    gap: 6px;
   }
 }
 

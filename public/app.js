@@ -84,7 +84,10 @@ const ICONS = {
   chevronRight: '<polyline points="9 18 15 12 9 6"/>',
   clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   play: '<polygon points="5 3 19 12 5 21 5 3"/>',
-  tag: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>'
+  tag: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
+  heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+  folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'
 };
 
 function icon(name, cls) {
@@ -187,7 +190,9 @@ function fileRow(f, opts = {}) {
           </span>` : ""}
       </div>
       <div class="file-actions">
+        <button class="icon-btn heart ${f.liked ? "on" : ""}" data-like="${f.id}" title="Like">${icon("heart")} <span class="like-count">${f.likes || 0}</span></button>
         <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save for later">${icon("star")}</button>
+        <button class="icon-btn" data-collect="${f.id}" title="Add to collection">${icon("folder")}</button>
         ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-edit-tags="${f.id}" data-etags="${esc(JSON.stringify(f.tags || []))}" title="Edit tags">${icon("tag")}</button>` : ""}
         ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-rename="${f.id}" data-rname="${esc(f.name)}" title="Rename">${icon("edit")}</button>` : ""}
         <button class="btn btn-outline btn-sm" data-download="${f.id}" data-name="${esc(f.originalName || f.name)}">${icon("download")} Download</button>
@@ -225,9 +230,57 @@ function paginationNav(pagination, baseHash) {
   </div>`;
 }
 
+async function openCollectPicker(fileId) {
+  try {
+    const d = await api("/api/collections");
+    const cols = d.collections;
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `<div class="modal">
+      <div class="modal-actions"><h2>Add to collection</h2><button class="btn btn-outline" id="cp-close">Close</button></div>
+      <div class="modal-col-list">
+        ${cols.length ? cols.map((c) => `
+          <div class="modal-col-item ${c.fileIds.includes(fileId) ? "in-col" : ""}" data-cid="${c.id}">
+            <span>${icon("folder")} ${esc(c.name)} (${c.files.length})</span>
+            <span>${c.fileIds.includes(fileId) ? icon("check") : icon("plus")}</span>
+          </div>`).join("") : '<p class="muted" style="text-align:center;padding:20px">No collections yet. Create one from the homepage.</p>'}
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById("cp-close").addEventListener("click", () => overlay.remove());
+    overlay.querySelectorAll(".modal-col-item").forEach((el) =>
+      el.addEventListener("click", async () => {
+        const cid = el.dataset.cid;
+        const inCol = el.classList.contains("in-col");
+        try {
+          await api("/api/collections/" + cid + (inCol ? "/remove" : "/add"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileId })
+          });
+          el.classList.toggle("in-col");
+          showToast(inCol ? "Removed from collection" : "Added to collection");
+        } catch (err) { alert(err.message); }
+      }));
+  } catch (err) { alert(err.message); }
+}
+
 async function bindRowActions({ showCourse = false, counts = false } = {}) {
   document.querySelectorAll("[data-preview]").forEach((btn) =>
     btn.addEventListener("click", () => openPdf(btn.dataset.preview, showCourse)));
+  document.querySelectorAll("[data-like]").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      try {
+        const isLiked = btn.classList.contains("on");
+        const d = await api("/api/files/" + btn.dataset.like + "/like", { method: isLiked ? "DELETE" : "POST" });
+        btn.classList.toggle("on", !isLiked);
+        const countEl = btn.querySelector(".like-count");
+        if (countEl) countEl.textContent = d.likes;
+      } catch (err) {
+        alert(err.message);
+      }
+    }));
   document.querySelectorAll("[data-save]").forEach((btn) =>
     btn.addEventListener("click", async () => {
       try {
@@ -258,6 +311,8 @@ async function bindRowActions({ showCourse = false, counts = false } = {}) {
       try { tags = JSON.parse(btn.dataset.etags || "[]"); } catch {}
       openTagFile(btn.dataset.editTags, tags);
     }));
+  document.querySelectorAll("[data-collect]").forEach((btn) =>
+    btn.addEventListener("click", () => openCollectPicker(btn.dataset.collect)));
   document.querySelectorAll("[data-download-zip]").forEach((btn) =>
     btn.addEventListener("click", async () => {
       try {
@@ -493,7 +548,9 @@ async function render() {
     if (hash === "/register") { renderRegister(); return; }
     if (hash === "/verify") { renderVerify(); return; }
     if (hash === "/forgot") { renderForgot(); return; }
-    if (hash === "/saved") { await renderSaved(); }
+    else if (hash.startsWith("/profile/")) { await renderProfile(hash); }
+    else if (hash.startsWith("/collection/")) { await renderCollectionDetail(hash); }
+    else if (hash === "/saved") { await renderSaved(); }
     else if (hash === "/settings") { await renderSettings(); }
     else if (hash === "/admin") { await renderAdmin(); }
     else if (hash.startsWith("/courses")) { await renderCourses(hash); }
@@ -1007,11 +1064,23 @@ async function renderHome() {
   await loadCourses();
   let feed = [];
   let saved = [];
+  let announcements = [];
+  let leaderboard = [];
+  let collections = [];
   try {
     feed = (await api("/api/feed")).files;
   } catch {}
   try {
     saved = (await api("/api/files/saved")).files;
+  } catch {}
+  try {
+    announcements = (await api("/api/announcements")).announcements;
+  } catch {}
+  try {
+    leaderboard = (await api("/api/leaderboard")).leaderboard;
+  } catch {}
+  try {
+    collections = (await api("/api/collections")).collections;
   } catch {}
 
   state.progressMap = {};
@@ -1103,6 +1172,58 @@ async function renderHome() {
       </div>
     </section>
 
+    ${announcements.length ? `
+    <section class="home-section">
+      <h2 class="section-title">${icon("bell")} Announcements</h2>
+      <div class="ann-list">
+        ${announcements.slice(0, 3).map((a) => `
+          <div class="ann-card">
+            <div class="ann-head">
+              <span class="ann-author">${esc(a.authorName)}</span>
+              <span class="ann-date">${fmtDate(a.createdAt)}</span>
+            </div>
+            <div class="ann-text">${esc(a.text)}</div>
+            ${isAdmin ? `<button class="link-btn" style="margin-top:6px;font-size:0.8rem" data-del-ann="${a.id}">Delete</button>` : ""}
+          </div>`).join("")}
+      </div>
+    </section>` : ""}
+
+    ${collections.length || isAdmin ? `
+    <section class="home-section">
+      <div class="section-head">
+        <h2>${icon("folder")} Collections</h2>
+        <button class="btn btn-primary btn-sm" id="new-col-btn">+ New</button>
+      </div>
+      <div class="col-grid" id="col-grid">
+        ${collections.length
+          ? collections.map((col) => `
+            <div class="col-card" data-col-id="${col.id}">
+              <div class="col-icon">${icon("folder")}</div>
+              <div class="col-info">
+                <h3>${esc(col.name)}</h3>
+                <p>${col.files.length} file${col.files.length !== 1 ? "s" : ""}${col.description ? " · " + esc(col.description) : ""}</p>
+              </div>
+            </div>`).join("")
+          : emptyState("folder", "No collections yet", "Create a collection to organize files across courses.", "")}
+      </div>
+    </section>` : ""}
+
+    ${leaderboard.length ? `
+    <section class="home-section">
+      <h2 class="section-title">${icon("trophy")} Top Contributors</h2>
+      <div class="lb-list">
+        ${leaderboard.slice(0, 5).map((u, i) => `
+          <div class="lb-row" data-profile="${u.id}" style="cursor:pointer">
+            <div class="lb-rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "normal"}">${i + 1}</div>
+            <div class="lb-info">
+              <h4>${esc(u.username)}</h4>
+              <p>${u.uploads} uploads · ${fmtCount(u.views)} views</p>
+            </div>
+            <span class="lb-score">${fmtCount(u.views + u.downloads + u.likes * 2)} pts</span>
+          </div>`).join("")}
+      </div>
+    </section>` : ""}
+
     ${courseModalHTML()}
     ${editCourseModalHTML()}
     ${renameFileModalHTML()}
@@ -1120,6 +1241,32 @@ async function renderHome() {
 
   const newBtn = document.getElementById("new-course-btn");
   if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
+
+  document.querySelectorAll("[data-del-ann]").forEach((btn) =>
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      try {
+        await api("/api/announcements/" + btn.dataset.delAnn, { method: "DELETE" });
+        renderHome();
+      } catch (err) { alert(err.message); }
+    }));
+
+  document.querySelectorAll("[data-profile]").forEach((el) =>
+    el.addEventListener("click", () => { location.hash = "#/profile/" + el.dataset.profile; }));
+
+  document.querySelectorAll("[data-col-id]").forEach((el) =>
+    el.addEventListener("click", () => { location.hash = "#/collection/" + el.dataset.colId; }));
+
+  const newColBtn = document.getElementById("new-col-btn");
+  if (newColBtn) newColBtn.addEventListener("click", async () => {
+    const name = prompt("Collection name:");
+    if (!name) return;
+    try {
+      await api("/api/collections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+      showToast("Collection created");
+      renderHome();
+    } catch (err) { alert(err.message); }
+  });
   } catch (err) {
     console.error("renderHome error:", err);
     app.innerHTML = `<div style="padding:40px 20px;text-align:center">
@@ -1989,6 +2136,86 @@ async function renderAdmin() {
     if (bulkAll) bulkAll.checked = false;
     updateBulk();
   });
+}
+
+/* ---------- profile page ---------- */
+
+async function renderProfile(hash) {
+  if (!state.user) return (location.hash = "#/login");
+  const userId = hash.split("/profile/")[1];
+  try {
+    const d = await api("/api/profile/" + userId);
+    const p = d.profile;
+    const isSelf = state.user.id === p.id;
+    app.innerHTML = shell(`
+      <a href="#/" class="back-link">${icon("chevronLeft")} Back</a>
+      <div class="card" style="text-align:center;padding:32px 22px">
+        <div style="width:72px;height:72px;border-radius:20px;display:grid;place-items:center;margin:0 auto 14px;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-size:2rem">${icon("user")}</div>
+        <h1 style="margin:0;font-size:1.4rem;letter-spacing:-0.02em">${esc(p.username)}</h1>
+        <p class="muted" style="margin:4px 0 0">${p.role === "admin" ? "Admin" : "Student"}</p>
+        <div class="stat-grid" style="margin-top:20px">
+          <div class="stat-card"><div class="stat-num">${p.uploadCount}</div><div class="stat-lab">Uploads</div></div>
+          <div class="stat-card"><div class="stat-num">${fmtCount(p.totalViews)}</div><div class="stat-lab">Views</div></div>
+          <div class="stat-card"><div class="stat-num">${fmtCount(p.totalDownloads)}</div><div class="stat-lab">Downloads</div></div>
+          <div class="stat-card"><div class="stat-num">${fmtCount(p.totalLikes)}</div><div class="stat-lab">Likes</div></div>
+        </div>
+      </div>
+      ${p.recentUploads.length ? `
+        <section class="home-section">
+          <h2 class="section-title">Recent uploads</h2>
+          <div class="file-list">
+            ${p.recentUploads.map((f) => fileRow(f, { showCourse: true, showCounts: true })).join("")}
+          </div>
+        </section>` : ""}`);
+    bindRowActions({ showCourse: true, counts: true });
+  } catch (err) {
+    app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
+      <h2>Profile not found</h2>
+      <p class="muted">${esc(err.message)}</p>
+      <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
+    </div>`);
+  }
+}
+
+/* ---------- collection detail ---------- */
+
+async function renderCollectionDetail(hash) {
+  if (!state.user) return (location.hash = "#/login");
+  const colId = hash.split("/collection/")[1];
+  try {
+    const d = await api("/api/collections");
+    const col = d.collections.find((c) => c.id === colId);
+    if (!col) throw new Error("Collection not found");
+    app.innerHTML = shell(`
+      <a href="#/" class="back-link">${icon("chevronLeft")} Back</a>
+      <div class="page-head">
+        <div>
+          <h1>${icon("folder")} ${esc(col.name)}</h1>
+          <p class="muted">${col.files.length} file${col.files.length !== 1 ? "s" : ""}${col.description ? " · " + esc(col.description) : ""}</p>
+        </div>
+        <button class="btn btn-danger btn-sm" id="del-col-btn">${icon("trash")} Delete collection</button>
+      </div>
+      <div class="file-list">
+        ${col.files.length
+          ? col.files.map((f) => fileRow(f, { showCourse: true, showCounts: true })).join("")
+          : emptyState("folder", "No files yet", "Add files to this collection from any file row.")}
+      </div>`);
+    bindRowActions({ showCourse: true, counts: true });
+    document.getElementById("del-col-btn").addEventListener("click", async () => {
+      if (!confirm("Delete this collection?")) return;
+      try {
+        await api("/api/collections/" + colId, { method: "DELETE" });
+        showToast("Collection deleted");
+        location.hash = "#/";
+      } catch (err) { alert(err.message); }
+    });
+  } catch (err) {
+    app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
+      <h2>Collection not found</h2>
+      <p class="muted">${esc(err.message)}</p>
+      <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
+    </div>`);
+  }
 }
 
 /* ---------- boot ---------- */

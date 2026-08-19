@@ -333,7 +333,9 @@ function fileInfo(f, user) {
   if (user) {
     info.saved = (f.savedBy || []).includes(user.id);
     info.viewed = (f.viewedBy || []).includes(user.id);
+    info.liked = (f.likedBy || []).includes(user.id);
   }
+  info.likes = (f.likedBy || []).length;
   return info;
 }
 
@@ -1253,6 +1255,225 @@ routes.push({
       .slice(0, 10)
       .map((f) => fileInfo(f, user));
     send(res, 200, { files });
+  }
+});
+
+/* ---------- likes ---------- */
+
+routes.push({
+  method: "POST", path: "/api/files/:id/like",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f || !canSeeFile(f, user)) return send(res, 404, { error: "File not found" });
+    if (!f.likedBy) f.likedBy = [];
+    if (!f.likedBy.includes(user.id)) f.likedBy.push(user.id);
+    saveDb();
+    ok(res, { likes: f.likedBy.length, liked: true });
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/files/:id/like",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f) return send(res, 404, { error: "File not found" });
+    if (f.likedBy) f.likedBy = f.likedBy.filter((id) => id !== user.id);
+    saveDb();
+    ok(res, { likes: (f.likedBy || []).length, liked: false });
+  }
+});
+
+/* ---------- announcements ---------- */
+
+routes.push({
+  method: "GET", path: "/api/announcements",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (!db.announcements) db.announcements = [];
+    const visible = db.announcements.filter((a) => {
+      if (!a.courseId) return true;
+      const course = db.courses.find((c) => c.id === a.courseId);
+      return !!course;
+    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 20);
+    send(res, 200, { announcements: visible });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/announcements",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    const body = JSON.parse((await readBody(req, 1024 * 4)).toString() || "{}");
+    const text = String(body.text || "").trim();
+    if (!text) return send(res, 400, { error: "Announcement text is required" });
+    if (!db.announcements) db.announcements = [];
+    const a = {
+      id: "ann" + Date.now(),
+      text,
+      courseId: body.courseId || null,
+      authorId: user.id,
+      authorName: user.username,
+      createdAt: new Date().toISOString()
+    };
+    db.announcements.unshift(a);
+    if (db.announcements.length > 50) db.announcements.length = 50;
+    saveDb();
+    send(res, 201, { announcement: a });
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/announcements/:id",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    if (!db.announcements) db.announcements = [];
+    db.announcements = db.announcements.filter((a) => a.id !== params.id);
+    saveDb();
+    ok(res);
+  }
+});
+
+/* ---------- collections (notebooks) ---------- */
+
+routes.push({
+  method: "GET", path: "/api/collections",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (!user.collections) user.collections = [];
+    const enriched = user.collections.map((col) => ({
+      ...col,
+      files: (col.fileIds || []).map((fid) => {
+        const f = db.files.find((x) => x.id === fid);
+        return f ? fileInfo(f, user) : null;
+      }).filter(Boolean)
+    }));
+    send(res, 200, { collections: enriched });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/collections",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024 * 4)).toString() || "{}");
+    const name = String(body.name || "").trim();
+    if (!name) return send(res, 400, { error: "Collection name is required" });
+    if (!user.collections) user.collections = [];
+    if (user.collections.length >= 20) return send(res, 400, { error: "Maximum 20 collections" });
+    const col = {
+      id: "col" + Date.now(),
+      name,
+      description: String(body.description || "").trim(),
+      fileIds: [],
+      createdAt: new Date().toISOString()
+    };
+    user.collections.push(col);
+    saveDb();
+    send(res, 201, { collection: { ...col, files: [] } });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/collections/:id/add",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024 * 4)).toString() || "{}");
+    const fileId = String(body.fileId || "").trim();
+    if (!fileId) return send(res, 400, { error: "fileId is required" });
+    const col = (user.collections || []).find((c) => c.id === params.id);
+    if (!col) return send(res, 404, { error: "Collection not found" });
+    if (!col.fileIds.includes(fileId)) col.fileIds.push(fileId);
+    saveDb();
+    ok(res);
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/collections/:id/remove",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024 * 4)).toString() || "{}");
+    const fileId = String(body.fileId || "").trim();
+    const col = (user.collections || []).find((c) => c.id === params.id);
+    if (!col) return send(res, 404, { error: "Collection not found" });
+    col.fileIds = col.fileIds.filter((id) => id !== fileId);
+    saveDb();
+    ok(res);
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/collections/:id",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    user.collections = (user.collections || []).filter((c) => c.id !== params.id);
+    saveDb();
+    ok(res);
+  }
+});
+
+/* ---------- profiles & leaderboard ---------- */
+
+routes.push({
+  method: "GET", path: "/api/profile/:id",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const target = db.users.find((u) => u.id === params.id);
+    if (!target) return send(res, 404, { error: "User not found" });
+    const uploads = db.files.filter((f) => f.uploadedBy === target.id);
+    const totalViews = uploads.reduce((s, f) => s + (f.views || 0), 0);
+    const totalDownloads = uploads.reduce((s, f) => s + (f.downloads || 0), 0);
+    const totalLikes = uploads.reduce((s, f) => s + (f.likedBy || []).length, 0);
+    send(res, 200, {
+      profile: {
+        id: target.id,
+        username: target.username,
+        role: target.role,
+        uploadCount: uploads.length,
+        totalViews,
+        totalDownloads,
+        totalLikes,
+        recentUploads: uploads.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)).slice(0, 5).map((f) => fileInfo(f, user))
+      }
+    });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/leaderboard",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const uploaders = {};
+    for (const f of db.files) {
+      if (!f.uploadedBy) continue;
+      if (!uploaders[f.uploadedBy]) {
+        const u = db.users.find((x) => x.id === f.uploadedBy);
+        uploaders[f.uploadedBy] = { id: f.uploadedBy, username: u ? u.username : "Unknown", role: u ? u.role : "student", uploads: 0, views: 0, downloads: 0, likes: 0 };
+      }
+      const u = uploaders[f.uploadedBy];
+      u.uploads++;
+      u.views += f.views || 0;
+      u.downloads += f.downloads || 0;
+      u.likes += (f.likedBy || []).length;
+    }
+    const board = Object.values(uploaders).sort((a, b) => (b.views + b.downloads + b.likes * 2) - (a.views + a.downloads + a.likes * 2)).slice(0, 20);
+    send(res, 200, { leaderboard: board });
   }
 });
 
