@@ -44,7 +44,6 @@
 html {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
 }
 
 .ic {
@@ -735,15 +734,55 @@ main {
   background: var(--card);
   border: 1px dashed var(--border);
   border-radius: var(--radius);
-  padding: 44px 20px;
+  padding: 48px 24px;
   text-align: center;
   color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-.empty-state .big {
-  font-size: 2.4rem;
-  display: block;
-  margin-bottom: 8px;
+.empty-state .empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(14, 165, 233, 0.08));
+  color: var(--primary);
+  animation: empty-float 3s ease-in-out infinite;
+}
+
+[data-theme="dark"] .empty-state .empty-icon {
+  background: linear-gradient(135deg, rgba(109, 106, 246, 0.12), rgba(56, 189, 248, 0.12));
+}
+
+.empty-state .empty-icon .ic {
+  width: 32px;
+  height: 32px;
+}
+
+.empty-state h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 0.9rem;
+  max-width: 280px;
+}
+
+.empty-state .empty-cta {
+  margin-top: 4px;
+}
+
+@keyframes empty-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 /* ---------- modals ---------- */
@@ -1528,7 +1567,7 @@ body.auth-page main {
   }
 
   main#app {
-    padding: 18px 14px calc(76px + env(safe-area-inset-bottom));
+    padding: 60px 14px calc(76px + env(safe-area-inset-bottom));
   }
 
   /* bottom tab bar — floating pill */

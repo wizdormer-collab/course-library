@@ -196,10 +196,20 @@ function fileRow(f, opts = {}) {
     </div>`;
 }
 
+function emptyState(iconName, title, description, ctaHtml) {
+  return `
+    <div class="empty-state">
+      <div class="empty-icon">${icon(iconName)}</div>
+      <h3>${esc(title)}</h3>
+      <p>${esc(description)}</p>
+      ${ctaHtml ? `<div class="empty-cta">${ctaHtml}</div>` : ""}
+    </div>`;
+}
+
 function listSection(title, rows, empty) {
   return `
     <h2 class="section-title">${title}</h2>
-    ${rows ? `<div class="file-list">${rows}</div>` : `<p class="muted">${empty}</p>`}`;
+    ${rows ? `<div class="file-list">${rows}</div>` : emptyState("file", title, empty || "Nothing here yet.")}`;
 }
 
 function paginationNav(pagination, baseHash) {
@@ -339,7 +349,7 @@ async function loadComments(fileId) {
           ${isAdmin || (state.user && c.userId === state.user.id)
             ? `<button class="comment-del" data-cid="${c.id}" title="Delete">${icon("close")}</button>` : ""}
           <p>${esc(c.text)}</p>
-        </div>`).join("") : `<p class="muted">No discussion yet. Start one!</p>`}
+          </div>`).join("") : `<div class="empty-state"><div class="empty-icon">${icon("chat")}</div><h3>No discussion yet</h3><p>Start a conversation about this material.</p></div>`}
     </div>`;
 
   document.getElementById("comment-form").addEventListener("submit", async (e) => {
@@ -906,11 +916,7 @@ function qaTile(href, cls, ic, label) {
 function continueCardHTML(c, prog) {
   if (!c) return `
     <div class="continue-card">
-      <div class="continue-icon">${icon("grad")}</div>
-      <div class="continue-main">
-        <p class="muted">No courses yet. Start building your library.</p>
-        <a class="btn btn-primary continue-btn" href="#/courses">Browse courses</a>
-      </div>
+      ${emptyState("grad", "No courses yet", "Start building your library.", '<a class="btn btn-primary" href="#/courses">Browse courses</a>')}
     </div>`;
   const p = prog || { viewed: 0, total: 0, pct: 0 };
   const label = p.viewed > 0
@@ -1077,7 +1083,7 @@ async function renderHome() {
       <div class="course-scroll" id="course-scroll">
         ${state.courses.length
           ? state.courses.map((c) => ycardHTML(c, state.courseMeta[c.id], state.progressMap[c.id])).join("")
-          : '<p class="muted">No courses yet.</p>'}
+          : emptyState("book", "No courses yet", "Create a course to get started.", isAdmin ? '<button class="btn btn-primary btn-sm" id="new-course-btn-empty">+ New course</button>' : "")}
       </div>
     </section>
 
@@ -1142,7 +1148,7 @@ async function renderCourses(hash) {
     <div class="grid" id="course-grid">
       ${state.courses.length
         ? state.courses.map((c) => courseCard(c)).join("")
-        : '<p class="muted">No courses yet.</p>'}
+        : emptyState("book", "No courses yet", "Create a course to start organizing materials.", isAdmin ? '<button class="btn btn-primary" id="new-course-btn-empty">+ New course</button>' : "")}
     </div>
 
     ${courseModalHTML()}
@@ -1199,10 +1205,10 @@ function bindFilters(targetId) {
     if (targetId === "course-scroll") {
       grid.innerHTML = list.length
         ? list.map((c) => ycardHTML(c, state.courseMeta[c.id], state.progressMap[c.id])).join("")
-        : '<p class="muted">No courses match.</p>';
+        : emptyState("search", "No matches", "Try adjusting your filters.");
       bindCourseMenus();
     } else {
-      grid.innerHTML = list.length ? list.map(courseCard).join("") : '<p class="muted">No courses match.</p>';
+      grid.innerHTML = list.length ? list.map(courseCard).join("") : emptyState("search", "No matches", "Try adjusting your filters.");
     }
   };
   cat.addEventListener("change", apply);
@@ -1227,7 +1233,7 @@ function bindSearch() {
         const d = await api("/api/search?q=" + encodeURIComponent(q));
         box.innerHTML = d.files.length
           ? listSection("Search results", d.files.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "")
-          : '<p class="muted">No matches found.</p>';
+          : emptyState("search", "No matches found", "Try a different search term.");
         bindRowActions({ showCourse: true, counts: true });
       } catch {
         box.innerHTML = '<p class="error">Search failed.</p>';
@@ -1572,7 +1578,7 @@ async function renderCourseDetail(hash) {
           <button class="icon-btn" id="sort-order-btn" title="Toggle order">${icon(orderParam === "asc" ? "chevronRight" : "chevronLeft")}</button>
         </div>
         <div class="file-list">${rows}</div>
-        ${paginationNav(pagination, baseHash)}` : '<p class="muted">No materials uploaded yet. Be the first to add one!</p>'}
+        ${paginationNav(pagination, baseHash)}` : emptyState("pdf", "No materials uploaded yet", "Be the first to add a resource!", '<button class="btn btn-primary btn-sm" id="upload-btn-empty">+ Upload PDF</button>')}
 
       ${renameFileModalHTML()}
       ${tagFileModalHTML()}
@@ -1603,7 +1609,7 @@ async function renderCourseDetail(hash) {
             </div>
           </form>
         </div>
-      </div>` : '<p class="muted">Course not found.</p>'}`);
+      </div>` : emptyState("book", "Course not found", "This course may have been removed.")}`);
 
   if (!course) return;
 
