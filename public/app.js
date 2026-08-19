@@ -964,7 +964,7 @@ function ycardHTML(c, meta, prog) {
       <div class="ycard-menu hidden" id="ymenu-${c.id}">
         <a href="#/course/${c.id}">${icon("book")} Open course</a>
         <button data-zip="${c.id}" data-name="${esc(c.code || c.name)}.zip">${icon("download")} Download all (.zip)</button>
-        ${isAdmin ? `<button data-edit-course="${c.id}">${icon("edit")} Edit course</button>` : ""}
+        ${state.user && state.user.role === "admin" ? `<button data-edit-course="${c.id}">${icon("edit")} Edit course</button>` : ""}
       </div>
     </div>`;
 }
