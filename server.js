@@ -101,15 +101,30 @@ async function loadDbFromSupabase() {
   }
 }
 
-function saveDb() {
+let _dirty = false;
+let _saveTimer = null;
+
+function _writeDb() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
-  try {
-    fs.copyFileSync(DATA_FILE, BACKUP_FILE);
-  } catch {}
-  if (supabaseConfigured()) {
-    supaPut("db.json", JSON.stringify(db)).catch(() => {});
-  }
+  try { fs.copyFileSync(DATA_FILE, BACKUP_FILE); } catch {}
+  if (supabaseConfigured()) supaPut("db.json", JSON.stringify(db)).catch(() => {});
+  _dirty = false;
 }
+
+function saveDb() {
+  _dirty = true;
+  if (_saveTimer) return;
+  _saveTimer = setTimeout(() => { _saveTimer = null; if (_dirty) _writeDb(); }, 500);
+}
+
+function flushDb() {
+  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+  if (_dirty) _writeDb();
+}
+
+process.on("exit", flushDb);
+process.on("SIGINT", () => { flushDb(); process.exit(0); });
+process.on("SIGTERM", () => { flushDb(); process.exit(0); });
 
 if (supabaseConfigured()) {
   await ensureBucket();
@@ -130,6 +145,15 @@ function verifyPassword(pw, stored) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+function validatePassword(pw) {
+  if (pw.length < 8) return "Password must be at least 8 characters";
+  if (!/[a-zA-Z]/.test(pw)) return "Password must contain at least one letter";
+  if (!/[0-9]/.test(pw)) return "Password must contain at least one number";
+  return null;
+}
+
+const revokedTokens = new Set();
+
 function signToken(user) {
   const payload = Buffer.from(
     JSON.stringify({ uid: user.id, exp: Date.now() + 7 * 24 * 3600 * 1000 })
@@ -140,6 +164,7 @@ function signToken(user) {
 function verifyToken(token) {
   const [payload, sig] = String(token || "").split(".");
   if (!payload || !sig) return null;
+  if (revokedTokens.has(sig)) return null;
   const expect = crypto.createHmac("sha256", SECRET).update(payload).digest("base64url");
   if (sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) {
     return null;
@@ -151,6 +176,14 @@ function verifyToken(token) {
   } catch {
     return null;
   }
+}
+
+function revokeToken(req) {
+  const h = req.headers.authorization || "";
+  if (!h.startsWith("Bearer ")) return;
+  const token = h.slice(7);
+  const [, sig] = String(token).split(".");
+  if (sig) revokedTokens.add(sig);
 }
 
 await seed();
@@ -190,6 +223,19 @@ async function seed() {
       changed = true;
     }
   }
+  for (const f of db.files) {
+    if (!Array.isArray(f.tags)) {
+      f.tags = [];
+      changed = true;
+    }
+    if (f.tags.length === 0) {
+      const lower = (f.name || "").toLowerCase();
+      if (/past\s*(question|exam|test)/i.test(lower)) { f.tags.push("past-question"); changed = true; }
+      if (/textbook|text\s*book/i.test(lower)) { f.tags.push("textbook"); changed = true; }
+      if (/note|summary|slide|lecture/i.test(lower)) { f.tags.push("notes"); changed = true; }
+      if (/assignment|hw|homework/i.test(lower)) { f.tags.push("assignment"); changed = true; }
+    }
+  }
   if (changed) saveDb();
 }
 
@@ -199,9 +245,17 @@ function publicUser(u) {
 
 function send(res, status, data) {
   const body = JSON.stringify(data);
+  const etag = '"' + crypto.createHash("md5").update(body).digest("hex") + '"';
+  const ifNoneMatch = res.req?.headers?.["if-none-match"];
+  if (ifNoneMatch && ifNoneMatch === etag && status === 200) {
+    res.writeHead(304);
+    res.end();
+    return;
+  }
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
-    "Content-Length": Buffer.byteLength(body)
+    "Content-Length": Buffer.byteLength(body),
+    "ETag": etag
   });
   res.end(body);
 }
@@ -272,7 +326,8 @@ function fileInfo(f, user) {
     uploadedAt: f.uploadedAt,
     downloads: f.downloads || 0,
     views: f.views || 0,
-    commentCount: (f.comments || []).length
+    commentCount: (f.comments || []).length,
+    tags: f.tags || []
   };
   if (user && (user.role === "admin" || f.uploadedBy === user.id)) info.uploadedBy = f.uploadedBy;
   if (user) {
@@ -305,6 +360,23 @@ function matchRoute(method, pathname) {
 
 const routes = [];
 
+function rateLimiter(max, windowMs) {
+  const hits = new Map();
+  return (key) => {
+    const now = Date.now();
+    const rec = hits.get(key);
+    if (!rec || now - rec.start > windowMs) {
+      hits.set(key, { start: now, count: 1 });
+      return true;
+    }
+    rec.count++;
+    if (rec.count > max) return false;
+    return true;
+  };
+}
+const loginLimiter = rateLimiter(10, 60 * 1000);
+const registerLimiter = rateLimiter(5, 60 * 1000);
+
 async function handleApi(req, res, pathname) {
   const m = matchRoute(req.method, pathname);
   if (!m) return send(res, 404, { error: "Not found" });
@@ -322,15 +394,26 @@ const ok = (res) => send(res, 200, { ok: true });
 routes.push({ method: "GET", path: "/api/health", handler: (_req, res) => send(res, 200, { ok: true }) });
 
 routes.push({
+  method: "POST", path: "/api/auth/logout",
+  handler: (req, res) => {
+    revokeToken(req);
+    send(res, 200, { ok: true });
+  }
+});
+
+routes.push({
   method: "POST", path: "/api/auth/register",
   handler: async (req, res) => {
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
     const email = String(body.email || "").trim().toLowerCase();
+    const ip = req.socket.remoteAddress || "unknown";
+    if (!registerLimiter(ip)) return send(res, 429, { error: "Too many attempts. Try again in a minute." });
     const password = String(body.password || "");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
       return send(res, 400, { error: "Enter a valid student email" });
     }
-    if (password.length < 4) return send(res, 400, { error: "Password must be at least 4 characters" });
+    const pwError = validatePassword(password);
+    if (pwError) return send(res, 400, { error: pwError });
     if (db.users.some((u) => u.email && u.email === email)) {
       return send(res, 409, { error: "An account with this email already exists" });
     }
@@ -388,6 +471,8 @@ routes.push({
   method: "POST", path: "/api/auth/login",
   handler: async (req, res) => {
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
+    const ip = req.socket.remoteAddress || "unknown";
+    if (!loginLimiter(ip)) return send(res, 429, { error: "Too many attempts. Try again in a minute." });
     const id = String(body.email || body.username || "").trim().toLowerCase();
     const user = db.users.find(
       (u) =>
@@ -488,7 +573,8 @@ routes.push({
       return send(res, 401, { error: "Incorrect answer" });
     }
     const password = String(body.newPassword || "");
-    if (password.length < 4) return send(res, 400, { error: "Password must be at least 4 characters" });
+    const pwError = validatePassword(password);
+    if (pwError) return send(res, 400, { error: pwError });
     user.hash = hashPassword(password);
     saveDb();
     send(res, 200, { ok: true });
@@ -505,8 +591,10 @@ routes.push({
       return send(res, 401, { error: "Current password is incorrect" });
     }
     const password = String(body.newPassword || "");
-    if (password.length < 4) return send(res, 400, { error: "Password must be at least 4 characters" });
+    const pwError = validatePassword(password);
+    if (pwError) return send(res, 400, { error: pwError });
     user.hash = hashPassword(password);
+    revokeToken(req);
     saveDb();
     send(res, 200, { ok: true });
   }
@@ -569,7 +657,8 @@ routes.push({
     if (!target) return send(res, 404, { error: "User not found" });
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
     const password = String(body.newPassword || "");
-    if (password.length < 4) return send(res, 400, { error: "Password must be at least 4 characters" });
+    const pwError = validatePassword(password);
+    if (pwError) return send(res, 400, { error: pwError });
     target.hash = hashPassword(password);
     saveDb();
     send(res, 200, { ok: true });
@@ -656,6 +745,25 @@ routes.push({
 });
 
 routes.push({
+  method: "PUT", path: "/api/courses/:id",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    const course = db.courses.find((c) => c.id === params.id);
+    if (!course) return send(res, 404, { error: "Course not found" });
+    const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
+    if (body.name !== undefined) course.name = String(body.name).trim() || course.name;
+    if (body.code !== undefined) course.code = String(body.code).trim() || course.code;
+    if (body.description !== undefined) course.description = String(body.description).trim();
+    if (body.category !== undefined) course.category = String(body.category).trim();
+    if (body.semester !== undefined) course.semester = String(body.semester).trim();
+    saveDb();
+    send(res, 200, { course });
+  }
+});
+
+routes.push({
   method: "DELETE", path: "/api/courses/:id",
   handler: (req, res, params) => {
     const user = getAuthUser(req);
@@ -729,11 +837,24 @@ routes.push({
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const url = new URL(req.url, "http://localhost");
     const courseId = url.searchParams.get("courseId");
+    const tag = url.searchParams.get("tag");
     let files = db.files;
     if (courseId) files = files.filter((f) => f.courseId === courseId);
+    if (tag) files = files.filter((f) => (f.tags || []).includes(tag.toLowerCase()));
     files = files.filter((f) => canSeeFile(f, user));
-    files = [...files].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
-    send(res, 200, { files: files.map((f) => fileInfo(f, user)) });
+    const sort = url.searchParams.get("sort") || "date";
+    const order = url.searchParams.get("order") === "asc" ? 1 : -1;
+    if (sort === "name") files.sort((a, b) => order * (a.name || "").localeCompare(b.name || ""));
+    else if (sort === "size") files.sort((a, b) => order * ((a.size || 0) - (b.size || 0)));
+    else if (sort === "views") files.sort((a, b) => order * ((a.views || 0) - (b.views || 0)));
+    else if (sort === "downloads") files.sort((a, b) => order * ((a.downloads || 0) - (b.downloads || 0)));
+    else files.sort((a, b) => order * (new Date(b.uploadedAt) - new Date(a.uploadedAt)));
+    const total = files.length;
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit")) || 50, 1), 200);
+    const page = Math.max(parseInt(url.searchParams.get("page")) || 1, 1);
+    const pages = Math.max(Math.ceil(total / limit), 1);
+    const paged = files.slice((page - 1) * limit, page * limit);
+    send(res, 200, { files: paged.map((f) => fileInfo(f, user)), total, page, pages, limit });
   }
 });
 
@@ -831,6 +952,7 @@ routes.push({
       viewedBy: [],
       comments: [],
       activity: [],
+      tags: [],
       text
     };
     db.files.push(file);
@@ -897,6 +1019,100 @@ function servePdf(req, res, params, mode) {
 
 routes.push({ method: "GET", path: "/api/files/:id/inline", handler: (req, res, params) => servePdf(req, res, params, "inline") });
 routes.push({ method: "GET", path: "/api/files/:id/download", handler: (req, res, params) => servePdf(req, res, params, "download") });
+
+routes.push({
+  method: "PUT", path: "/api/files/:id/rename",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f) return send(res, 404, { error: "File not found" });
+    if (user.role !== "admin" && f.uploadedBy !== user.id) {
+      return send(res, 403, { error: "Not allowed" });
+    }
+    const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
+    const name = String(body.name || "").trim();
+    if (!name) return send(res, 400, { error: "Name is required" });
+    f.name = name;
+    saveDb();
+    send(res, 200, { file: fileInfo(f, user) });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/files/bulk-action",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
+    const ids = Array.isArray(body.fileIds) ? body.fileIds : [];
+    const action = body.action;
+    if (!ids.length) return send(res, 400, { error: "No files selected" });
+    if (action !== "approve" && action !== "reject") return send(res, 400, { error: "Action must be approve or reject" });
+    let count = 0;
+    for (const id of ids) {
+      const idx = db.files.findIndex((x) => x.id === id);
+      if (idx === -1) continue;
+      const f = db.files[idx];
+      if (action === "approve") {
+        if (!f.approved) {
+          f.approved = true;
+          count++;
+          notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`);
+          for (const u of db.users) {
+            const savedCourse =
+              u.id !== f.uploadedBy &&
+              db.files.some((x) => x.courseId === f.courseId && (x.savedBy || []).includes(u.id));
+            if (savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`);
+          }
+        }
+      } else {
+        db.files.splice(idx, 1);
+        count++;
+        notify(f.uploadedBy, `Your file "${f.name}" was rejected by an admin.`);
+        fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
+        if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
+      }
+    }
+    saveDb();
+    send(res, 200, { ok: true, count });
+  }
+});
+
+routes.push({
+  method: "PUT", path: "/api/files/:id/tags",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f || !canSeeFile(f, user)) return send(res, 404, { error: "File not found" });
+    if (user.role !== "admin" && f.uploadedBy !== user.id) {
+      return send(res, 403, { error: "Not allowed" });
+    }
+    const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
+    const tags = Array.isArray(body.tags)
+      ? body.tags.map((t) => String(t || "").trim().toLowerCase()).filter(Boolean).slice(0, 10)
+      : [];
+    f.tags = tags;
+    saveDb();
+    send(res, 200, { file: fileInfo(f, user) });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/tags",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const tagSet = new Set();
+    for (const f of db.files) {
+      if (!canSeeFile(f, user)) continue;
+      for (const t of (f.tags || [])) tagSet.add(t);
+    }
+    send(res, 200, { tags: [...tagSet].sort() });
+  }
+});
 
 routes.push({
   method: "POST", path: "/api/files/:id/approve",
@@ -1093,14 +1309,33 @@ function serveStatic(req, res, pathname) {
     }
   }
   const ext = path.extname(fp).toLowerCase();
+  const cacheHeaders = {};
+  if (ext === ".html") {
+    cacheHeaders["Cache-Control"] = "no-cache";
+  } else if (ext === ".css" || ext === ".js") {
+    cacheHeaders["Cache-Control"] = "no-cache";
+  } else {
+    cacheHeaders["Cache-Control"] = "public, max-age=86400";
+  }
   res.writeHead(200, {
     "Content-Type": MIME[ext] || "application/octet-stream",
-    "Content-Length": fs.statSync(fp).size
+    "Content-Length": fs.statSync(fp).size,
+    ...cacheHeaders
   });
   fs.createReadStream(fp).pipe(res);
 }
 
 const server = http.createServer((req, res) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src 'self' blob:; connect-src 'self'");
+  const start = Date.now();
+  res.on("finish", () => {
+    const dur = Date.now() - start;
+    console.log(req.method + " " + req.url + " " + res.statusCode + " " + dur + "ms");
+  });
   const url = new URL(req.url, "http://localhost");
   const pathname = url.pathname;
   if (pathname.startsWith("/api/")) return handleApi(req, res, pathname);
@@ -1110,4 +1345,11 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Course Library running at http://localhost:${PORT}`);
   console.log(`Seeded logins -> admin/admin123, student1/student123`);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
 });

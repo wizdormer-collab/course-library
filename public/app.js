@@ -5,7 +5,7 @@ const state = {
   user: null,
   toast: "",
   courses: [],
-  theme: localStorage.getItem("theme") || "light"
+  theme: localStorage.getItem("theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
 };
 
 function applyTheme() {
@@ -22,6 +22,7 @@ function storeAuth(data) {
   state.user = data.user;
 }
 function clearAuth() {
+  try { fetch("/api/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + localStorage.getItem("token") } }); } catch {}
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   state.user = null;
@@ -82,7 +83,8 @@ const ICONS = {
   more: '<circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>',
   chevronRight: '<polyline points="9 18 15 12 9 6"/>',
   clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-  play: '<polygon points="5 3 19 12 5 21 5 3"/>'
+  play: '<polygon points="5 3 19 12 5 21 5 3"/>',
+  tag: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>'
 };
 
 function icon(name, cls) {
@@ -150,10 +152,21 @@ function showToast(msg) {
   }, 4000);
 }
 
+function btnLoading(btn, label) {
+  if (!btn) return () => {};
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> ' + (label || "...");
+  return () => { btn.disabled = false; btn.innerHTML = orig; };
+}
+
 /* ---------- shared helpers ---------- */
 
 function fileRow(f, opts = {}) {
   const isAdmin = state.user && state.user.role === "admin";
+  const tagsHtml = (f.tags || []).length
+    ? `<div class="file-tags">${f.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>`
+    : "";
   return `
     <div class="file-row">
       <span class="file-icon">${icon("pdf")}</span>
@@ -165,6 +178,7 @@ function fileRow(f, opts = {}) {
           ${f.role === "student" ? '<span class="badge">student upload</span>' : ""}
           ${!f.approved ? '<span class="badge badge-pending">pending</span>' : ""}
         </span>
+        ${tagsHtml}
         ${opts.showCounts ? `
           <span class="muted">
             <span class="stat" title="Views">${icon("eye")} ${fmtCount(f.views || 0)}</span>
@@ -174,6 +188,8 @@ function fileRow(f, opts = {}) {
       </div>
       <div class="file-actions">
         <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save for later">${icon("star")}</button>
+        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-edit-tags="${f.id}" data-etags="${esc(JSON.stringify(f.tags || []))}" title="Edit tags">${icon("tag")}</button>` : ""}
+        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-rename="${f.id}" data-rname="${esc(f.name)}" title="Rename">${icon("edit")}</button>` : ""}
         <button class="btn btn-outline btn-sm" data-download="${f.id}" data-name="${esc(f.originalName || f.name)}">${icon("download")} Download</button>
         ${isAdmin ? `<button class="btn btn-danger btn-sm" data-del="${f.id}">${icon("trash")} Delete</button>` : ""}
       </div>
@@ -184,6 +200,19 @@ function listSection(title, rows, empty) {
   return `
     <h2 class="section-title">${title}</h2>
     ${rows ? `<div class="file-list">${rows}</div>` : `<p class="muted">${empty}</p>`}`;
+}
+
+function paginationNav(pagination, baseHash) {
+  if (!pagination || pagination.pages <= 1) return "";
+  const { page, pages } = pagination;
+  const sep = baseHash.includes("?") ? "&" : "?";
+  const prev = page > 1 ? `${baseHash}${sep}page=${page - 1}` : null;
+  const next = page < pages ? `${baseHash}${sep}page=${page + 1}` : null;
+  return `<div class="pagination">
+    ${prev ? `<a href="${prev}" class="btn btn-outline btn-sm">${icon("chevronLeft")} Prev</a>` : '<span></span>'}
+    <span class="muted">Page ${page} of ${pages}</span>
+    ${next ? `<a href="${next}" class="btn btn-outline btn-sm">Next ${icon("chevronRight")}</a>` : '<span></span>'}
+  </div>`;
 }
 
 async function bindRowActions({ showCourse = false, counts = false } = {}) {
@@ -210,6 +239,14 @@ async function bindRowActions({ showCourse = false, counts = false } = {}) {
       } catch (err) {
         alert(err.message);
       }
+    }));
+  document.querySelectorAll("[data-rename]").forEach((btn) =>
+    btn.addEventListener("click", () => openRenameFile(btn.dataset.rename, btn.dataset.rname)));
+  document.querySelectorAll("[data-edit-tags]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      let tags = [];
+      try { tags = JSON.parse(btn.dataset.etags || "[]"); } catch {}
+      openTagFile(btn.dataset.editTags, tags);
     }));
   document.querySelectorAll("[data-download-zip]").forEach((btn) =>
     btn.addEventListener("click", async () => {
@@ -433,7 +470,9 @@ async function renderNav() {
 }
 
 function shell(inner) {
-  return inner + (state.toast ? `<p class="toast">${esc(state.toast)}</p>` : "");
+  return inner + (state.toast
+    ? `<div class="toast" role="status" aria-live="polite">${esc(state.toast)}</div>`
+    : `<div aria-live="polite" class="sr-only" id="toast-region"></div>`);
 }
 
 function render() {
@@ -448,6 +487,7 @@ function render() {
   if (hash === "/admin") return renderAdmin();
   if (hash.startsWith("/courses")) return renderCourses(hash);
   if (hash.startsWith("/course/")) return renderCourseDetail(hash);
+  if (hash.startsWith("/tag/")) return renderTagFiles(hash);
   return renderHome();
 }
 
@@ -505,9 +545,7 @@ function renderLogin() {
     e.preventDefault();
     const errEl = document.getElementById("login-error");
     errEl.textContent = "";
-    loginBtn.disabled = true;
-    const original = loginBtn.textContent;
-    loginBtn.textContent = "Logging in…";
+    const done = btnLoading(loginBtn, "Logging in");
     try {
       const d = await api("/api/auth/login", {
         method: "POST",
@@ -527,8 +565,7 @@ function renderLogin() {
       }
       errEl.textContent = err.message;
     } finally {
-      loginBtn.disabled = false;
-      loginBtn.textContent = original;
+      done();
     }
   });
   document.getElementById("signup-btn").addEventListener("click", () => (location.hash = "#/register"));
@@ -560,6 +597,17 @@ function renderRegister() {
     if (pw !== document.getElementById("reg-pass2").value) {
       return (document.getElementById("reg-error").textContent = "Passwords do not match");
     }
+    if (pw.length < 8) {
+      return (document.getElementById("reg-error").textContent = "Password must be at least 8 characters");
+    }
+    if (!/[a-zA-Z]/.test(pw)) {
+      return (document.getElementById("reg-error").textContent = "Password must contain at least one letter");
+    }
+    if (!/[0-9]/.test(pw)) {
+      return (document.getElementById("reg-error").textContent = "Password must contain at least one number");
+    }
+    const submitBtn = document.querySelector("#reg-form button[type=submit]");
+    const done = btnLoading(submitBtn, "Creating account");
     try {
       const d = await api("/api/auth/register", {
         method: "POST",
@@ -579,6 +627,8 @@ function renderRegister() {
       location.hash = "#/verify";
     } catch (err) {
       document.getElementById("reg-error").textContent = err.message;
+    } finally {
+      done();
     }
   });
 }
@@ -693,6 +743,15 @@ function renderForgot() {
     if (pw !== document.getElementById("fg-pass2").value) {
       return (error.textContent = "Passwords do not match");
     }
+    if (pw.length < 8) {
+      return (error.textContent = "Password must be at least 8 characters");
+    }
+    if (!/[a-zA-Z]/.test(pw)) {
+      return (error.textContent = "Password must contain at least one letter");
+    }
+    if (!/[0-9]/.test(pw)) {
+      return (error.textContent = "Password must contain at least one number");
+    }
     try {
       await api("/api/auth/forgot/complete", {
         method: "POST",
@@ -762,6 +821,15 @@ async function renderSettings() {
     const nw = document.getElementById("pw-new").value;
     if (nw !== document.getElementById("pw-new2").value) {
       return (document.getElementById("pw-error").textContent = "New passwords do not match");
+    }
+    if (nw.length < 8) {
+      return (document.getElementById("pw-error").textContent = "Password must be at least 8 characters");
+    }
+    if (!/[a-zA-Z]/.test(nw)) {
+      return (document.getElementById("pw-error").textContent = "Password must contain at least one letter");
+    }
+    if (!/[0-9]/.test(nw)) {
+      return (document.getElementById("pw-error").textContent = "Password must contain at least one number");
     }
     try {
       await api("/api/auth/change-password", {
@@ -886,6 +954,7 @@ function ycardHTML(c, meta, prog) {
       <div class="ycard-menu hidden" id="ymenu-${c.id}">
         <a href="#/course/${c.id}">${icon("book")} Open course</a>
         <button data-zip="${c.id}" data-name="${esc(c.code || c.name)}.zip">${icon("download")} Download all (.zip)</button>
+        ${isAdmin ? `<button data-edit-course="${c.id}">${icon("edit")} Edit course</button>` : ""}
       </div>
     </div>`;
 }
@@ -905,6 +974,11 @@ function bindCourseMenus() {
     btn.addEventListener("click", () => {
       document.getElementById("ymenu-" + btn.dataset.zip)?.classList.add("hidden");
       downloadPath("/api/courses/" + btn.dataset.zip + "/zip", btn.dataset.name || "course.zip");
+    }));
+  document.querySelectorAll("[data-edit-course]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      document.getElementById("ymenu-" + btn.dataset.editCourse)?.classList.add("hidden");
+      openEditCourse(btn.dataset.editCourse);
     }));
   if (!courseMenuDocBound) {
     courseMenuDocBound = true;
@@ -1011,13 +1085,16 @@ async function renderHome() {
       <h2 class="section-title">Quick access</h2>
       <div class="qa-grid">
         ${qaTile("#/courses", "t-all", "book", "All Materials")}
-        ${qaTile("#/courses?q=notes", "t-notes", "edit", "My Notes")}
-        ${qaTile("#/courses?q=videos", "t-videos", "play", "Videos")}
-        ${qaTile("#/courses?q=past question", "t-past", "archive", "Past Questions")}
+        ${qaTile("#/tag/notes", "t-notes", "edit", "Notes")}
+        ${qaTile("#/tag/past-question", "t-past", "archive", "Past Questions")}
+        ${qaTile("#/tag/textbook", "t-textbook", "book", "Textbooks")}
       </div>
     </section>
 
-    ${courseModalHTML()}`);
+    ${courseModalHTML()}
+    ${editCourseModalHTML()}
+    ${renameFileModalHTML()}
+    ${tagFileModalHTML()}`);
 
   bindSearch();
   bindFilters("course-scroll");
@@ -1025,6 +1102,9 @@ async function renderHome() {
   bindRowActions({ showCourse: true, counts: true });
   bindCourseMenus();
   bindCourseModal();
+  bindEditCourseModal();
+  bindRenameFileModal();
+  bindTagFileModal();
 
   const newBtn = document.getElementById("new-course-btn");
   if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
@@ -1065,13 +1145,20 @@ async function renderCourses(hash) {
         : '<p class="muted">No courses yet.</p>'}
     </div>
 
-    ${courseModalHTML()}`);
+    ${courseModalHTML()}
+    ${editCourseModalHTML()}
+    ${renameFileModalHTML()}
+    ${tagFileModalHTML()}`);
 
   bindSearch();
   bindFilters("course-grid");
   bindFilterToggle();
   bindRowActions({ showCourse: true, counts: true });
+  bindCourseMenus();
   bindCourseModal();
+  bindEditCourseModal();
+  bindRenameFileModal();
+  bindTagFileModal();
 
   const newBtn = document.getElementById("new-course-btn");
   if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
@@ -1170,9 +1257,70 @@ function courseModalHTML() {
     </div>`;
 }
 
+function editCourseModalHTML() {
+  return `
+    <div class="modal-overlay hidden" id="edit-course-modal">
+      <div class="modal">
+        <h2>Edit course</h2>
+        <form id="edit-course-form">
+          <input type="hidden" id="ec-id" />
+          <label>Course name <input id="ec-name" /></label>
+          <label>Course code <input id="ec-code" /></label>
+          <label>Category <input id="ec-cat" /></label>
+          <label>Semester <input id="ec-sem" /></label>
+          <label>Description <textarea id="ec-desc" rows="3"></textarea></label>
+          <p class="error" id="ec-error"></p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" id="ec-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+}
+
+function renameFileModalHTML() {
+  return `
+    <div class="modal-overlay hidden" id="rename-file-modal">
+      <div class="modal">
+        <h2>Rename file</h2>
+        <form id="rename-file-form">
+          <input type="hidden" id="rf-id" />
+          <label>File name <input id="rf-name" /></label>
+          <p class="error" id="rf-error"></p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" id="rf-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Rename</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+}
+
 function showModal(id) {
   const m = document.getElementById(id);
-  if (m) m.classList.remove("hidden");
+  if (!m) return;
+  m.classList.remove("hidden");
+  const focusable = m.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusable.length) focusable[0].focus();
+  m._trapHandler = (e) => {
+    if (e.key !== "Tab") return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  m.addEventListener("keydown", m._trapHandler);
+}
+
+function hideModal(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.add("hidden");
+  if (m._trapHandler) { m.removeEventListener("keydown", m._trapHandler); m._trapHandler = null; }
 }
 
 function bindCourseModal() {
@@ -1206,6 +1354,157 @@ function bindCourseModal() {
   });
 }
 
+function bindEditCourseModal() {
+  const modal = document.getElementById("edit-course-modal");
+  if (!modal) return;
+  const close = () => modal.classList.add("hidden");
+  document.getElementById("ec-cancel").addEventListener("click", close);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close();
+  });
+  document.getElementById("edit-course-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = document.getElementById("ec-id").value;
+    try {
+      await api("/api/courses/" + id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: document.getElementById("ec-name").value,
+          code: document.getElementById("ec-code").value,
+          category: document.getElementById("ec-cat").value,
+          semester: document.getElementById("ec-sem").value,
+          description: document.getElementById("ec-desc").value
+        })
+      });
+      close();
+      showToast("Course updated");
+      render();
+    } catch (err) {
+      document.getElementById("ec-error").textContent = err.message;
+    }
+  });
+}
+
+function openEditCourse(id) {
+  const c = state.courses.find((x) => x.id === id);
+  if (!c) return;
+  document.getElementById("ec-id").value = c.id;
+  document.getElementById("ec-name").value = c.name || "";
+  document.getElementById("ec-code").value = c.code || "";
+  document.getElementById("ec-cat").value = c.category || "";
+  document.getElementById("ec-sem").value = c.semester || "";
+  document.getElementById("ec-desc").value = c.description || "";
+  showModal("edit-course-modal");
+}
+
+function bindRenameFileModal() {
+  const modal = document.getElementById("rename-file-modal");
+  if (!modal) return;
+  const close = () => modal.classList.add("hidden");
+  document.getElementById("rf-cancel").addEventListener("click", close);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close();
+  });
+  document.getElementById("rename-file-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = document.getElementById("rf-id").value;
+    const name = document.getElementById("rf-name").value.trim();
+    if (!name) return (document.getElementById("rf-error").textContent = "Name is required");
+    try {
+      await api("/api/files/" + id + "/rename", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      close();
+      showToast("File renamed");
+      render();
+    } catch (err) {
+      document.getElementById("rf-error").textContent = err.message;
+    }
+  });
+}
+
+function openRenameFile(id, currentName) {
+  document.getElementById("rf-id").value = id;
+  document.getElementById("rf-name").value = currentName || "";
+  document.getElementById("rf-error").textContent = "";
+  showModal("rename-file-modal");
+}
+
+function tagFileModalHTML() {
+  return `
+    <div class="modal-overlay hidden" id="tag-file-modal">
+      <div class="modal">
+        <h2>Edit tags</h2>
+        <form id="tag-file-form">
+          <input type="hidden" id="tf-id" />
+          <label>Tags (comma-separated)
+            <input id="tf-tags" placeholder="e.g. past-question, notes, textbook" />
+          </label>
+          <div class="suggested-tags" id="tf-suggested"></div>
+          <p class="error" id="tf-error"></p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" id="tf-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+}
+
+async function bindTagFileModal() {
+  const modal = document.getElementById("tag-file-modal");
+  if (!modal) return;
+  const close = () => modal.classList.add("hidden");
+  document.getElementById("tf-cancel").addEventListener("click", close);
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  try {
+    const { tags } = await api("/api/tags");
+    const box = document.getElementById("tf-suggested");
+    if (box && tags.length) {
+      box.innerHTML = `<span class="muted small">Suggested:</span> ` +
+        tags.map((t) => `<button type="button" class="tag tag-suggest" data-stag="${esc(t)}">${esc(t)}</button>`).join("");
+      box.querySelectorAll("[data-stag]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const inp = document.getElementById("tf-tags");
+          const current = inp.value.split(",").map((s) => s.trim()).filter(Boolean);
+          if (!current.includes(btn.dataset.stag)) {
+            current.push(btn.dataset.stag);
+            inp.value = current.join(", ");
+          }
+        });
+      });
+    }
+  } catch {}
+  document.getElementById("tag-file-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = document.getElementById("tf-id").value;
+    const raw = document.getElementById("tf-tags").value;
+    const tags = raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean).slice(0, 10);
+    try {
+      await api("/api/files/" + id + "/tags", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags })
+      });
+      close();
+      showToast("Tags updated");
+      render();
+    } catch (err) {
+      document.getElementById("tf-error").textContent = err.message;
+    }
+  });
+}
+
+function openTagFile(id, tags) {
+  document.getElementById("tf-id").value = id;
+  document.getElementById("tf-tags").value = (tags || []).join(", ");
+  document.getElementById("tf-error").textContent = "";
+  showModal("tag-file-modal");
+}
+
 /* ---------- course detail ---------- */
 
 async function renderCourseDetail(hash) {
@@ -1213,9 +1512,16 @@ async function renderCourseDetail(hash) {
   const id = hash.split("/")[2];
   const course = state.courses.find((c) => c.id === id);
   let files = [];
+  let pagination = null;
   let progress = null;
+  const qs = new URLSearchParams((hash.split("?")[1] || ""));
+  const sortParam = qs.get("sort") || "date";
+  const orderParam = qs.get("order") || "desc";
+  const pageParam = parseInt(qs.get("page")) || 1;
   try {
-    files = (await api("/api/files?courseId=" + encodeURIComponent(id))).files;
+    const res = await api("/api/files?courseId=" + encodeURIComponent(id) + "&sort=" + sortParam + "&order=" + orderParam + "&page=" + pageParam);
+    files = res.files;
+    pagination = { page: res.page, pages: res.pages, total: res.total };
   } catch {}
   try {
     progress = await api("/api/courses/" + id + "/progress");
@@ -1225,6 +1531,7 @@ async function renderCourseDetail(hash) {
   const rows = files.length
     ? files.map((f) => fileRow(f, { counts: true })).join("")
     : "";
+  const baseHash = "#/course/" + id + "?sort=" + sortParam + "&order=" + orderParam;
 
   app.innerHTML = shell(`
     <a href="#/" class="back-link">${icon("chevronLeft")} All courses</a>
@@ -1252,18 +1559,47 @@ async function renderCourseDetail(hash) {
           <div class="progress-bar"><div class="progress-fill" style="width:${progress.pct}%"></div></div>
         </div>` : ""}
 
-      ${files.length ? `<div class="file-list">${rows}</div>` : '<p class="muted">No materials uploaded yet. Be the first to add one!</p>'}
+      ${files.length ? `
+        <div class="sort-bar">
+          <label class="sort-label">Sort by</label>
+          <select id="file-sort" class="sort-select">
+            <option value="date" ${sortParam === "date" ? "selected" : ""}>Newest first</option>
+            <option value="name" ${sortParam === "name" ? "selected" : ""}>Name</option>
+            <option value="size" ${sortParam === "size" ? "selected" : ""}>Size</option>
+            <option value="views" ${sortParam === "views" ? "selected" : ""}>Views</option>
+            <option value="downloads" ${sortParam === "downloads" ? "selected" : ""}>Downloads</option>
+          </select>
+          <button class="icon-btn" id="sort-order-btn" title="Toggle order">${icon(orderParam === "asc" ? "chevronRight" : "chevronLeft")}</button>
+        </div>
+        <div class="file-list">${rows}</div>
+        ${paginationNav(pagination, baseHash)}` : '<p class="muted">No materials uploaded yet. Be the first to add one!</p>'}
+
+      ${renameFileModalHTML()}
+      ${tagFileModalHTML()}
 
       <div class="modal-overlay hidden" id="upload-modal">
         <div class="modal">
           <h2>Upload PDF</h2>
           <form id="upload-form">
+            <div class="drop-zone" id="drop-zone">
+              <span class="drop-icon">${icon("plus")}</span>
+              <p class="drop-text">Drag &amp; drop a PDF here, or click to browse</p>
+              <input type="file" id="up-file" accept="application/pdf" class="drop-input" />
+            </div>
+            <div class="drop-preview hidden" id="drop-preview">
+              <span class="file-icon">${icon("pdf")}</span>
+              <span class="drop-fname" id="drop-fname"></span>
+              <button type="button" class="icon-btn" id="drop-clear">${icon("close")}</button>
+            </div>
             <label>File name (optional) <input id="up-name" placeholder="e.g. Lecture 3 - Arrays.pdf" /></label>
-            <label>PDF file <input id="up-file" type="file" accept="application/pdf" /></label>
+            <div class="upload-progress hidden" id="upload-progress">
+              <div class="progress-bar"><div class="progress-fill" id="upload-pbar" style="width:0%"></div></div>
+              <span class="muted small" id="upload-ptxt">0%</span>
+            </div>
             <p class="error" id="up-error"></p>
             <div class="modal-actions">
               <button type="button" class="btn btn-outline" id="up-cancel">Cancel</button>
-              <button type="submit" class="btn btn-primary">Upload</button>
+              <button type="submit" class="btn btn-primary" id="up-submit">Upload</button>
             </div>
           </form>
         </div>
@@ -1272,6 +1608,19 @@ async function renderCourseDetail(hash) {
   if (!course) return;
 
   bindRowActions({ counts: true });
+  bindRenameFileModal();
+  bindTagFileModal();
+
+  const sortSel = document.getElementById("file-sort");
+  const orderBtn = document.getElementById("sort-order-btn");
+  if (sortSel) sortSel.addEventListener("change", () => {
+    const hashBase = "#/course/" + id;
+    location.hash = hashBase + "?sort=" + sortSel.value + "&order=" + orderParam;
+  });
+  if (orderBtn) orderBtn.addEventListener("click", () => {
+    const hashBase = "#/course/" + id;
+    location.hash = hashBase + "?sort=" + sortParam + "&order=" + (orderParam === "asc" ? "desc" : "asc");
+  });
 
   document.getElementById("upload-btn").addEventListener("click", () => showModal("upload-modal"));
   document.getElementById("up-cancel").addEventListener("click", () =>
@@ -1291,23 +1640,79 @@ async function renderCourseDetail(hash) {
     }
     const name = document.getElementById("up-name").value;
     const buf = await f.arrayBuffer();
+    const progress = document.getElementById("upload-progress");
+    const pbar = document.getElementById("upload-pbar");
+    const ptxt = document.getElementById("upload-ptxt");
+    const submitBtn = document.getElementById("up-submit");
+    submitBtn.disabled = true;
+    progress.classList.remove("hidden");
     try {
-      const d = await api("/api/files", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "X-File-Name": encodeURIComponent(name.trim() || f.name),
-          "X-Original-Name": encodeURIComponent(f.name),
-          "X-Course-Id": id
-        },
-        body: buf
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener("progress", (ev) => {
+        if (ev.lengthComputable) {
+          const pct = Math.round((ev.loaded / ev.total) * 100);
+          pbar.style.width = pct + "%";
+          ptxt.textContent = pct + "%";
+        }
       });
+      const d = await new Promise((resolve, reject) => {
+        xhr.onload = () => {
+          try { resolve(JSON.parse(xhr.responseText)); }
+          catch { reject(new Error("Upload failed")); }
+        };
+        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.open("POST", "/api/files");
+        const t = token();
+        if (t) xhr.setRequestHeader("Authorization", "Bearer " + t);
+        xhr.setRequestHeader("Content-Type", "application/octet-stream");
+        xhr.setRequestHeader("X-File-Name", encodeURIComponent(name.trim() || f.name));
+        xhr.setRequestHeader("X-Original-Name", encodeURIComponent(f.name));
+        xhr.setRequestHeader("X-Course-Id", id);
+        xhr.send(buf);
+      });
+      if (!xhr.status || xhr.status >= 400) throw new Error(d.error || "Upload failed");
       document.getElementById("upload-modal").classList.add("hidden");
-      showToast(d.message);
+      showToast(d.message || "File uploaded");
       renderCourseDetail(hash);
     } catch (err) {
       document.getElementById("up-error").textContent = err.message;
+      submitBtn.disabled = false;
+      progress.classList.add("hidden");
     }
+  });
+
+  const dropZone = document.getElementById("drop-zone");
+  const dropFile = document.getElementById("up-file");
+  const dropPreview = document.getElementById("drop-preview");
+  const dropName = document.getElementById("drop-fname");
+  const dropClear = document.getElementById("drop-clear");
+  if (dropZone && dropFile) {
+    dropZone.addEventListener("click", () => dropFile.click());
+    dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("drag-over");
+      if (e.dataTransfer.files.length) {
+        dropFile.files = e.dataTransfer.files;
+        showDropPreview(e.dataTransfer.files[0]);
+      }
+    });
+    dropFile.addEventListener("change", () => {
+      if (dropFile.files.length) showDropPreview(dropFile.files[0]);
+    });
+  }
+  function showDropPreview(f) {
+    if (!f || !dropPreview) return;
+    dropPreview.classList.remove("hidden");
+    dropDropZone && dropDropZone.classList.add("hidden");
+    if (dropName) dropName.textContent = f.name + " (" + fmtSize(f.size) + ")";
+  }
+  const dropDropZone = dropZone;
+  if (dropClear) dropClear.addEventListener("click", () => {
+    dropFile.value = "";
+    dropPreview.classList.add("hidden");
+    if (dropDropZone) dropDropZone.classList.remove("hidden");
   });
 }
 
@@ -1328,6 +1733,36 @@ async function renderSaved() {
     </div>
     ${listSection("Saved files", files.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "Nothing saved yet. Tap the star on any file to bookmark it.")}`);
   bindRowActions({ showCourse: true, counts: true });
+}
+
+/* ---------- tag files ---------- */
+
+async function renderTagFiles(hash) {
+  if (!state.user) return (location.hash = "#/login");
+  const tag = decodeURIComponent(hash.split("/")[2] || "").toLowerCase();
+  const qs = new URLSearchParams((hash.split("?")[1] || ""));
+  const pageParam = parseInt(qs.get("page")) || 1;
+  let files = [];
+  let pagination = null;
+  try {
+    const res = await api("/api/files?tag=" + encodeURIComponent(tag) + "&page=" + pageParam);
+    files = res.files;
+    pagination = { page: res.page, pages: res.pages, total: res.total };
+  } catch {}
+  const baseHash = "#/tag/" + encodeURIComponent(tag);
+  app.innerHTML = shell(`
+    <a href="#/" class="back-link">${icon("chevronLeft")} Home</a>
+    <div class="page-head">
+      <div>
+        <h1>${esc(tag)}</h1>
+        <p class="muted">${pagination ? pagination.total : files.length} file${(pagination ? pagination.total : files.length) !== 1 ? "s" : ""} tagged with "${esc(tag)}"</p>
+      </div>
+    </div>
+    ${listSection("Tagged files", files.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "No files with this tag yet.")}
+    ${paginationNav(pagination, baseHash)}
+    ${tagFileModalHTML()}`);
+  bindRowActions({ showCourse: true, counts: true });
+  bindTagFileModal();
 }
 
 /* ---------- admin ---------- */
@@ -1379,9 +1814,19 @@ async function renderAdmin() {
     ${statCards}
     <h2 class="section-title">Pending approvals (${pending.length})</h2>
     ${pending.length === 0 ? '<p class="muted">Nothing waiting for review. Nice and clean.</p>' : `
+      <div class="bulk-bar" id="bulk-bar" style="display:none">
+        <span id="bulk-count">0 selected</span>
+        <button class="btn btn-primary btn-sm" id="bulk-approve">${icon("check")} Approve selected</button>
+        <button class="btn btn-danger btn-sm" id="bulk-reject">${icon("trash")} Reject selected</button>
+        <button class="btn btn-outline btn-sm" id="bulk-clear">Clear</button>
+      </div>
       <div class="file-list">
+        <div class="file-row bulk-header">
+          <label class="bulk-check"><input type="checkbox" id="bulk-all" /></label>
+        </div>
         ${pending.map((f) => `
           <div class="file-row">
+            <label class="bulk-check"><input type="checkbox" class="bulk-cb" data-bid="${f.id}" /></label>
             <span class="file-icon">${icon("pdf")}</span>
             <div class="file-info">
               <div class="file-name">${esc(f.name)}</div>
@@ -1481,6 +1926,49 @@ async function renderAdmin() {
         alert(err.message);
       }
     }));
+
+  const bulkBar = document.getElementById("bulk-bar");
+  const bulkAll = document.getElementById("bulk-all");
+  function updateBulk() {
+    const cbs = document.querySelectorAll(".bulk-cb");
+    const checked = [...cbs].filter((cb) => cb.checked);
+    if (bulkBar) bulkBar.style.display = checked.length ? "" : "none";
+    const cnt = document.getElementById("bulk-count");
+    if (cnt) cnt.textContent = checked.length + " selected";
+    if (bulkAll) bulkAll.checked = cbs.length > 0 && checked.length === cbs.length;
+  }
+  document.querySelectorAll(".bulk-cb").forEach((cb) =>
+    cb.addEventListener("change", updateBulk));
+  if (bulkAll) bulkAll.addEventListener("change", () => {
+    document.querySelectorAll(".bulk-cb").forEach((cb) => { cb.checked = bulkAll.checked; });
+    updateBulk();
+  });
+  const bulkApprove = document.getElementById("bulk-approve");
+  const bulkReject = document.getElementById("bulk-reject");
+  const bulkClear = document.getElementById("bulk-clear");
+  async function bulkAction(action) {
+    const ids = [...document.querySelectorAll(".bulk-cb:checked")].map((cb) => cb.dataset.bid);
+    if (!ids.length) return;
+    if (!confirm(action === "approve" ? "Approve " + ids.length + " file(s)?" : "Reject " + ids.length + " file(s)?")) return;
+    try {
+      const d = await api("/api/files/bulk-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileIds: ids, action })
+      });
+      showToast(d.count + " file(s) " + (action === "approve" ? "approved" : "rejected"));
+      renderAdmin();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+  if (bulkApprove) bulkApprove.addEventListener("click", () => bulkAction("approve"));
+  if (bulkReject) bulkReject.addEventListener("click", () => bulkAction("reject"));
+  if (bulkClear) bulkClear.addEventListener("click", () => {
+    document.querySelectorAll(".bulk-cb").forEach((cb) => { cb.checked = false; });
+    if (bulkAll) bulkAll.checked = false;
+    updateBulk();
+  });
 }
 
 /* ---------- boot ---------- */
@@ -1512,3 +2000,25 @@ async function pollNotifications() {
   } catch {}
 }
 setInterval(pollNotifications, 30000);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    document.querySelectorAll(".modal-overlay:not(.hidden)").forEach((m) => m.classList.add("hidden"));
+    const pdfOverlay = document.getElementById("pdf-overlay");
+    if (pdfOverlay) pdfOverlay.remove();
+  }
+});
+
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+  if (!localStorage.getItem("theme")) {
+    state.theme = e.matches ? "dark" : "light";
+    applyTheme();
+    renderNav();
+  }
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

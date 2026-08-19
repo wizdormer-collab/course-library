@@ -144,7 +144,7 @@ try {
     body: JSON.stringify({ username: "admin", password: "admin123" })
   });
   check("admin login works", adminLogin.status === 200 && adminLogin.data.user.role === "admin");
-  const adminToken = adminLogin.data.token;
+  let adminToken = adminLogin.data.token;
 
   const studentLogin = await api("/api/auth/login", {
     method: "POST",
@@ -396,6 +396,165 @@ try {
   const delCourse = await api(`/api/courses/${tcId}`, { method: "DELETE", token: adminToken });
   check("admin deletes course", delCourse.status === 200);
 
+  const pdf2 = buildPdf("Phase 4 test material");
+
+  const renameUp = await api("/api/files", {
+    method: "POST",
+    token: adminToken,
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-File-Name": encodeURIComponent("Rename Me.pdf"),
+      "X-Original-Name": encodeURIComponent("rename-me.pdf"),
+      "X-Course-Id": courseId
+    },
+    body: pdf2
+  });
+  const renameId = renameUp.data.file.id;
+
+  const renameOk = await api(`/api/files/${renameId}/rename`, {
+    method: "PUT",
+    token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Renamed File.pdf" })
+  });
+  check("rename file works", renameOk.status === 200 && renameOk.data.file.name === "Renamed File.pdf");
+
+  const renameEmpty = await api(`/api/files/${renameId}/rename`, {
+    method: "PUT",
+    token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "" })
+  });
+  check("rename file rejects empty name", renameEmpty.status === 400);
+
+  const renameDenied = await api(`/api/files/${renameId}/rename`, {
+    method: "PUT",
+    token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Hacked.pdf" })
+  });
+  check("student cannot rename admin file", renameDenied.status === 403);
+
+  const editCourse = await api(`/api/courses/${courseId}`, {
+    method: "PUT",
+    token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Updated Course Name" })
+  });
+  check("admin edits course", editCourse.status === 200 && editCourse.data.course.name === "Updated Course Name");
+
+  await api(`/api/courses/${courseId}`, {
+    method: "PUT",
+    token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "CS 101" })
+  });
+
+  const editCourseBad = await api(`/api/courses/${courseId}`, {
+    method: "PUT",
+    token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Hijack" })
+  });
+  check("student cannot edit course", editCourseBad.status === 403);
+
+  const setTags = await api(`/api/files/${renameId}/tags`, {
+    method: "PUT",
+    token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tags: ["past-question", "exam"] })
+  });
+  check("set tags on file", setTags.status === 200 && setTags.data.file.tags.includes("past-question"));
+
+  const getTags = await api("/api/tags", { token: adminToken });
+  check("list all tags", getTags.status === 200 && getTags.data.tags.includes("past-question"));
+
+  const filterByTag = await api("/api/files?tag=past-question", { token: adminToken });
+  check("filter files by tag", filterByTag.status === 200 && filterByTag.data.files.some((f) => f.id === renameId));
+
+  const tagDenied = await api(`/api/files/${renameId}/tags`, {
+    method: "PUT",
+    token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tags: ["hacked"] })
+  });
+  check("student cannot tag admin file", tagDenied.status === 403);
+
+  const pageRes = await api("/api/files?page=1&limit=1", { token: adminToken });
+  check("pagination returns page info", pageRes.status === 200 && pageRes.data.files.length <= 1 && typeof pageRes.data.pages === "number");
+
+  const emptyPage = await api("/api/files?page=9999", { token: adminToken });
+  check("pagination empty page returns no files", emptyPage.status === 200 && emptyPage.data.files.length === 0);
+
+  const bulkUp = await api("/api/files", {
+    method: "POST",
+    token: studentToken,
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-File-Name": encodeURIComponent("Bulk Test.pdf"),
+      "X-Original-Name": encodeURIComponent("bulk.pdf"),
+      "X-Course-Id": courseId
+    },
+    body: pdf2
+  });
+  const bulkId = bulkUp.data.file.id;
+
+  const bulkApprove = await api("/api/files/bulk-action", {
+    method: "POST",
+    token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileIds: [bulkId], action: "approve" })
+  });
+  check("bulk approve works", bulkApprove.status === 200 && bulkApprove.data.count === 1);
+
+  const bulkUp2 = await api("/api/files", {
+    method: "POST",
+    token: studentToken,
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-File-Name": encodeURIComponent("Bulk Reject.pdf"),
+      "X-Original-Name": encodeURIComponent("bulk2.pdf"),
+      "X-Course-Id": courseId
+    },
+    body: pdf2
+  });
+  const bulkId2 = bulkUp2.data.file.id;
+
+  const bulkReject = await api("/api/files/bulk-action", {
+    method: "POST",
+    token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileIds: [bulkId2], action: "reject" })
+  });
+  check("bulk reject works", bulkReject.status === 200 && bulkReject.data.count === 1);
+
+  const bulkDenied = await api("/api/files/bulk-action", {
+    method: "POST",
+    token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileIds: [], action: "approve" })
+  });
+  check("student cannot use bulk action", bulkDenied.status === 403);
+
+  const logout = await api("/api/auth/logout", {
+    method: "POST",
+    token: adminToken
+  });
+  check("logout succeeds", logout.status === 200);
+
+  const afterLogout = await api("/api/courses", { token: adminToken });
+  check("logged out token rejected", afterLogout.status === 401);
+
+  const adminReLogin = await api("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "admin", password: "admin123" })
+  });
+  adminToken = adminReLogin.data.token;
+
+  await api(`/api/files/${renameId}`, { method: "DELETE", token: adminToken });
+  await api(`/api/files/${bulkId}`, { method: "DELETE", token: adminToken });
+
   const forgotStart = await api("/api/auth/forgot/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -441,9 +600,17 @@ try {
   });
   check("change password works", changeOk.status === 200);
 
+  const relogin2 = await api("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "student1", password: "student123" })
+  });
+  check("login with changed password works", relogin2.status === 200);
+  const tokenAfterChange = relogin2.data.token;
+
   const sq = await api("/api/auth/security-question", {
     method: "POST",
-    token: reloginToken,
+    token: tokenAfterChange,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question: "Favourite food?", answer: "Pizza" })
   });
@@ -451,7 +618,7 @@ try {
 
   const sqRestore = await api("/api/auth/security-question", {
     method: "POST",
-    token: reloginToken,
+    token: tokenAfterChange,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question: "What city were you born in?", answer: "lagos" })
   });

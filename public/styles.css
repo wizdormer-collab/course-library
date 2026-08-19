@@ -44,6 +44,7 @@
 html {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
 }
 
 .ic {
@@ -61,6 +62,7 @@ body {
   color: var(--text);
   line-height: 1.5;
   transition: background 0.25s ease, color 0.25s ease;
+  overflow-x: hidden;
 }
 
 body::before {
@@ -83,8 +85,10 @@ body::before {
 /* ---------- navbar ---------- */
 
 .navbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
   background: var(--nav-bg);
   backdrop-filter: blur(14px);
@@ -192,7 +196,7 @@ body::before {
 }
 
 main {
-  padding: 30px 20px 80px;
+  padding: 66px 20px 80px;
 }
 
 /* ---------- hero ---------- */
@@ -1040,6 +1044,10 @@ body.auth-page .navbar {
   display: none;
 }
 
+body.auth-page main {
+  padding-top: 18px;
+}
+
 .auth-wrap {
   display: flex;
   flex-direction: column;
@@ -1405,6 +1413,35 @@ body.auth-page .navbar {
   display: none !important;
 }
 
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  background: var(--primary);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  z-index: 999;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -1491,25 +1528,40 @@ body.auth-page .navbar {
   }
 
   main#app {
-    padding: 18px 14px calc(122px + env(safe-area-inset-bottom));
+    padding: 18px 14px calc(76px + env(safe-area-inset-bottom));
   }
 
-  /* bottom tab bar */
+  /* bottom tab bar — floating pill */
   .bottom-nav {
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 28px);
+    max-width: 380px;
     z-index: 50;
-    background: var(--nav-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid var(--border);
-    padding-bottom: env(safe-area-inset-bottom);
-    box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.08);
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 22px;
+    padding: 4px;
+    box-shadow:
+      0 4px 16px rgba(15, 23, 42, 0.08),
+      0 8px 32px rgba(15, 23, 42, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  [data-theme="dark"] .bottom-nav {
+    background: rgba(18, 26, 46, 0.82);
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.3),
+      0 8px 32px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .bn-item {
@@ -1517,32 +1569,34 @@ body.auth-page .navbar {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 6px 4px 7px;
-    min-height: 58px;
+    gap: 2px;
+    padding: 6px 4px 5px;
+    min-height: 50px;
+    border-radius: 18px;
     text-decoration: none;
     color: var(--muted);
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-weight: 650;
     letter-spacing: 0.01em;
-    transition: color 0.15s ease;
+    transition: color 0.18s ease, background 0.18s ease;
     touch-action: manipulation;
+    position: relative;
   }
 
   .bn-item .bn-icon {
     display: grid;
     place-items: center;
-    width: 42px;
+    width: 40px;
     height: 28px;
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     line-height: 1;
-    border-radius: 999px;
-    transition: background 0.18s ease, color 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 14px;
+    transition: background 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .bn-item .bn-icon .ic {
-    width: 1.35em;
-    height: 1.35em;
+    width: 1.3em;
+    height: 1.3em;
   }
 
   .bn-item.active {
@@ -1550,27 +1604,12 @@ body.auth-page .navbar {
   }
 
   .bn-item.active .bn-icon {
-    background: rgba(79, 70, 229, 0.14);
-    background: color-mix(in srgb, var(--primary) 16%, transparent);
-    transform: translateY(-1px) scale(1.04);
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    transform: scale(1.06);
   }
 
   .bn-item:active .bn-icon {
-    transform: scale(0.92);
-  }
-
-  .bn-item.active::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    width: 36px;
-    height: 3px;
-    border-radius: 0 0 999px 999px;
-    background: linear-gradient(90deg, var(--primary), var(--primary-2));
-  }
-
-  .bn-item {
-    position: relative;
+    transform: scale(0.9);
   }
 
   /* hero & headings */
@@ -1672,6 +1711,7 @@ body.auth-page .navbar {
 
   /* auth */
   body.auth-page main#app {
+    padding-top: 18px;
     padding-bottom: 28px;
   }
 
@@ -1700,10 +1740,10 @@ body.auth-page .navbar {
     margin-top: 0;
   }
 
-  /* toast sits above the tab bar */
+  /* toast sits above the pill tab bar */
   .toast {
     top: auto;
-    bottom: calc(84px + env(safe-area-inset-bottom));
+    bottom: calc(82px + env(safe-area-inset-bottom));
     right: 12px;
     left: 12px;
     max-width: none;
@@ -2334,5 +2374,208 @@ body.auth-page .navbar {
   .stat-ico {
     width: 30px;
     height: 30px;
+  }
+}
+
+/* ---------- sort bar ---------- */
+
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.sort-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sort-select {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+/* ---------- drag-drop upload ---------- */
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+  border-color: var(--primary);
+  background: rgba(79, 70, 229, 0.06);
+}
+
+.drop-icon {
+  display: block;
+  font-size: 1.6rem;
+  color: var(--primary);
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.drop-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.drop-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.drop-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.drop-fname {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-progress {
+  margin-bottom: 10px;
+}
+
+.upload-progress .progress-bar {
+  height: 6px;
+  margin-bottom: 4px;
+}
+
+/* ---------- bulk actions ---------- */
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+
+.bulk-bar span {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.bulk-header {
+  padding: 8px 18px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.bulk-header:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.bulk-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex-shink: 0;
+}
+
+.bulk-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.file-row .bulk-check {
+  margin-right: 4px;
+}
+
+/* ---------- file tags ---------- */
+
+.file-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.file-tags .tag {
+  font-size: 0.7em;
+  padding: 1px 6px;
+}
+
+.suggested-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.tag-suggest {
+  cursor: pointer;
+  opacity: 0.8;
+  border: 1px dashed var(--border);
+  background: transparent;
+}
+
+.tag-suggest:hover {
+  opacity: 1;
+  border-color: var(--primary);
+}
+
+/* ---------- pagination ---------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding: 10px 0;
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
