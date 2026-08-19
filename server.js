@@ -447,8 +447,7 @@ routes.push({
       hash: hashPassword(password),
       role,
       notifications: [],
-      verified: false,
-      verification: { code: genVerifyCode(), expires: Date.now() + VERIFY_TTL },
+      verified: true,
       securityQuestion: String(body.securityQuestion || "").trim() || null,
       securityAnswerHash: String(body.securityAnswer || "").trim()
         ? hashPassword(String(body.securityAnswer).trim().toLowerCase())
@@ -456,13 +455,10 @@ routes.push({
     };
     db.users.push(user);
     saveDb();
-    const delivery = await deliverVerifyCode(user, user.verification.code);
     send(res, 201, {
-      pending: true,
-      message: EMAIL_ENABLED && delivery.sent
-        ? "Account created. A verification code was sent to " + email
-        : "Account created. Enter the verification code to activate your account.",
-      devCode: delivery.dev ? user.verification.code : undefined
+      message: "Account created successfully.",
+      token: signToken(user),
+      user: publicUser(user)
     });
   }
 });
@@ -481,9 +477,6 @@ routes.push({
     );
     if (!user || !verifyPassword(body.password || "", user.hash)) {
       return send(res, 401, { error: "Invalid email or password" });
-    }
-    if (user.verified === false) {
-      return send(res, 403, { error: "Please verify your email first" });
     }
     send(res, 200, { token: signToken(user), user: publicUser(user) });
   }

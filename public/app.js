@@ -486,6 +486,7 @@ function shell(inner) {
 }
 
 async function render() {
+  window.scrollTo(0, 0);
   try { renderNav(); } catch {}
   const hash = location.hash.replace(/^#/, "") || "/";
   try {
@@ -577,11 +578,6 @@ function renderLogin() {
       storeAuth(d);
       location.hash = "#/";
     } catch (err) {
-      if (err.message.includes("verify your email")) {
-        localStorage.setItem("pendingEmail", document.getElementById("login-email").value);
-        location.hash = "#/verify";
-        return;
-      }
       errEl.textContent = err.message;
     } finally {
       done();
@@ -640,10 +636,9 @@ function renderRegister() {
           securityAnswer: document.getElementById("reg-a").value
         })
       });
-      localStorage.setItem("pendingEmail", document.getElementById("reg-email").value);
-      if (d.devCode) localStorage.setItem("devCode", d.devCode);
-      showToast(d.message || "Check your inbox for a verification code.");
-      location.hash = "#/verify";
+      storeAuth(d);
+      showToast(d.message || "Account created! Welcome.");
+      location.hash = "#/";
     } catch (err) {
       document.getElementById("reg-error").textContent = err.message;
     } finally {
