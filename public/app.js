@@ -230,6 +230,7 @@ function fileRow(f, opts = {}) {
         <button class="icon-btn" data-collect="${f.id}" title="Add to collection">${icon("folder")}</button>
         ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-edit-tags="${f.id}" data-etags="${esc(JSON.stringify(f.tags || []))}" title="Edit tags">${icon("tag")}</button>` : ""}
         ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-rename="${f.id}" data-rname="${esc(f.name)}" title="Rename">${icon("edit")}</button>` : ""}
+        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-new-version="${f.id}" title="Upload new version">${icon("clock")}</button>` : ""}
         <button class="btn btn-outline btn-sm" data-download="${f.id}" data-name="${esc(f.originalName || f.name)}">${icon("download")} Download</button>
         ${isAdmin ? `<button class="btn btn-danger btn-sm" data-del="${f.id}">${icon("trash")} Delete</button>` : ""}
       </div>
@@ -431,6 +432,32 @@ async function bindRowActions({ showCourse = false, counts = false } = {}) {
     }));
   document.querySelectorAll("[data-collect]").forEach((btn) =>
     btn.addEventListener("click", () => openCollectPicker(btn.dataset.collect)));
+  document.querySelectorAll("[data-new-version]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const fid = btn.dataset.newVersion;
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "application/pdf";
+      input.addEventListener("change", async () => {
+        const f = input.files[0];
+        if (!f) return;
+        if (!f.type.includes("pdf") && !/\.pdf$/i.test(f.name)) return alert("Only PDF files allowed");
+        try {
+          const buf = await f.arrayBuffer();
+          await api("/api/files/" + fid + "/version", {
+            method: "POST",
+            headers: { "Content-Type": "application/octet-stream", "X-File-Name": encodeURIComponent(f.name), "X-Original-Name": encodeURIComponent(f.name) },
+            body: buf
+          });
+          showToast("New version uploaded");
+          render();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+      input.click();
+    });
+  });
   document.querySelectorAll("[data-download-zip]").forEach((btn) =>
     btn.addEventListener("click", async () => {
       try {
@@ -468,6 +495,8 @@ async function openPdf(fileId, showCourse) {
             <span class="muted small" id="pdf-progress-pct">0%</span>
           </div>
           <button class="btn btn-outline btn-sm" id="bm-toggle">${icon("edit")} Notes</button>
+          <button class="btn btn-outline btn-sm" id="ver-toggle">${icon("clock")} Versions</button>
+          <button class="btn btn-outline btn-sm" id="flash-toggle">${icon("book")} Flashcards</button>
           <button class="btn btn-outline" id="pdf-close">Close</button>
         </div>
         <div class="pdf-body">
@@ -481,6 +510,15 @@ async function openPdf(fileId, showCourse) {
               <button class="btn btn-primary btn-sm">Add</button>
             </form>
             <div id="bm-list" class="bm-list"></div>
+          </div>
+          <div class="bm-panel hidden" id="ver-panel">
+            <h3>Version History</h3>
+            <div id="ver-list" class="bm-list"></div>
+          </div>
+          <div class="bm-panel hidden" id="flash-panel">
+            <h3>Flashcards</h3>
+            <p class="muted small">Auto-generated from file content</p>
+            <div id="flash-container"></div>
           </div>
         </div>
       </div>
@@ -570,6 +608,85 @@ async function openPdf(fileId, showCourse) {
     bmToggle.addEventListener("click", () => {
       bmPanel.classList.toggle("hidden");
       if (!bmPanel.classList.contains("hidden")) loadBookmarks();
+    });
+  }
+
+  const verToggle = document.getElementById("ver-toggle");
+  const verPanel = document.getElementById("ver-panel");
+  const verList = document.getElementById("ver-list");
+
+  async function loadVersions() {
+    try {
+      const d = await api("/api/files/" + fileId + "/versions");
+      const vers = d.versions || [];
+      if (verList) {
+        verList.innerHTML = vers.length ? vers.reverse().map((v) => `
+          <div class="bm-item">
+            <span class="bm-page-badge">v${v.version}</span>
+            <span class="bm-text">${fmtSize(v.size)} &middot; ${fmtDate(v.uploadedAt)}</span>
+          </div>`).join("") : '<p class="muted small" style="text-align:center;padding:12px 0">No previous versions</p>';
+      }
+    } catch {}
+  }
+
+  if (verToggle && verPanel) {
+    verToggle.addEventListener("click", () => {
+      verPanel.classList.toggle("hidden");
+      if (!verPanel.classList.contains("hidden")) loadVersions();
+    });
+  }
+
+  const flashToggle = document.getElementById("flash-toggle");
+  const flashPanel = document.getElementById("flash-panel");
+  const flashContainer = document.getElementById("flash-container");
+
+  if (flashToggle && flashPanel) {
+    flashToggle.addEventListener("click", async () => {
+      flashPanel.classList.toggle("hidden");
+      if (!flashPanel.classList.contains("hidden") && flashContainer && !flashContainer.dataset.loaded) {
+        flashContainer.innerHTML = '<p class="muted small">Generating flashcards...</p>';
+        try {
+          const d = await api("/api/files/" + fileId + "/flashcards");
+          const cards = d.cards || [];
+          if (!cards.length) {
+            flashContainer.innerHTML = '<p class="muted small" style="text-align:center;padding:16px 0">No flashcards could be generated from this file. Try a file with definitions or key concepts.</p>';
+          } else {
+            let currentIdx = 0;
+            function renderFlashcard() {
+              const c = cards[currentIdx];
+              flashContainer.innerHTML = `
+                <div class="flashcard" id="flashcard">
+                  <div class="flashcard-inner" id="flashcard-inner">
+                    <div class="flashcard-front">
+                      <p class="flashcard-label">Q${currentIdx + 1}/${cards.length}</p>
+                      <p class="flashcard-text">${esc(c.front)}</p>
+                      <p class="muted small" style="margin-top:auto">Tap to reveal</p>
+                    </div>
+                    <div class="flashcard-back">
+                      <p class="flashcard-label">A${currentIdx + 1}/${cards.length}</p>
+                      <p class="flashcard-text">${esc(c.back)}</p>
+                      <p class="muted small" style="margin-top:auto">Tap to flip</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="flashcard-nav">
+                  <button class="btn btn-outline btn-sm" id="fc-prev" ${currentIdx === 0 ? "disabled" : ""}>Prev</button>
+                  <span class="muted small">${currentIdx + 1} / ${cards.length}</span>
+                  <button class="btn btn-outline btn-sm" id="fc-next" ${currentIdx === cards.length - 1 ? "disabled" : ""}>Next</button>
+                </div>`;
+              document.getElementById("flashcard").addEventListener("click", () => {
+                document.getElementById("flashcard-inner").classList.toggle("flipped");
+              });
+              document.getElementById("fc-prev")?.addEventListener("click", (e) => { e.stopPropagation(); if (currentIdx > 0) { currentIdx--; renderFlashcard(); } });
+              document.getElementById("fc-next")?.addEventListener("click", (e) => { e.stopPropagation(); if (currentIdx < cards.length - 1) { currentIdx++; renderFlashcard(); } });
+            }
+            renderFlashcard();
+          }
+          flashContainer.dataset.loaded = "1";
+        } catch {
+          flashContainer.innerHTML = '<p class="muted small">Failed to generate flashcards.</p>';
+        }
+      }
     });
   }
 
@@ -1648,6 +1765,7 @@ async function renderHome() {
                 <h3>${esc(col.name)}</h3>
                 <p>${col.files.length} file${col.files.length !== 1 ? "s" : ""}${col.description ? " · " + esc(col.description) : ""}</p>
               </div>
+              <button class="btn btn-outline btn-sm" data-col-zip="${col.id}" data-col-name="${esc(col.name)}" title="Export as ZIP">${icon("download")}</button>
             </div>`).join("")
           : emptyState("folder", "No collections yet", "Create a collection to organize files across courses.", "")}
       </div>
@@ -1712,7 +1830,18 @@ async function renderHome() {
     el.addEventListener("click", () => { location.hash = "#/profile/" + el.dataset.profile; }));
 
   document.querySelectorAll("[data-col-id]").forEach((el) =>
-    el.addEventListener("click", () => { location.hash = "#/collection/" + el.dataset.colId; }));
+    el.addEventListener("click", (e) => {
+      if (e.target.closest("[data-col-zip]")) return;
+      location.hash = "#/collection/" + el.dataset.colId;
+    }));
+
+  document.querySelectorAll("[data-col-zip]").forEach((btn) =>
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      try {
+        await downloadPath("/api/collections/" + btn.dataset.colZip + "/zip", (btn.dataset.colName || "collection") + ".zip");
+      } catch (err) { alert(err.message); }
+    }));
 
   const newColBtn = document.getElementById("new-col-btn");
   if (newColBtn) newColBtn.addEventListener("click", async () => {
@@ -1849,9 +1978,19 @@ function bindSearch() {
       box.innerHTML = '<p class="muted">Searching...</p>';
       try {
         const d = await api("/api/search?q=" + encodeURIComponent(q));
-        box.innerHTML = d.files.length
-          ? listSection("Search results", d.files.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "")
-          : emptyState("search", "No matches found", "Try a different search term.");
+        if (d.files.length) {
+          const rows = d.files.map((f) => {
+            const base = fileRow(f, { showCourse: true, counts: true });
+            if (f.snippet) {
+              const snippetHtml = `<div class="search-snippet"><span class="search-match-count">${f.matchCount} match${f.matchCount !== 1 ? "es" : ""}</span> <span class="search-snippet-text">${esc(f.snippet)}</span></div>`;
+              return base.replace("</div>\n    </div>", snippetHtml + "\n      </div>\n    </div>");
+            }
+            return base;
+          }).join("");
+          box.innerHTML = listSection("Search results (" + d.files.length + ")", rows, "");
+        } else {
+          box.innerHTML = emptyState("search", "No matches found", "Try a different search term.");
+        }
         bindRowActions({ showCourse: true, counts: true });
       } catch {
         box.innerHTML = '<p class="error">Search failed.</p>';

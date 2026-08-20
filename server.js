@@ -1176,6 +1176,104 @@ routes.push({
   }
 });
 
+/* ---------- file versioning ---------- */
+
+routes.push({
+  method: "GET", path: "/api/files/:id/versions",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f) return send(res, 404, { error: "File not found" });
+    const versions = (f.versions || []).map((v) => ({
+      id: v.id, name: v.name, size: v.size, uploadedAt: v.uploadedAt, uploadedByName: v.uploadedByName, version: v.version
+    }));
+    send(res, 200, { versions });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/files/:id/flashcards",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f || !canSeeFile(f, user)) return send(res, 404, { error: "File not found" });
+    const text = f.text || "";
+    if (!text) return send(res, 200, { cards: [] });
+    const sentences = text.split(/[.!?]+/).map((s) => s.trim()).filter((s) => s.length > 20 && s.length < 300);
+    const defs = text.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*(?:is|are|was|were|refers to|means|defined as)\s*([^.;]{10,200})/gi) || [];
+    const cards = [];
+    for (let i = 0; i < Math.min(defs.length, 10); i++) {
+      const match = defs[i].match(/^(\b[A-Z][^\s]*(?:\s[A-Z][^\s]*)*)\s+(?:is|are|was|were|refers to|means|defined as)\s+(.+)/i);
+      if (match) cards.push({ front: match[1].trim(), back: match[2].trim().replace(/[.;]+$/, "") });
+    }
+    const used = new Set(cards.map((c) => c.front.toLowerCase()));
+    const keySents = sentences.filter((s) => /\b(define|definition|important|key|note|concept|principle|theorem|formula|equation)\b/i.test(s));
+    for (const s of keySents) {
+      if (cards.length >= 15) break;
+      const parts = s.split(/[:–—-]\s*/);
+      if (parts.length >= 2 && !used.has(parts[0].toLowerCase().slice(0, 30))) {
+        cards.push({ front: parts[0].trim().slice(0, 150), back: parts.slice(1).join(": ").trim().slice(0, 300) });
+        used.add(parts[0].toLowerCase().slice(0, 30));
+      }
+    }
+    if (cards.length < 5) {
+      for (const s of sentences) {
+        if (cards.length >= 10) break;
+        const words = s.split(/\s+/);
+        if (words.length > 8) {
+          const mid = Math.floor(words.length / 2);
+          const front = words.slice(0, mid).join(" ");
+          const back = words.slice(mid).join(" ");
+          if (!used.has(front.toLowerCase().slice(0, 30))) {
+            cards.push({ front: front.slice(0, 150), back: back.slice(0, 300) });
+            used.add(front.toLowerCase().slice(0, 30));
+          }
+        }
+      }
+    }
+    send(res, 200, { cards: cards.slice(0, 15) });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/files/:id/version",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f || !canSeeFile(f, user)) return send(res, 404, { error: "File not found" });
+    if (user.role !== "admin" && f.uploadedBy !== user.id) return send(res, 403, { error: "Only uploader or admin can add versions" });
+    if (req.headers["content-type"] !== "application/octet-stream") return send(res, 400, { error: "Upload the file as binary" });
+    const buf = await readBody(req);
+    if (buf.length < 5 || buf.slice(0, 5).toString("latin1") !== "%PDF-") return send(res, 400, { error: "Only PDF files are allowed" });
+    if (!f.versions) f.versions = [];
+    const verNum = f.versions.length + 1;
+    f.versions.push({
+      id: "v" + Date.now() + Math.random().toString(16).slice(2, 6),
+      name: f.name,
+      storedName: f.storedName,
+      size: f.size,
+      uploadedAt: f.uploadedAt,
+      uploadedByName: f.uploadedByName,
+      version: verNum
+    });
+    const storedName = Date.now() + "-" + Math.round(Math.random() * 1e9) + ".pdf";
+    fs.writeFileSync(path.join(UPLOAD_DIR, storedName), buf);
+    if (supabaseConfigured()) supaPut("uploads/" + storedName, buf).catch(() => {});
+    f.storedName = storedName;
+    f.size = buf.length;
+    f.uploadedAt = new Date().toISOString();
+    f.uploadedBy = user.id;
+    f.uploadedByName = user.username;
+    f.text = extractPdfText(buf).slice(0, 100000);
+    f.version = verNum + 1;
+    saveDb();
+    send(res, 200, { file: fileInfo(f, user), version: verNum + 1 });
+  }
+});
+
 routes.push({
   method: "POST", path: "/api/files/bulk-action",
   handler: async (req, res) => {
@@ -1389,6 +1487,7 @@ routes.push({
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const url = new URL(req.url, "http://localhost");
     const q = String(url.searchParams.get("q") || "").toLowerCase().trim();
+    const contentOnly = url.searchParams.get("content") === "1";
     if (!q) return send(res, 200, { files: [] });
     const tokens = q.split(/\s+/).filter(Boolean);
     const matches = db.files.filter((f) => {
@@ -1400,14 +1499,41 @@ routes.push({
       ].join(" ").toLowerCase();
       return tokens.every((t) => hay.includes(t));
     });
+    function extractSnippet(text, query, len) {
+      if (!text) return "";
+      const low = text.toLowerCase();
+      const idx = low.indexOf(query.toLowerCase().split(/\s+/)[0]);
+      if (idx === -1) return text.slice(0, len);
+      const start = Math.max(0, idx - Math.floor(len / 3));
+      const end = Math.min(text.length, start + len);
+      let snippet = text.slice(start, end);
+      if (start > 0) snippet = "..." + snippet;
+      if (end < text.length) snippet = snippet + "...";
+      return snippet;
+    }
     const ranked = matches
       .sort((a, b) => {
+        if (contentOnly) {
+          const aText = (a.text || "").toLowerCase();
+          const bText = (b.text || "").toLowerCase();
+          const aScore = tokens.reduce((s, t) => s + (aText.split(t).length - 1), 0);
+          const bScore = tokens.reduce((s, t) => s + (bText.split(t).length - 1), 0);
+          return bScore - aScore;
+        }
         const sa = (a.views || 0) + (a.downloads || 0);
         const sb = (b.views || 0) + (b.downloads || 0);
         return sb - sa;
       })
       .slice(0, 50);
-    send(res, 200, { files: ranked.map((f) => fileInfo(f, user)) });
+    send(res, 200, { files: ranked.map((f) => {
+      const info = fileInfo(f, user);
+      if (f.text) {
+        const firstToken = tokens[0] || "";
+        info.snippet = extractSnippet(f.text, firstToken, 200);
+        info.matchCount = tokens.reduce((s, t) => s + ((f.text || "").toLowerCase().split(t).length - 1), 0);
+      }
+      return info;
+    }) });
   }
 });
 
@@ -1657,6 +1783,53 @@ routes.push({
     user.collections = (user.collections || []).filter((c) => c.id !== params.id);
     saveDb();
     ok(res);
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/collections/:id/zip",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const col = (user.collections || []).find((c) => c.id === params.id);
+    if (!col) return send(res, 404, { error: "Collection not found" });
+    const files = (col.fileIds || []).map((id) => db.files.find((f) => f.id === id)).filter(Boolean);
+    const entries = [];
+    const used = new Set();
+    for (const f of files) {
+      const fp = path.join(UPLOAD_DIR, f.storedName);
+      if (!fs.existsSync(fp)) continue;
+      let name = f.originalName || f.name;
+      if (used.has(name)) {
+        const dot = name.lastIndexOf(".");
+        name = dot > 0 ? name.slice(0, dot) + "-" + used.size + name.slice(dot) : name + "-" + used.size;
+      }
+      used.add(name);
+      entries.push({ name, buffer: fs.readFileSync(fp) });
+    }
+    const meta = {
+      collection: col.name,
+      description: col.description || "",
+      exportedAt: new Date().toISOString(),
+      exportedBy: user.displayName || user.username,
+      fileCount: entries.length,
+      files: files.map((f) => ({
+        name: f.originalName || f.name,
+        course: (db.courses.find((c) => c.id === f.courseId) || {}).name || "",
+        tags: f.tags || [],
+        uploadedAt: f.uploadedAt,
+        uploadedBy: f.uploadedByName || ""
+      }))
+    };
+    entries.unshift({ name: "_metadata.json", buffer: Buffer.from(JSON.stringify(meta, null, 2), "utf8") });
+    const zip = buildZip(entries);
+    const filename = `${col.name}.zip`;
+    res.writeHead(200, {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      "Content-Length": zip.length
+    });
+    res.end(zip);
   }
 });
 

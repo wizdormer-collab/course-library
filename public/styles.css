@@ -3400,6 +3400,89 @@ body.auth-page main {
   flex: 1;
 }
 
+.search-snippet {
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: var(--card-2);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  border-left: 3px solid var(--primary);
+}
+
+.search-match-count {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.search-snippet-text {
+  color: var(--muted);
+}
+
+.flashcard {
+  perspective: 600px;
+  margin: 12px 0;
+  cursor: pointer;
+}
+
+.flashcard-inner {
+  position: relative;
+  min-height: 140px;
+  transition: transform 0.4s;
+  transform-style: preserve-3d;
+}
+
+.flashcard-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.flashcard-front, .flashcard-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.flashcard-front {
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff;
+}
+
+.flashcard-back {
+  background: var(--card-2);
+  color: var(--text);
+  transform: rotateY(180deg);
+  border: 1px solid var(--border);
+}
+
+.flashcard-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.flashcard-text {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.flashcard-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
 .mention-item {
   padding: 8px 12px;
   cursor: pointer;
