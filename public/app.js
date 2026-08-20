@@ -858,7 +858,7 @@ async function renderNav() {
   const bottomNav = document.getElementById("bottom-nav");
   if (bottomNav) {
     const cur = location.hash.replace(/^#/, "") || "/";
-    const isAuthPage = !state.user && ["/login", "/register", "/verify", "/forgot"].includes(cur);
+    const isAuthPage = !state.user && ["/login", "/register", "/verify", "/forgot", "/onboard"].includes(cur);
     document.body.classList.toggle("auth-page", isAuthPage);
     if (isAuthPage) {
       bottomNav.style.display = "none";
@@ -1054,10 +1054,6 @@ function onboardStep1() {
   state.onboardData = {};
   app.innerHTML = onboardCard(`
     <div class="onboard-welcome">
-      <div class="onboard-welcome-brand">
-        <span class="auth-logo">${icon("grad")}</span>
-        <span class="auth-name"><span class="n-course">Course</span> <span class="n-lib">Library</span></span>
-      </div>
       <h1>Welcome to Course Library</h1>
       <p class="muted">Your university. Your courses. Everything you need to learn.</p>
       <div class="onboard-cards">
