@@ -861,6 +861,15 @@ async function renderSettings() {
     </div>
     <div class="settings-grid">
       <div class="card">
+        <h3>Display name</h3>
+        <p class="muted small">This is how others see you on the platform.</p>
+        <form id="username-form" class="stack">
+          <label>Display name <input id="username-input" value="${esc(state.user.username || "")}" /></label>
+          <p class="error" id="username-error"></p>
+          <button class="btn btn-primary">Update display name</button>
+        </form>
+      </div>
+      <div class="card">
         <h3>Change password</h3>
         <form id="pw-form" class="stack">
           <label>Current password <input id="pw-old" type="password" /></label>
@@ -913,6 +922,24 @@ async function renderSettings() {
       renderSettings();
     } catch (err) {
       document.getElementById("pw-error").textContent = err.message;
+    }
+  });
+
+  document.getElementById("username-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const d = await api("/api/auth/change-username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: document.getElementById("username-input").value })
+      });
+      state.user.username = d.user.username;
+      localStorage.setItem("auth", JSON.stringify(state));
+      showToast("Display name updated");
+      renderNav();
+      renderSettings();
+    } catch (err) {
+      document.getElementById("username-error").textContent = err.message;
     }
   });
 

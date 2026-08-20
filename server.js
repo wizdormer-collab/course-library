@@ -596,6 +596,22 @@ routes.push({
 });
 
 routes.push({
+  method: "POST", path: "/api/auth/change-username",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
+    const username = String(body.username || "").trim();
+    if (username.length < 3) return send(res, 400, { error: "Username must be at least 3 characters" });
+    const taken = db.users.some((u) => u.id !== user.id && u.username.toLowerCase() === username.toLowerCase());
+    if (taken) return send(res, 400, { error: "That display name is already taken" });
+    user.username = username;
+    saveDb();
+    send(res, 200, { ok: true, user: publicUser(user) });
+  }
+});
+
+routes.push({
   method: "POST", path: "/api/auth/security-question",
   handler: async (req, res) => {
     const user = getAuthUser(req);
