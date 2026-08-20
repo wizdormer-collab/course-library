@@ -861,8 +861,8 @@ async function renderNav() {
   const bottomNav = document.getElementById("bottom-nav");
   if (bottomNav) {
     const cur = location.hash.replace(/^#/, "") || "/";
-    const isAuthPage = !state.user && ["/login", "/register", "/verify", "/forgot", "/onboard"].includes(cur);
-    const isOnboard = !state.user && ["/onboard", "/login", "/forgot"].includes(cur);
+    const isAuthPage = !state.user && (["/login", "/register", "/verify", "/forgot", "/onboard"].includes(cur) || cur.startsWith("/register"));
+    const isOnboard = !state.user && (["/onboard", "/login", "/forgot"].includes(cur) || cur.startsWith("/register"));
     document.body.classList.toggle("auth-page", isAuthPage);
     document.body.classList.toggle("onboard-page", isOnboard);
     if (isAuthPage) {
