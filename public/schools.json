@@ -1,0 +1,364 @@
+{
+  "schools": [
+    {
+      "id": "unilag",
+      "name": "University of Lagos (UNILAG)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics", "Microbiology", "Industrial Mathematics", "Actuarial Science"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Metallurgical Engineering", "Surveying", "Systems Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Chinese", "Russian", "Creative Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Marketing", "Insurance"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Psychology", "Sociology", "Geography", "Public Administration", "Social Work"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Physiotherapy", "Radiography", "Medical Laboratory Science", "Pharmacy"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration", "Counselling Psychology", "Library and Information Science"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Quantity Surveying", "Urban and Regional Planning", "Estate Management", "Building"] }
+      ]
+    },
+    {
+      "id": "oau",
+      "name": "Obafemi Awolowo University (OAU)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics", "Microbiology", "Geology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Materials Science"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Drama", "Music"] },
+        { "name": "Administration", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Psychology", "Sociology", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Physiotherapy", "Medical Laboratory Science", "Pharmacy"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration", "Guidance and Counselling"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Soil Science", "Forestry"] }
+      ]
+    },
+    {
+      "id": "ui",
+      "name": "University of Ibadan (UI)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics", "Microbiology", "Geology", "Botany", "Zoology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Food Engineering", "Agricultural Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Arabic", "Islamic Studies", "Theatre Arts"] },
+        { "name": "The Social Sciences", "type": "arts", "departments": ["Economics", "Geography", "Political Science", "Sociology", "Psychology"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Physiotherapy", "Radiography", "Pharmacy", "Medical Laboratory Science"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Management", "Counselling and Human Development"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Science", "Animal Science", "Soil Science", "Agricultural Extension"] },
+        { "name": "Dentistry", "type": "science", "departments": ["Dentistry", "Dental Surgery"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Surgery"] }
+      ]
+    },
+    {
+      "id": "uniben",
+      "name": "University of Benin (UNIBEN)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Industrial Chemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Production Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Fine Arts", "Drama"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Public Administration", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry", "Medical Laboratory Science", "Pharmacy"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Management", "Library and Information Science"] }
+      ]
+    },
+    {
+      "id": "uniabuja",
+      "name": "University of Abuja (UNIABUJA)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Arabic"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "International Relations", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration"] }
+      ]
+    },
+    {
+      "id": "uniport",
+      "name": "University of Port Harcourt (UNIPORT)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Geology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Petroleum Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Creative Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry", "Pharmacy"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Science Education", "Educational Management"] }
+      ]
+    },
+    {
+      "id": "unijos",
+      "name": "University of Jos (UNIJOS)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Geology", "Pharmacology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Mining Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Theatre Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Science Education", "Educational Administration"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Forestry"] }
+      ]
+    },
+    {
+      "id": "unn",
+      "name": "University of Nigeria, Nsukka (UNN)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry", "Geology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Metallurgical Engineering", "Agricultural Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Igbo", "French", "Music", "Fine Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Public Administration", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry", "Pharmacy", "Medical Laboratory Science"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Foundations", "Library and Information Science"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Science", "Animal Science", "Soil Science", "Fisheries"] }
+      ]
+    },
+    {
+      "id": "unaab",
+      "name": "Federal University of Agriculture, Abeokuta (FUNAAB)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Biological Sciences"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Food Engineering", "Agricultural Engineering"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Soil Science", "Agricultural Extension", "Forestry"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Surgery"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management"] }
+      ]
+    },
+    {
+      "id": "futo",
+      "name": "Federal University of Technology, Owerri (FUTO)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Biological Sciences", "Environmental Science"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Food Science Technology", "Materials Science", "Metallurgical Engineering", "Petroleum Engineering", "Agricultural Engineering"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Financial Management Technology", "Management Technology", "Project Management Technology"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Animal Science", "Crop Science", "Fisheries"] }
+      ]
+    },
+    {
+      "id": "futminna",
+      "name": "Federal University of Technology, Minna (FUTMINNA)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Statistics"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Agricultural Engineering", "Materials Engineering"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Forestry", "Fisheries"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Technology"] }
+      ]
+    },
+    {
+      "id": "futa",
+      "name": "Federal University of Technology, Akure (FUTA)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Statistics", "Environmental Science"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Food Engineering", "Agricultural Engineering", "Metallurgical Engineering", "Mining Engineering"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Financial Management"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Science", "Animal Science", "Soil Science", "Fisheries"] }
+      ]
+    },
+    {
+      "id": "ksu",
+      "name": "Kogi State University (KSU)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Arabic"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Administration"] }
+      ]
+    },
+    {
+      "id": "au",
+      "name": "Ambrose Alli University (AAU)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Fine and Applied Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Medical Laboratory Science"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Guidance and Counselling"] }
+      ]
+    },
+    {
+      "id": "lasu",
+      "name": "Lagos State University (LASU)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Creative Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Public Administration", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science", "Dentistry"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration", "Counselling Psychology"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Quantity Surveying", "Estate Management", "Urban and Regional Planning"] }
+      ]
+    },
+    {
+      "id": "delsu",
+      "name": "Delta State University (DELSU)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Fine Arts", "Theatre Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Library and Information Science"] }
+      ]
+    },
+    {
+      "id": "abu",
+      "name": "Ahmadu Bello University (ABU)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Geology", "Statistics"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Metallurgical Engineering", "Agricultural Engineering", "Water Resources Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Arabic", "Hausa", "Islamic Studies"] },
+        { "name": "Administration", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "International Studies", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science", "Dentistry"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Science Education", "Educational Administration", "Library and Information Science"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Science", "Animal Science", "Soil Science", "Forestry"] }
+      ]
+    },
+    {
+      "id": "buk",
+      "name": "Bayero University, Kano (BUK)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Statistics"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Arabic", "Hausa", "Islamic Studies"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "International Studies", "Geography"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Administration"] }
+      ]
+    },
+    {
+      "id": "uniuyo",
+      "name": "University of Uyo (UNIUYO)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Agricultural Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Fine Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography", "Public Administration"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Guidance and Counselling"] }
+      ]
+    },
+    {
+      "id": "uniilorin",
+      "name": "University of Ilorin (UNILORIN)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry", "Statistics", "Geology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Agricultural Engineering", "Food Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Arabic", "Performing Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Marketing"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography", "Social Work"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry", "Pharmacy", "Medical Laboratory Science", "Physiotherapy"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Science Education", "Educational Management", "Counselling Psychology", "Library and Information Science"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Soil Science", "Forestry", "Fisheries"] }
+      ]
+    },
+    {
+      "id": "uni",
+      "name": "University of Nigeria, Enugu Campus (UNI-ENC)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Igbo"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry"] }
+      ]
+    },
+    {
+      "id": "babcock",
+      "name": "Babcock University",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Biotechnology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Computer Engineering", "Electrical Engineering", "Mechanical Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Music", "Theatre Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Mass Communication", "International Relations"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Medical Laboratory Science", "Public Health"] },
+        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education", "Educational Administration"] }
+      ]
+    },
+    {
+      "id": "covenant",
+      "name": "Covenant University",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Industrial Chemistry", "Microbiology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Computer Engineering", "Information and Communication Technology"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Marketing"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Mass Communication", "Political Science", "International Relations", "Sociology"] },
+        { "name": "Architecture", "type": "science", "departments": ["Architecture", "Building Technology", "Quantity Surveying", "Estate Management"] }
+      ]
+    },
+    {
+      "id": "lead",
+      "name": "Lead City University",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Computer Engineering", "Electrical Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Mass Communication", "International Relations"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education"] }
+      ]
+    },
+    {
+      "id": "elizade",
+      "name": "Elizade University",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Automotive Engineering"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "Mass Communication"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "International Relations"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] }
+      ]
+    },
+    {
+      "id": "oua",
+      "name": "Oduduwa University",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Mass Communication"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Public Administration"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education", "Educational Management"] }
+      ]
+    },
+    {
+      "id": "iwo",
+      "name": "Joseph Ayo Babalola University (JABU)",
+      "faculties": [
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Religious Studies"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Mass Communication", "International Relations"] },
+        { "name": "Law", "type": "arts", "departments": ["Law"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management"] }
+      ]
+    }
+  ]
+}

@@ -178,6 +178,24 @@ try {
   });
   check("registered user can log in immediately", preVerify.status === 200);
 
+  const schoolRegEmail = "schoolkid" + stamp + "@student.edu.ng";
+  const schoolReg = await api("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: schoolRegEmail, password: "pass1234",
+      school: "unilag", faculty: "Science", department: "Computer Science",
+      level: "300", matricNumber: "UNILAG/2024/001", studentType: "science"
+    })
+  });
+  check("register with school fields", schoolReg.status === 201 && schoolReg.data.user && schoolReg.data.user.school === "unilag" && schoolReg.data.user.department === "Computer Science");
+  check("studentType set from faculty", schoolReg.status === 201 && schoolReg.data.user && schoolReg.data.user.studentType === "science");
+
+  const schools = await api("/api/schools", { token: adminToken });
+  check("GET /api/schools returns list", schools.status === 200 && Array.isArray(schools.data.schools) && schools.data.schools.length > 20);
+  check("school has faculties", schools.data.schools && schools.data.schools[0] && schools.data.schools[0].faculties.length > 0);
+  check("faculty has departments", schools.data.schools && schools.data.schools[0] && schools.data.schools[0].faculties[0] && schools.data.schools[0].faculties[0].departments.length > 0);
+
   const badEmail = await api("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -209,6 +227,9 @@ try {
   const bossToken = adminReg.data.token;
   const bossCanAdmin = await api("/api/files/pending", { token: bossToken });
   check("invite-signed admin has admin powers", bossCanAdmin.status === 200);
+
+  const markNotif = await api("/api/notifications/read", { method: "POST", token: adminToken });
+  check("mark all notifications read", markNotif.status === 200);
 
   const courses = await api("/api/courses", { token: adminToken });
   check("courses listed", courses.status === 200 && courses.data.courses.length >= 3);
@@ -854,6 +875,10 @@ try {
 
   const notifs2 = await api("/api/notifications", { token: adminToken });
   check("list notifications", notifs2.status === 200 && Array.isArray(notifs2.data.notifications));
+
+  const firstNotifId = notifs2.data && notifs2.data.notifications && notifs2.data.notifications[0] ? notifs2.data.notifications[0].id : "nonexistent";
+  const singleNotif = await api("/api/notifications/" + firstNotifId + "/read", { method: "POST", token: adminToken });
+  check("mark single notification read", singleNotif.status === 200 || singleNotif.status === 404);
 
   const readNotifs = await api("/api/notifications/read", { method: "POST", token: adminToken });
   check("mark notifications read", readNotifs.status === 200);

@@ -250,7 +250,14 @@ async function seed() {
 }
 
 function publicUser(u) {
-  return { id: u.id, username: u.username, email: u.email || "", role: u.role, verified: !!u.verified };
+  const obj = { id: u.id, username: u.username, email: u.email || "", role: u.role, verified: !!u.verified };
+  if (u.school) obj.school = u.school;
+  if (u.faculty) obj.faculty = u.faculty;
+  if (u.department) obj.department = u.department;
+  if (u.level) obj.level = u.level;
+  if (u.matricNumber) obj.matricNumber = u.matricNumber;
+  if (u.studentType) obj.studentType = u.studentType;
+  return obj;
 }
 
 function send(res, status, data, contentType, extraHeaders) {
@@ -296,13 +303,13 @@ function getAuthUser(req) {
   return verifyToken(h.slice(7));
 }
 
-function notify(userId, text, type) {
+function notify(userId, text, type, link) {
   const user = db.users.find((u) => u.id === userId);
   if (!user) return;
   const prefs = user.notifPrefs || {};
   if (type && prefs[type] === false) return;
   if (!Array.isArray(user.notifications)) user.notifications = [];
-  user.notifications.unshift({ id: "n" + Date.now() + Math.random().toString(16).slice(2, 6), text, at: new Date().toISOString(), read: false });
+  user.notifications.unshift({ id: "n" + Date.now() + Math.random().toString(16).slice(2, 6), text, link: link || null, at: new Date().toISOString(), read: false });
   if (user.notifications.length > 100) user.notifications.length = 100;
 }
 
@@ -410,7 +417,7 @@ function rateLimiter(max, windowMs) {
   };
 }
 const loginLimiter = rateLimiter(10, 60 * 1000);
-const registerLimiter = rateLimiter(5, 60 * 1000);
+const registerLimiter = rateLimiter(10, 60 * 1000);
 
 async function handleApi(req, res, pathname) {
   const m = matchRoute(req.method, pathname);
@@ -475,6 +482,12 @@ routes.push({
       if (inviteCode !== ADMIN_INVITE_CODE) return send(res, 403, { error: "Invalid admin invite code" });
       role = "admin";
     }
+    const school = String(body.school || "").trim();
+    const faculty = String(body.faculty || "").trim();
+    const department = String(body.department || "").trim();
+    const level = String(body.level || "").trim();
+    const matricNumber = String(body.matricNumber || "").trim();
+    const studentType = String(body.studentType || "").trim();
     const user = {
       id: "u" + Date.now(),
       username,
@@ -488,6 +501,12 @@ routes.push({
         ? hashPassword(String(body.securityAnswer).trim().toLowerCase())
         : null
     };
+    if (school) user.school = school;
+    if (faculty) user.faculty = faculty;
+    if (department) user.department = department;
+    if (level) user.level = level;
+    if (matricNumber) user.matricNumber = matricNumber;
+    if (studentType) user.studentType = studentType;
     db.users.push(user);
     saveDb();
     send(res, 201, {
@@ -789,6 +808,33 @@ routes.push({
     for (const n of user.notifications || []) n.read = true;
     saveDb();
     ok(res);
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/notifications/:id/read",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const n = (user.notifications || []).find((x) => x.id === params.id);
+    if (!n) return send(res, 404, { error: "Notification not found" });
+    n.read = true;
+    saveDb();
+    ok(res);
+  }
+});
+
+/* ---------- schools ---------- */
+
+routes.push({
+  method: "GET", path: "/api/schools",
+  handler: (req, res) => {
+    const fp = path.join(PUBLIC_DIR, "schools.json");
+    if (!fs.existsSync(fp)) return send(res, 200, { schools: [] });
+    try {
+      const data = JSON.parse(fs.readFileSync(fp, "utf8"));
+      send(res, 200, { schools: data.schools || [] });
+    } catch { send(res, 200, { schools: [] }); }
   }
 });
 

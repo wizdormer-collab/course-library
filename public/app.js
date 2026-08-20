@@ -835,20 +835,10 @@ async function renderNav() {
     } catch {}
     const unread = notifications.filter((n) => !n.read).length;
     notifHtml = `
-      <div class="notif-wrap">
-        <button class="icon-btn" id="notif-btn" title="Notifications" aria-label="Notifications" aria-expanded="false">${icon("bell")}</button>
+      <a href="#/notifications" class="notif-link" title="Notifications" aria-label="Notifications">
+        ${icon("bell")}
         ${unread ? `<span class="notif-dot">${unread > 9 ? "9+" : unread}</span>` : ""}
-        <div class="notif-drop hidden" id="notif-drop">
-          <div class="notif-head">
-            <strong>Notifications</strong>
-            ${unread ? '<button class="link-btn" id="notif-read">Mark all read</button>' : ""}
-          </div>
-          ${notifications.length ? notifications.slice(0, 15).map((n) => `
-            <div class="notif-item ${n.read ? "read" : ""}">${esc(n.text)}
-              <div class="muted small">${fmtDate(n.at)}</div>
-            </div>`).join("") : '<div class="notif-item muted">No notifications</div>'}
-        </div>
-      </div>`;
+      </a>`;
   }
 
   navLinks.innerHTML = state.user
@@ -863,7 +853,7 @@ async function renderNav() {
       <span class="nav-user">${esc(state.user.username)} <small>(${esc(state.user.role)})</small></span>`
     : `
       <a href="#/login" class="nav-link">Log in</a>
-      <a href="#/register" class="btn btn-primary">Sign up</a>`;
+      <a href="#/onboard" class="btn btn-primary">Sign up</a>`;
 
   const bottomNav = document.getElementById("bottom-nav");
   if (bottomNav) {
@@ -884,7 +874,7 @@ async function renderNav() {
           ]
         : [
             { path: "/login", label: "Log in", icon: "key" },
-            { path: "/register", label: "Sign up", icon: "edit" }
+            { path: "/onboard", label: "Sign up", icon: "edit" }
           ];
       bottomNav.innerHTML = items
         .map((it) => {
@@ -904,28 +894,6 @@ async function renderNav() {
     applyTheme();
     renderNav();
   });
-
-  const notifBtn = document.getElementById("notif-btn");
-  const notifDrop = document.getElementById("notif-drop");
-  if (notifBtn && notifDrop) {
-    notifBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      notifDrop.classList.toggle("hidden");
-      notifBtn.setAttribute("aria-expanded", !notifDrop.classList.contains("hidden"));
-    });
-    const readBtn = document.getElementById("notif-read");
-    if (readBtn) readBtn.addEventListener("click", async () => {
-      await api("/api/notifications/read", { method: "POST" });
-      renderNav();
-    });
-    if (!window._notifDocBound) {
-      window._notifDocBound = true;
-      document.addEventListener("click", (e) => {
-        const drop = document.getElementById("notif-drop");
-        if (drop && !e.target.closest(".notif-wrap")) drop.classList.add("hidden");
-      });
-    }
-  }
 }
 
 function shell(inner) {
@@ -939,7 +907,8 @@ async function render() {
   const hash = location.hash.replace(/^#/, "") || "/";
   try {
     if (hash === "/login") { renderLogin(); return; }
-    if (hash === "/register") { renderRegister(); return; }
+    if (hash === "/onboard") { renderOnboard(); return; }
+    if (hash.startsWith("/register")) { renderRegister(); return; }
     if (hash === "/verify") { renderVerify(); return; }
     if (hash === "/forgot") { renderForgot(); return; }
     else if (hash.startsWith("/profile/")) { await renderProfile(hash); }
@@ -949,6 +918,7 @@ async function render() {
     else if (hash === "/saved") { await renderSaved(); }
     else if (hash === "/settings") { await renderSettings(); }
     else if (hash === "/admin") { await renderAdmin(); }
+    else if (hash === "/notifications") { await renderNotifications(); }
     else if (hash.startsWith("/courses")) { await renderCourses(hash); }
     else if (hash.startsWith("/course/")) { await renderCourseDetail(hash); }
     else if (hash.startsWith("/tag/")) { await renderTagFiles(hash); }
@@ -1037,20 +1007,61 @@ function renderLogin() {
       done();
     }
   });
-  document.getElementById("signup-btn").addEventListener("click", () => (location.hash = "#/register"));
+  document.getElementById("signup-btn").addEventListener("click", () => (location.hash = "#/onboard"));
+}
+
+function renderOnboard() {
+  if (state.user) return (location.hash = "#/");
+  app.innerHTML = authShell(`
+      <div class="auth-card">
+        <h1>Welcome to Course Library</h1>
+        <p class="muted">How will you be using this platform?</p>
+        <div class="onboard-cards">
+          <a href="#/register?role=student" class="onboard-card">
+            <div class="onboard-ico">${icon("book")}</div>
+            <h3>I'm a Student</h3>
+            <p class="muted small">Browse courses, upload materials, study with classmates</p>
+          </a>
+          <a href="#/register?role=lecturer" class="onboard-card">
+            <div class="onboard-ico">${icon("grad")}</div>
+            <h3>Lecturer / Admin</h3>
+            <p class="muted small">Manage courses, post announcements, track engagement</p>
+          </a>
+        </div>
+        <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
+      </div>`);
 }
 
 function renderRegister() {
   if (state.user) return (location.hash = "#/");
-  app.innerHTML = authShell(`
+  const params = new URLSearchParams(location.hash.split("?")[1] || "");
+  const roleParam = params.get("role") || "student";
+  const isStudent = roleParam === "student";
+
+  if (isStudent) {
+    app.innerHTML = authShell(`
       <form class="auth-card" id="reg-form">
-        <h1>Create account</h1>
-        <p class="muted">Sign up with your student email. Enter the admin invite code to join as an administrator.</p>
-        <label>Student email <input id="reg-email" type="email" placeholder="you@university.edu.ng" /></label>
+        <h1>Create student account</h1>
+        <p class="muted">Sign up with your email to access course materials.</p>
+        <label>Email <input id="reg-email" type="email" placeholder="you@university.edu.ng" /></label>
         <label>Nickname (optional) <input id="reg-user" placeholder="shown to classmates" /></label>
         <label>Password <input id="reg-pass" type="password" /></label>
         <label>Confirm password <input id="reg-pass2" type="password" /></label>
-        <label>Admin invite code (optional) <input id="reg-invite" placeholder="leave empty for student" /></label>
+        <div class="reg-section-divider"></div>
+        <p class="reg-section-title">Academic Details</p>
+        <label>School
+          <select id="reg-school"><option value="">Select your school</option></select>
+        </label>
+        <label>Faculty
+          <select id="reg-faculty" disabled><option value="">Select school first</option></select>
+        </label>
+        <label>Department
+          <select id="reg-dept" disabled><option value="">Select faculty first</option></select>
+        </label>
+        <label>Current Level
+          <select id="reg-level"><option value="">Select level</option><option value="100">100 Level</option><option value="200">200 Level</option><option value="300">300 Level</option><option value="400">400 Level</option><option value="500">500 Level</option></select>
+        </label>
+        <label>Matric number (optional) <input id="reg-matric" placeholder="e.g. UNILAG/2024/001" /></label>
         <div class="opt-fields">
           <p class="muted small">Optional recovery info — lets you reset your password if you forget it.</p>
           <label>Recovery question <input id="reg-q" placeholder="e.g. What city were you born in?" /></label>
@@ -1060,6 +1071,78 @@ function renderRegister() {
         <button class="btn btn-primary btn-block btn-lg" type="submit">Sign up</button>
         <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
       </form>`);
+    initStudentRegForm();
+  } else {
+    app.innerHTML = authShell(`
+      <form class="auth-card" id="reg-form">
+        <h1>Create lecturer/admin account</h1>
+        <p class="muted">Enter the admin invite code to join as an administrator.</p>
+        <label>Email <input id="reg-email" type="email" placeholder="you@university.edu.ng" /></label>
+        <label>Nickname (optional) <input id="reg-user" placeholder="shown to colleagues" /></label>
+        <label>Password <input id="reg-pass" type="password" /></label>
+        <label>Confirm password <input id="reg-pass2" type="password" /></label>
+        <label>Admin invite code <input id="reg-invite" placeholder="enter invite code" /></label>
+        <div class="opt-fields">
+          <p class="muted small">Optional recovery info — lets you reset your password if you forget it.</p>
+          <label>Recovery question <input id="reg-q" placeholder="e.g. What city were you born in?" /></label>
+          <label>Answer <input id="reg-a" placeholder="your answer" /></label>
+        </div>
+        <p class="error" id="reg-error"></p>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">Sign up</button>
+        <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
+      </form>`);
+    initLecturerRegForm();
+  }
+}
+
+async function initStudentRegForm() {
+  let schoolsData = [];
+  try {
+    const d = await api("/api/schools");
+    schoolsData = d.schools || [];
+  } catch {}
+
+  const schoolSel = document.getElementById("reg-school");
+  const facSel = document.getElementById("reg-faculty");
+  const deptSel = document.getElementById("reg-dept");
+  const levelSel = document.getElementById("reg-level");
+
+  schoolsData.forEach((s) => {
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = s.name;
+    schoolSel.appendChild(opt);
+  });
+
+  schoolSel.addEventListener("change", () => {
+    facSel.innerHTML = '<option value="">Select faculty</option>';
+    deptSel.innerHTML = '<option value="">Select faculty first</option>';
+    deptSel.disabled = true;
+    const school = schoolsData.find((s) => s.id === schoolSel.value);
+    if (!school) { facSel.disabled = true; return; }
+    facSel.disabled = false;
+    school.faculties.forEach((f) => {
+      const opt = document.createElement("option");
+      opt.value = f.name;
+      opt.textContent = f.name;
+      facSel.appendChild(opt);
+    });
+  });
+
+  facSel.addEventListener("change", () => {
+    deptSel.innerHTML = '<option value="">Select department</option>';
+    const school = schoolsData.find((s) => s.id === schoolSel.value);
+    const fac = school && school.faculties.find((f) => f.name === facSel.value);
+    if (!fac) { deptSel.disabled = true; return; }
+    deptSel.disabled = false;
+    fac.departments.forEach((d) => {
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.textContent = d;
+      deptSel.appendChild(opt);
+    });
+  });
+
   document.getElementById("reg-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const pw = document.getElementById("reg-pass").value;
@@ -1075,6 +1158,18 @@ function renderRegister() {
     if (!/[0-9]/.test(pw)) {
       return (document.getElementById("reg-error").textContent = "Password must contain at least one number");
     }
+    if (!schoolSel.value) {
+      return (document.getElementById("reg-error").textContent = "Please select your school");
+    }
+    if (!facSel.value) {
+      return (document.getElementById("reg-error").textContent = "Please select your faculty");
+    }
+    if (!levelSel.value) {
+      return (document.getElementById("reg-error").textContent = "Please select your level");
+    }
+    const school = schoolsData.find((s) => s.id === schoolSel.value);
+    const fac = school && school.faculties.find((f) => f.name === facSel.value);
+    const studentType = fac ? fac.type : "";
     const submitBtn = document.querySelector("#reg-form button[type=submit]");
     const done = btnLoading(submitBtn, "Creating account");
     try {
@@ -1085,7 +1180,58 @@ function renderRegister() {
           email: document.getElementById("reg-email").value,
           username: document.getElementById("reg-user").value,
           password: pw,
-          inviteCode: document.getElementById("reg-invite").value,
+          school: schoolSel.value,
+          faculty: facSel.value,
+          department: deptSel.value,
+          level: levelSel.value,
+          matricNumber: document.getElementById("reg-matric").value,
+          studentType,
+          securityQuestion: document.getElementById("reg-q").value,
+          securityAnswer: document.getElementById("reg-a").value
+        })
+      });
+      storeAuth(d);
+      showToast(d.message || "Account created! Welcome.");
+      location.hash = "#/";
+    } catch (err) {
+      document.getElementById("reg-error").textContent = err.message;
+    } finally {
+      done();
+    }
+  });
+}
+
+function initLecturerRegForm() {
+  document.getElementById("reg-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pw = document.getElementById("reg-pass").value;
+    if (pw !== document.getElementById("reg-pass2").value) {
+      return (document.getElementById("reg-error").textContent = "Passwords do not match");
+    }
+    if (pw.length < 8) {
+      return (document.getElementById("reg-error").textContent = "Password must be at least 8 characters");
+    }
+    if (!/[a-zA-Z]/.test(pw)) {
+      return (document.getElementById("reg-error").textContent = "Password must contain at least one letter");
+    }
+    if (!/[0-9]/.test(pw)) {
+      return (document.getElementById("reg-error").textContent = "Password must contain at least one number");
+    }
+    const invite = document.getElementById("reg-invite").value.trim();
+    if (!invite) {
+      return (document.getElementById("reg-error").textContent = "Admin invite code is required");
+    }
+    const submitBtn = document.querySelector("#reg-form button[type=submit]");
+    const done = btnLoading(submitBtn, "Creating account");
+    try {
+      const d = await api("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: document.getElementById("reg-email").value,
+          username: document.getElementById("reg-user").value,
+          password: pw,
+          inviteCode: invite,
           securityQuestion: document.getElementById("reg-q").value,
           securityAnswer: document.getElementById("reg-a").value
         })
@@ -1586,7 +1732,7 @@ async function renderHome() {
   if (!state.user) return (location.hash = "#/login");
   try {
   const isAdmin = state.user.role === "admin";
-  const first = (state.user.username || "friend").split(/\s+/)[0];
+  const first = (state.user.username || "friend");
 
   app.innerHTML = shell(`
     <div class="welcome">
@@ -1676,10 +1822,10 @@ async function renderHome() {
     <div id="search-results"></div>
 
     <div class="stats-card">
-      <div class="stat-item"><span class="stat-ico ico-book">${icon("book")}</span><div><span class="stat-num">${state.courses.length}</span><span class="stat-lab">Courses</span></div></div>
-      <div class="stat-item"><span class="stat-ico ico-files">${icon("pdf")}</span><div><span class="stat-num">${materialsTotal}</span><span class="stat-lab">Materials</span></div></div>
-      <div class="stat-item"><span class="stat-ico ico-saved">${icon("star")}</span><div><span class="stat-num">${saved.length}</span><span class="stat-lab">Saved</span></div></div>
-      <div class="stat-item"><span class="stat-ico ico-recent">${icon("clock")}</span><div><span class="stat-num">${feed.length}</span><span class="stat-lab">Recent</span></div></div>
+      <div class="stat-item"><span class="stat-ico ico-book">${icon("book")}</span><span class="stat-num">${state.courses.length}</span><span class="stat-lab">Courses</span></div>
+      <div class="stat-item"><span class="stat-ico ico-files">${icon("pdf")}</span><span class="stat-num">${materialsTotal}</span><span class="stat-lab">Materials</span></div>
+      <div class="stat-item"><span class="stat-ico ico-saved">${icon("star")}</span><span class="stat-num">${saved.length}</span><span class="stat-lab">Saved</span></div>
+      <div class="stat-item"><span class="stat-ico ico-recent">${icon("clock")}</span><span class="stat-num">${feed.length}</span><span class="stat-lab">Recent</span></div>
     </div>
 
     <section class="home-section">
@@ -3001,6 +3147,50 @@ async function renderCollectionDetail(hash) {
       <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
     </div>`);
   }
+}
+
+/* ---------- notifications page ---------- */
+
+async function renderNotifications() {
+  if (!state.user) return (location.hash = "#/login");
+  let notifications = [];
+  try { notifications = (await api("/api/notifications")).notifications || []; } catch {}
+  const unread = notifications.filter((n) => !n.read).length;
+
+  app.innerHTML = shell(`
+    <div class="notif-page">
+      <div class="notif-page-head">
+        <h1>Notifications</h1>
+        ${unread ? '<button class="btn btn-primary btn-sm" id="notif-mark-all">Mark all read</button>' : ""}
+      </div>
+      ${notifications.length ? `<div class="notif-page-list">
+        ${notifications.map((n) => `
+          <div class="notif-page-item ${n.read ? "read" : ""}" data-nid="${n.id}" ${n.link ? 'data-link="' + esc(n.link) + '" style="cursor:pointer"' : ""}>
+            <div class="notif-page-text">${esc(n.text)}</div>
+            <div class="notif-page-meta">
+              <span class="muted small">${fmtDate(n.at)}</span>
+              ${n.link ? '<span class="notif-page-arrow">' + icon("chevronRight") + "</span>" : ""}
+            </div>
+          </div>`).join("")}
+      </div>` : emptyState("bell", "No notifications yet", "Notifications from courses and classmates will appear here.", "")}
+    </div>`);
+
+  const markAllBtn = document.getElementById("notif-mark-all");
+  if (markAllBtn) markAllBtn.addEventListener("click", async () => {
+    try {
+      await api("/api/notifications/read", { method: "POST" });
+      renderNotifications();
+    } catch {}
+  });
+
+  document.querySelectorAll(".notif-page-item[data-link]").forEach((el) => {
+    el.addEventListener("click", async () => {
+      const link = el.dataset.link;
+      const nid = el.dataset.nid;
+      if (nid) try { await api("/api/notifications/" + nid + "/read", { method: "POST" }); } catch {}
+      if (link) location.hash = "#" + link;
+    });
+  });
 }
 
 /* ---------- study groups ---------- */
