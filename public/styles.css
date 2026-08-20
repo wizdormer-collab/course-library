@@ -2284,6 +2284,8 @@ body.auth-page main {
   border-radius: 18px;
   padding: 18px;
   box-shadow: var(--shadow-sm);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .continue-icon {
@@ -2347,10 +2349,11 @@ body.auth-page main {
   padding: 2px 2px 14px;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
-  margin: 0 -20px;
+  margin-left: -20px;
+  margin-right: -20px;
   padding-left: 20px;
   padding-right: 20px;
-  max-width: 100%;
+  width: calc(100% + 40px);
 }
 
 .ycard {
