@@ -1088,27 +1088,45 @@ function bindCourseMenus() {
 async function renderHome() {
   if (!state.user) return (location.hash = "#/login");
   try {
-  await loadCourses();
-  let feed = [];
-  let saved = [];
-  let announcements = [];
-  let leaderboard = [];
-  let collections = [];
-  try {
-    feed = (await api("/api/feed")).files;
-  } catch {}
-  try {
-    saved = (await api("/api/files/saved")).files;
-  } catch {}
-  try {
-    announcements = (await api("/api/announcements")).announcements;
-  } catch {}
-  try {
-    leaderboard = (await api("/api/leaderboard")).leaderboard;
-  } catch {}
-  try {
-    collections = (await api("/api/collections")).collections;
-  } catch {}
+  const isAdmin = state.user.role === "admin";
+  const first = (state.user.username || "friend").split(/\s+/)[0];
+
+  app.innerHTML = shell(`
+    <div class="welcome">
+      <h1>${greeting()}, ${esc(first)} <span class="wave">&#128075;</span></h1>
+      <p>Find the materials you need and keep learning.</p>
+    </div>
+    <div class="search-bar">
+      <span class="search-icon">${icon("search")}</span>
+      <input id="search-input" type="search" placeholder="Search courses & PDFs..." autocomplete="off" />
+      <button class="icon-btn search-filter" id="filter-toggle" aria-label="Filters">${icon("settings")}</button>
+    </div>
+    <div class="filters filters-panel hidden" id="filters-panel">
+      <select id="filter-cat"><option value="">All categories</option></select>
+      <select id="filter-sem"><option value="">All semesters</option></select>
+    </div>
+    <div id="search-results"></div>
+    <div class="skeleton" style="margin-top:20px"><div class="skel" style="height:80px;border-radius:18px"></div><div class="skel" style="height:120px;border-radius:18px"></div></div>`);
+
+  bindSearch();
+  bindFilterToggle();
+
+  const [courses, feedData, savedData, annData, lbData, colData] = await Promise.allSettled([
+    api("/api/courses"),
+    api("/api/feed"),
+    api("/api/files/saved"),
+    api("/api/announcements"),
+    api("/api/leaderboard"),
+    api("/api/collections")
+  ]);
+
+  state.courses = (courses.status === "fulfilled" && courses.value.courses) || [];
+
+  const feed = (feedData.status === "fulfilled" && feedData.value.files) || [];
+  const saved = (savedData.status === "fulfilled" && savedData.value.files) || [];
+  const announcements = (annData.status === "fulfilled" && annData.value.announcements) || [];
+  const leaderboard = (lbData.status === "fulfilled" && lbData.value.leaderboard) || [];
+  const collections = (colData.status === "fulfilled" && colData.value.collections) || [];
 
   state.progressMap = {};
   state.courseMeta = {};
@@ -1139,8 +1157,6 @@ async function renderHome() {
 
   const cats = [...new Set(state.courses.map((c) => c.category).filter(Boolean))];
   const sems = [...new Set(state.courses.map((c) => c.semester).filter(Boolean))];
-  const isAdmin = state.user.role === "admin";
-  const first = (state.user.username || "friend").split(/\s+/)[0];
 
   app.innerHTML = shell(`
     <div class="welcome">
