@@ -2544,6 +2544,9 @@ body.auth-page main {
   color: var(--text);
   background: var(--card);
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  width: 100%;
+  font: inherit;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
@@ -2569,6 +2572,222 @@ body.auth-page main {
   margin: 4px 0 0;
   font-size: 1.05rem;
   font-weight: 700;
+}
+
+/* onboarding wizard */
+.onboard-progress {
+  margin-bottom: 16px;
+}
+.onboard-progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.onboard-progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.onboard-step-label {
+  display: block;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.onboard-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 8px;
+}
+.onboard-back-btn .ic {
+  width: 16px;
+  height: 16px;
+}
+.onboard-back-btn:hover {
+  opacity: 0.8;
+}
+.onboard-welcome {
+  text-align: center;
+}
+.onboard-welcome-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.onboard-welcome-brand .auth-logo {
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+}
+.onboard-welcome-brand .auth-name {
+  font-size: 1.4rem;
+}
+.onboard-search-wrap {
+  margin-bottom: 12px;
+}
+.onboard-search {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color 0.16s ease;
+}
+.onboard-search:focus {
+  border-color: var(--primary);
+}
+.onboard-school-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  scrollbar-width: thin;
+}
+.onboard-school-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+.onboard-school-item:hover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 5%, var(--card));
+}
+.onboard-school-item.selected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+}
+.onboard-loading, .onboard-empty {
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.onboard-cant-find {
+  text-align: center;
+  margin-top: 4px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.link-btn:hover {
+  opacity: 0.8;
+}
+.onboard-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  scrollbar-width: thin;
+}
+.onboard-course-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.16s ease;
+}
+.onboard-course-item:hover {
+  border-color: var(--primary);
+}
+.onboard-course-item input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.onboard-course-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.onboard-course-code {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.04em;
+}
+.onboard-course-title {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.onboard-course-actions {
+  margin-bottom: 12px;
+}
+.onboard-complete {
+  text-align: center;
+}
+.onboard-complete-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+}
+.onboard-complete-icon .ic {
+  width: 32px;
+  height: 32px;
+}
+.onboard-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+  text-align: left;
+}
+.onboard-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--card-2);
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+.onboard-summary-row strong {
+  color: var(--text);
 }
 
 /* registration sections */

@@ -838,6 +838,25 @@ routes.push({
   }
 });
 
+routes.push({
+  method: "POST", path: "/api/university-requests",
+  handler: (req, res) => {
+    const body = readBody(req);
+    const name = (body.name || "").trim();
+    if (!name) return send(res, 400, { error: "University name is required" });
+    const email = (body.email || "").trim();
+    if (!db.universityRequests) db.universityRequests = [];
+    db.universityRequests.push({
+      id: "ur" + Date.now(),
+      name,
+      email,
+      requestedAt: new Date().toISOString()
+    });
+    saveDB();
+    send(res, 200, { message: "Request submitted successfully." });
+  }
+});
+
 /* ---------- courses ---------- */
 
 routes.push({

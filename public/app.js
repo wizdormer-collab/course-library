@@ -1012,87 +1012,422 @@ function renderLogin() {
 
 function renderOnboard() {
   if (state.user) return (location.hash = "#/");
-  app.innerHTML = authShell(`
-      <div class="auth-card">
-        <h1>Welcome to Course Library</h1>
-        <p class="muted">How will you be using this platform?</p>
-        <div class="onboard-cards">
-          <a href="#/register?role=student" class="onboard-card">
-            <div class="onboard-ico">${icon("book")}</div>
-            <h3>I'm a Student</h3>
-            <p class="muted small">Browse courses, upload materials, study with classmates</p>
-          </a>
-          <a href="#/register?role=lecturer" class="onboard-card">
-            <div class="onboard-ico">${icon("grad")}</div>
-            <h3>Lecturer / Admin</h3>
-            <p class="muted small">Manage courses, post announcements, track engagement</p>
-          </a>
-        </div>
-        <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
-      </div>`);
+  const step = state.onboardStep || 1;
+  const steps = [onboardStep1, onboardStep2, onboardStep3, onboardStep4, onboardStep5, onboardStep6];
+  const fn = steps[step - 1];
+  if (fn) fn();
+}
+
+function onboardProgress(current, total) {
+  const pct = (current / total) * 100;
+  return `<div class="onboard-progress"><div class="onboard-progress-bar"><div class="onboard-progress-fill" style="width:${pct}%"></div></div><span class="onboard-step-label">Step ${current} of ${total}</span></div>`;
+}
+
+function onboardBack() {
+  if (state.onboardStep > 1) {
+    state.onboardStep--;
+    renderOnboard();
+  } else {
+    location.hash = "#/";
+  }
+}
+
+function onboardNext(data) {
+  Object.assign(state.onboardData, data);
+  state.onboardStep = (state.onboardStep || 1) + 1;
+  renderOnboard();
+}
+
+function onboardFinish(data) {
+  Object.assign(state.onboardData, data);
+}
+
+function onboardCard(content) {
+  return authShell(`
+    <div class="auth-card">
+      ${content}
+    </div>`);
+}
+
+/* Screen 1 — Welcome */
+function onboardStep1() {
+  state.onboardData = {};
+  app.innerHTML = onboardCard(`
+    <div class="onboard-welcome">
+      <div class="onboard-welcome-brand">
+        <span class="auth-logo">${icon("grad")}</span>
+        <span class="auth-name"><span class="n-course">Course</span> <span class="n-lib">Library</span></span>
+      </div>
+      <h1>Welcome to Course Library</h1>
+      <p class="muted">Your university. Your courses. Everything you need to learn.</p>
+      <div class="onboard-cards">
+        <button class="onboard-card" data-role="student">
+          <div class="onboard-ico">${icon("book")}</div>
+          <h3>I'm a Student</h3>
+          <p class="muted small">Find courses, access materials, and keep learning.</p>
+        </button>
+        <button class="onboard-card" data-role="lecturer">
+          <div class="onboard-ico">${icon("grad")}</div>
+          <h3>Lecturer / Admin</h3>
+          <p class="muted small">Manage courses, materials, and announcements.</p>
+        </button>
+      </div>
+    </div>
+    <p class="auth-switch">Already have an account? <a href="#/login">Log in</a></p>
+  `);
+  document.querySelectorAll(".onboard-card").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const role = btn.dataset.role;
+      if (role === "student") {
+        state.onboardData = { role: "student" };
+        state.onboardStep = 2;
+        renderOnboard();
+      } else {
+        location.hash = "#/register?role=lecturer";
+      }
+    });
+  });
+}
+
+/* Screen 2 — Create Student Account */
+function onboardStep2() {
+  app.innerHTML = onboardCard(`
+    ${onboardProgress(1, 4)}
+    <button class="onboard-back-btn" id="onboard-back">${icon("chevronLeft")} Back</button>
+    <h1>Create your student account</h1>
+    <p class="muted">Create an account to build your personalized Course Library.</p>
+    <label>Email <input id="ob-email" type="email" placeholder="you@example.com" /></label>
+    <label>Nickname (optional) <input id="ob-user" placeholder="shown to classmates" /></label>
+    <label>Password <div class="input-wrap"><input id="ob-pass" type="password" /><button type="button" class="pass-toggle" id="ob-pass-toggle">${icon("eye")}</button></div></label>
+    <label>Confirm Password <div class="input-wrap"><input id="ob-pass2" type="password" /><button type="button" class="pass-toggle" id="ob-pass2-toggle">${icon("eye")}</button></div></label>
+    <div class="opt-fields">
+      <p class="muted small">Optional recovery info — helps you reset your password if you forget it.</p>
+      <label>Recovery question <input id="ob-q" placeholder="e.g. What city were you born in?" /></label>
+      <label>Answer <input id="ob-a" placeholder="your answer" /></label>
+    </div>
+    <p class="error" id="ob-error"></p>
+    <button class="btn btn-primary btn-block btn-lg" id="ob-next">Continue</button>
+    <p class="auth-switch">Already have an account? <a href="#/login">Log in</a></p>
+  `);
+  document.getElementById("onboard-back").addEventListener("click", onboardBack);
+  setupPassToggle("ob-pass", "ob-pass-toggle");
+  setupPassToggle("ob-pass2", "ob-pass2-toggle");
+  document.getElementById("ob-next").addEventListener("click", () => {
+    const email = document.getElementById("ob-email").value.trim();
+    const pw = document.getElementById("ob-pass").value;
+    const pw2 = document.getElementById("ob-pass2").value;
+    const errEl = document.getElementById("ob-error");
+    errEl.textContent = "";
+    if (!email) return (errEl.textContent = "Email is required");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !/^[^\s@]+$/.test(email)) return (errEl.textContent = "Please enter a valid email or username");
+    if (pw !== pw2) return (errEl.textContent = "Passwords do not match");
+    if (pw.length < 8) return (errEl.textContent = "Password must be at least 8 characters");
+    if (!/[a-zA-Z]/.test(pw)) return (errEl.textContent = "Password must contain at least one letter");
+    if (!/[0-9]/.test(pw)) return (errEl.textContent = "Password must contain at least one number");
+    onboardNext({
+      email,
+      username: document.getElementById("ob-user").value,
+      password: pw,
+      securityQuestion: document.getElementById("ob-q").value,
+      securityAnswer: document.getElementById("ob-a").value
+    });
+  });
+}
+
+/* Screen 3 — Select University */
+async function onboardStep3() {
+  app.innerHTML = onboardCard(`
+    ${onboardProgress(2, 4)}
+    <button class="onboard-back-btn" id="onboard-back">${icon("chevronLeft")} Back</button>
+    <h1>Where do you study?</h1>
+    <p class="muted">Select your university to personalize your Course Library.</p>
+    <div class="onboard-search-wrap">
+      <input id="ob-school-search" type="text" placeholder="Search your university..." class="onboard-search" />
+    </div>
+    <div class="onboard-school-list" id="ob-schools">
+      <div class="onboard-loading">Loading universities...</div>
+    </div>
+    <p class="muted small onboard-cant-find" id="ob-cant-find">Can't find your university? <button class="link-btn" id="ob-request-uni">Request your university</button></p>
+    <div id="ob-request-form" style="display:none">
+      <label>University name <input id="ob-req-name" placeholder="e.g. University of Lagos" /></label>
+      <label>Your email (optional) <input id="ob-req-email" type="email" placeholder="so we can notify you" /></label>
+      <button class="btn btn-primary btn-block" id="ob-req-submit">Submit request</button>
+      <p class="muted small" id="ob-req-msg"></p>
+    </div>
+  `);
+  document.getElementById("onboard-back").addEventListener("click", onboardBack);
+  let schoolsData = [];
+  try {
+    const d = await api("/api/schools");
+    schoolsData = d.schools || [];
+  } catch {}
+  const listEl = document.getElementById("ob-schools");
+  const savedUni = state.onboardData.university || "";
+  function renderSchools(filter) {
+    const q = (filter || "").toLowerCase();
+    const filtered = q ? schoolsData.filter((s) => s.name.toLowerCase().includes(q)) : schoolsData;
+    if (!filtered.length) {
+      listEl.innerHTML = `<div class="onboard-empty">No universities found</div>`;
+      return;
+    }
+    listEl.innerHTML = filtered.map((s) =>
+      `<button class="onboard-school-item${s.id === savedUni ? " selected" : ""}" data-id="${s.id}">${s.name}</button>`
+    ).join("");
+    listEl.querySelectorAll(".onboard-school-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        listEl.querySelectorAll(".onboard-school-item").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        onboardNext({ university: btn.dataset.id, universityName: btn.textContent });
+      });
+    });
+  }
+  renderSchools("");
+  document.getElementById("ob-school-search").addEventListener("input", (e) => renderSchools(e.target.value));
+  document.getElementById("ob-request-uni").addEventListener("click", () => {
+    document.getElementById("ob-request-form").style.display = "block";
+    document.getElementById("ob-cant-find").style.display = "none";
+  });
+  document.getElementById("ob-req-submit").addEventListener("click", async () => {
+    const name = document.getElementById("ob-req-name").value.trim();
+    const email = document.getElementById("ob-req-email").value.trim();
+    const msg = document.getElementById("ob-req-msg");
+    if (!name) return (msg.textContent = "Please enter a university name");
+    try {
+      await api("/api/university-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email })
+      });
+      msg.textContent = "Request submitted! We'll add it soon.";
+      msg.style.color = "var(--success)";
+    } catch (err) {
+      msg.textContent = err.message || "Request submitted!";
+      msg.style.color = "var(--success)";
+    }
+  });
+}
+
+/* Screen 4 — Academic Profile */
+async function onboardStep4() {
+  app.innerHTML = onboardCard(`
+    ${onboardProgress(3, 4)}
+    <button class="onboard-back-btn" id="onboard-back">${icon("chevronLeft")} Back</button>
+    <h1>What do you study?</h1>
+    <p class="muted">Tell us about your programme to find the right courses.</p>
+    <label>Faculty / School
+      <select id="ob-faculty"><option value="">Select faculty</option></select>
+    </label>
+    <label>Department
+      <select id="ob-dept" disabled><option value="">Select faculty first</option></select>
+    </label>
+    <label>Current Level
+      <select id="ob-level"><option value="">Select level</option><option value="100">100 Level</option><option value="200">200 Level</option><option value="300">300 Level</option><option value="400">400 Level</option><option value="500">500 Level</option><option value="600">600 Level</option></select>
+    </label>
+    <label>Matric number (optional) <input id="ob-matric" placeholder="e.g. UNILAG/2024/001" /></label>
+    <p class="error" id="ob-error"></p>
+    <button class="btn btn-primary btn-block btn-lg" id="ob-next">Continue</button>
+  `);
+  document.getElementById("onboard-back").addEventListener("click", onboardBack);
+  let schoolsData = [];
+  try {
+    const d = await api("/api/schools");
+    schoolsData = d.schools || [];
+  } catch {}
+  const school = schoolsData.find((s) => s.id === state.onboardData.university);
+  const facSel = document.getElementById("ob-faculty");
+  const deptSel = document.getElementById("ob-dept");
+  const levelSel = document.getElementById("ob-level");
+  if (school) {
+    school.faculties.forEach((f) => {
+      const opt = document.createElement("option");
+      opt.value = f.name;
+      opt.textContent = f.name;
+      facSel.appendChild(opt);
+    });
+  }
+  facSel.addEventListener("change", () => {
+    deptSel.innerHTML = '<option value="">Select department</option>';
+    const fac = school && school.faculties.find((f) => f.name === facSel.value);
+    if (!fac) { deptSel.disabled = true; return; }
+    deptSel.disabled = false;
+    fac.departments.forEach((d) => {
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.textContent = d;
+      deptSel.appendChild(opt);
+    });
+  });
+  document.getElementById("ob-next").addEventListener("click", () => {
+    const errEl = document.getElementById("ob-error");
+    errEl.textContent = "";
+    if (!facSel.value) return (errEl.textContent = "Please select your faculty");
+    if (!deptSel.value) return (errEl.textContent = "Please select your department");
+    if (!levelSel.value) return (errEl.textContent = "Please select your level");
+    const fac = school && school.faculties.find((f) => f.name === facSel.value);
+    onboardNext({
+      faculty: facSel.value,
+      department: deptSel.value,
+      level: levelSel.value,
+      matricNumber: document.getElementById("ob-matric").value,
+      studentType: fac ? fac.type : ""
+    });
+  });
+}
+
+/* Screen 5 — Course Discovery */
+function onboardStep5() {
+  const demoCourses = generateDemoCourses();
+  state.onboardData.selectedCourses = demoCourses.map((c) => c.code);
+  app.innerHTML = onboardCard(`
+    ${onboardProgress(4, 4)}
+    <button class="onboard-back-btn" id="onboard-back">${icon("chevronLeft")} Back</button>
+    <h1>We found your courses 🎉</h1>
+    <p class="muted">These are the courses available for your programme and level.</p>
+    <div class="onboard-course-list" id="ob-courses">
+      ${demoCourses.map((c) => `
+        <label class="onboard-course-item">
+          <input type="checkbox" value="${c.code}" checked class="ob-course-check" />
+          <div class="onboard-course-info">
+            <span class="onboard-course-code">${c.code}</span>
+            <span class="onboard-course-title">${c.title}</span>
+          </div>
+        </label>
+      `).join("")}
+    </div>
+    <div class="onboard-course-actions">
+      <button class="btn btn-ghost btn-block" id="ob-select-all">Select All</button>
+    </div>
+    <button class="btn btn-primary btn-block btn-lg" id="ob-next">Continue to Course Library</button>
+  `);
+  document.getElementById("onboard-back").addEventListener("click", onboardBack);
+  document.getElementById("ob-select-all").addEventListener("click", () => {
+    const checks = document.querySelectorAll(".ob-course-check");
+    const allChecked = Array.from(checks).every((c) => c.checked);
+    checks.forEach((c) => (c.checked = !allChecked));
+    document.getElementById("ob-select-all").textContent = allChecked ? "Select All" : "Deselect All";
+  });
+  document.getElementById("ob-next").addEventListener("click", () => {
+    const selected = Array.from(document.querySelectorAll(".ob-course-check:checked")).map((c) => c.value);
+    state.onboardData.selectedCourses = selected;
+    state.onboardStep = 6;
+    renderOnboard();
+  });
+}
+
+function generateDemoCourses() {
+  const dept = state.onboardData.department || "";
+  const level = state.onboardData.level || "100";
+  const prefix = level.charAt(0);
+  const baseCourses = [
+    { code: `GST${prefix}01`, title: "Communication in English" },
+    { code: `GST${prefix}02`, title: "Nigerian Peoples and Culture" },
+    { code: `CSC${prefix}01`, title: "Introduction to Computer Science" },
+    { code: `CSC${prefix}02`, title: "Computer Programming I" },
+    { code: `MTH${prefix}01`, title: "Elementary Mathematics I" },
+    { code: `PHY${prefix}01`, title: "General Physics I" },
+    { code: `CHM${prefix}01`, title: "General Chemistry I" },
+    { code: `BIO${prefix}01`, title: "General Biology I" },
+    { code: `STA${prefix}01`, title: "Introduction to Statistics" },
+    { code: `ECN${prefix}01`, title: "Principles of Economics" }
+  ];
+  if (dept.toLowerCase().includes("computer")) {
+    return baseCourses.filter((c) => c.code.startsWith("CSC") || c.code.startsWith("GST") || c.code.startsWith("MTH"));
+  }
+  return baseCourses.slice(0, 6);
+}
+
+/* Screen 6 — Complete */
+function onboardStep6() {
+  const data = state.onboardData;
+  app.innerHTML = onboardCard(`
+    <div class="onboard-complete">
+      <div class="onboard-complete-icon">${icon("check")}</div>
+      <h1>You're all set!</h1>
+      <p class="muted">Welcome to Course Library. Your academic space is ready.</p>
+      <div class="onboard-summary">
+        <div class="onboard-summary-row"><span class="muted">University</span><strong>${esc(data.universityName || "")}</strong></div>
+        <div class="onboard-summary-row"><span class="muted">Faculty</span><strong>${esc(data.faculty || "")}</strong></div>
+        <div class="onboard-summary-row"><span class="muted">Department</span><strong>${esc(data.department || "")}</strong></div>
+        <div class="onboard-summary-row"><span class="muted">Level</span><strong>${esc(data.level || "")} Level</strong></div>
+        <div class="onboard-summary-row"><span class="muted">Courses</span><strong>${(data.selectedCourses || []).length} selected</strong></div>
+      </div>
+      <button class="btn btn-primary btn-block btn-lg" id="ob-finish">Continue to Course Library</button>
+    </div>
+  `);
+  document.getElementById("ob-finish").addEventListener("click", async () => {
+    const btn = document.getElementById("ob-finish");
+    const done = btnLoading(btn, "Setting up");
+    try {
+      const d = await api("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          username: data.username,
+          password: data.password,
+          school: data.university,
+          faculty: data.faculty,
+          department: data.department,
+          level: data.level,
+          matricNumber: data.matricNumber || "",
+          studentType: data.studentType || "",
+          securityQuestion: data.securityQuestion || "",
+          securityAnswer: data.securityAnswer || ""
+        })
+      });
+      storeAuth(d);
+      state.onboardStep = 1;
+      state.onboardData = {};
+      showToast(d.message || "Welcome to Course Library!");
+      location.hash = "#/";
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      done();
+    }
+  });
+}
+
+function setupPassToggle(inputId, toggleId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(toggleId);
+  if (!input || !btn) return;
+  btn.addEventListener("click", () => {
+    const isPass = input.type === "password";
+    input.type = isPass ? "text" : "password";
+    btn.innerHTML = isPass ? icon("eyeOff") : icon("eye");
+  });
 }
 
 function renderRegister() {
   if (state.user) return (location.hash = "#/");
   const params = new URLSearchParams(location.hash.split("?")[1] || "");
   const roleParam = params.get("role") || "student";
-  const isStudent = roleParam === "student";
-
-  if (isStudent) {
-    app.innerHTML = authShell(`
-      <form class="auth-card" id="reg-form">
-        <h1>Create student account</h1>
-        <p class="muted">Sign up with your email to access course materials.</p>
-        <label>Email <input id="reg-email" type="email" placeholder="you@university.edu.ng" /></label>
-        <label>Nickname (optional) <input id="reg-user" placeholder="shown to classmates" /></label>
-        <label>Password <input id="reg-pass" type="password" /></label>
-        <label>Confirm password <input id="reg-pass2" type="password" /></label>
-        <div class="reg-section-divider"></div>
-        <p class="reg-section-title">Academic Details</p>
-        <label>School
-          <select id="reg-school"><option value="">Select your school</option></select>
-        </label>
-        <label>Faculty
-          <select id="reg-faculty" disabled><option value="">Select school first</option></select>
-        </label>
-        <label>Department
-          <select id="reg-dept" disabled><option value="">Select faculty first</option></select>
-        </label>
-        <label>Current Level
-          <select id="reg-level"><option value="">Select level</option><option value="100">100 Level</option><option value="200">200 Level</option><option value="300">300 Level</option><option value="400">400 Level</option><option value="500">500 Level</option></select>
-        </label>
-        <label>Matric number (optional) <input id="reg-matric" placeholder="e.g. UNILAG/2024/001" /></label>
-        <div class="opt-fields">
-          <p class="muted small">Optional recovery info — lets you reset your password if you forget it.</p>
-          <label>Recovery question <input id="reg-q" placeholder="e.g. What city were you born in?" /></label>
-          <label>Answer <input id="reg-a" placeholder="your answer" /></label>
-        </div>
-        <p class="error" id="reg-error"></p>
-        <button class="btn btn-primary btn-block btn-lg" type="submit">Sign up</button>
-        <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
-      </form>`);
-    initStudentRegForm();
-  } else {
-    app.innerHTML = authShell(`
-      <form class="auth-card" id="reg-form">
-        <h1>Create lecturer/admin account</h1>
-        <p class="muted">Enter the admin invite code to join as an administrator.</p>
-        <label>Email <input id="reg-email" type="email" placeholder="you@university.edu.ng" /></label>
-        <label>Nickname (optional) <input id="reg-user" placeholder="shown to colleagues" /></label>
-        <label>Password <input id="reg-pass" type="password" /></label>
-        <label>Confirm password <input id="reg-pass2" type="password" /></label>
-        <label>Admin invite code <input id="reg-invite" placeholder="enter invite code" /></label>
-        <div class="opt-fields">
-          <p class="muted small">Optional recovery info — lets you reset your password if you forget it.</p>
-          <label>Recovery question <input id="reg-q" placeholder="e.g. What city were you born in?" /></label>
-          <label>Answer <input id="reg-a" placeholder="your answer" /></label>
-        </div>
-        <p class="error" id="reg-error"></p>
-        <button class="btn btn-primary btn-block btn-lg" type="submit">Sign up</button>
-        <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
-      </form>`);
-    initLecturerRegForm();
+  if (roleParam === "student") {
+    state.onboardStep = 1;
+    return renderOnboard();
   }
+  app.innerHTML = authShell(`
+    <form class="auth-card" id="reg-form">
+      <h1>Create lecturer/admin account</h1>
+      <p class="muted">Enter the admin invite code to join as an administrator.</p>
+      <label>Email <input id="reg-email" type="email" placeholder="you@university.edu.ng" /></label>
+      <label>Nickname (optional) <input id="reg-user" placeholder="shown to colleagues" /></label>
+      <label>Password <div class="input-wrap"><input id="reg-pass" type="password" /><button type="button" class="pass-toggle" id="reg-pass-toggle">${icon("eye")}</button></div></label>
+      <label>Confirm password <div class="input-wrap"><input id="reg-pass2" type="password" /><button type="button" class="pass-toggle" id="reg-pass2-toggle">${icon("eye")}</button></div></label>
+      <label>Admin invite code <input id="reg-invite" placeholder="enter invite code" /></label>
+      <div class="opt-fields">
+        <p class="muted small">Optional recovery info — lets you reset your password if you forget it.</p>
+        <label>Recovery question <input id="reg-q" placeholder="e.g. What city were you born in?" /></label>
+        <label>Answer <input id="reg-a" placeholder="your answer" /></label>
+      </div>
+      <p class="error" id="reg-error"></p>
+      <button class="btn btn-primary btn-block btn-lg" type="submit">Sign up</button>
+      <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
+    </form>`);
+  initLecturerRegForm();
+  setupPassToggle("reg-pass", "reg-pass-toggle");
+  setupPassToggle("reg-pass2", "reg-pass2-toggle");
 }
 
 async function initStudentRegForm() {
