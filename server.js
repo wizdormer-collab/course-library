@@ -336,6 +336,18 @@ function fileInfo(f, user) {
     info.liked = (f.likedBy || []).includes(user.id);
   }
   info.likes = (f.likedBy || []).length;
+  if (f.ratings && f.ratings.length) {
+    info.avgRating = Math.round((f.ratings.reduce((s, r) => s + r.score, 0) / f.ratings.length) * 10) / 10;
+    info.ratingCount = f.ratings.length;
+    if (user) {
+      const my = f.ratings.find((r) => r.userId === user.id);
+      info.myRating = my ? my.score : 0;
+    }
+  } else {
+    info.avgRating = 0;
+    info.ratingCount = 0;
+    if (user) info.myRating = 0;
+  }
   return info;
 }
 
@@ -460,7 +472,7 @@ routes.push({
     send(res, 201, {
       message: "Account created successfully.",
       token: signToken(user),
-      user: publicUser(user)
+      user: { ...publicUser(user), lastViewed: {} }
     });
   }
 });
@@ -480,7 +492,7 @@ routes.push({
     if (!user || !verifyPassword(body.password || "", user.hash)) {
       return send(res, 401, { error: "Invalid email or password" });
     }
-    send(res, 200, { token: signToken(user), user: publicUser(user) });
+    send(res, 200, { token: signToken(user), user: { ...publicUser(user), lastViewed: user.lastViewed || {} } });
   }
 });
 
@@ -506,7 +518,7 @@ routes.push({
     user.verified = true;
     delete user.verification;
     saveDb();
-    send(res, 200, { token: signToken(user), user: publicUser(user) });
+    send(res, 200, { token: signToken(user), user: { ...publicUser(user), lastViewed: user.lastViewed || {} } });
   }
 });
 
@@ -536,7 +548,7 @@ routes.push({
   handler: (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    send(res, 200, { user: { ...publicUser(user), hasSecurityQuestion: !!user.securityQuestion } });
+    send(res, 200, { user: { ...publicUser(user), hasSecurityQuestion: !!user.securityQuestion, lastViewed: user.lastViewed || {}, themeSchedule: user.themeSchedule || { enabled: false, darkStart: "20:00", darkEnd: "07:00" } } });
   }
 });
 
@@ -608,6 +620,22 @@ routes.push({
     user.username = username;
     saveDb();
     send(res, 200, { ok: true, user: publicUser(user) });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/auth/theme-schedule",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    user.themeSchedule = {
+      enabled: !!body.enabled,
+      darkStart: String(body.darkStart || "20:00"),
+      darkEnd: String(body.darkEnd || "07:00")
+    };
+    saveDb();
+    send(res, 200, { ok: true, themeSchedule: user.themeSchedule });
   }
 });
 
@@ -1015,6 +1043,8 @@ function servePdf(req, res, params, mode) {
     trackActivity(ctx.f, "download");
   }
   if (mode === "inline") trackActivity(ctx.f, "view");
+  if (!ctx.user.lastViewed) ctx.user.lastViewed = {};
+  ctx.user.lastViewed[ctx.f.id] = new Date().toISOString();
   saveDb();
   const disposition =
     mode === "download"
@@ -1055,12 +1085,35 @@ routes.push({
   handler: async (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    if (user.role !== "admin") return send(res, 403, { error: "Admins only" });
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
     const ids = Array.isArray(body.fileIds) ? body.fileIds : [];
     const action = body.action;
     if (!ids.length) return send(res, 400, { error: "No files selected" });
-    if (action !== "approve" && action !== "reject") return send(res, 400, { error: "Action must be approve or reject" });
+    const validActions = ["approve", "reject", "download", "delete"];
+    if (!validActions.includes(action)) return send(res, 400, { error: "Action must be " + validActions.join(" or ") });
+    if ((action === "approve" || action === "reject") && user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    if (action === "delete" && user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    if (action === "download") {
+      const files = ids.map((id) => db.files.find((x) => x.id === id)).filter(Boolean);
+      if (!files.length) return send(res, 404, { error: "No matching files" });
+      const entries = [];
+      for (const f of files) {
+        const fp = path.join(UPLOAD_DIR, f.storedName);
+        try {
+          const data = fs.readFileSync(fp);
+          entries.push({ name: (f.originalName || f.name || f.id) + ".pdf", data });
+        } catch {}
+      }
+      if (!entries.length) return send(res, 404, { error: "No files found on disk" });
+      const zipData = buildZip(entries);
+      for (const f of files) {
+        f.downloads = (f.downloads || 0) + 1;
+        trackActivity(f, "download");
+      }
+      saveDb();
+      send(res, 200, zipData, "application/zip", { "Content-Disposition": "attachment; filename=\"files.zip\"" });
+      return;
+    }
     let count = 0;
     for (const id of ids) {
       const idx = db.files.findIndex((x) => x.id === id);
@@ -1078,10 +1131,15 @@ routes.push({
             if (savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`);
           }
         }
-      } else {
+      } else if (action === "reject") {
         db.files.splice(idx, 1);
         count++;
         notify(f.uploadedBy, `Your file "${f.name}" was rejected by an admin.`);
+        fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
+        if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
+      } else if (action === "delete") {
+        db.files.splice(idx, 1);
+        count++;
         fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
         if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
       }
@@ -1300,6 +1358,40 @@ routes.push({
     if (f.likedBy) f.likedBy = f.likedBy.filter((id) => id !== user.id);
     saveDb();
     ok(res, { likes: (f.likedBy || []).length, liked: false });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/files/:id/rating",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f || !canSeeFile(f, user)) return send(res, 404, { error: "File not found" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    const score = Math.round(Number(body.score) || 0);
+    if (score < 1 || score > 5) return send(res, 400, { error: "Rating must be 1-5" });
+    if (!f.ratings) f.ratings = [];
+    const existing = f.ratings.find((r) => r.userId === user.id);
+    if (existing) existing.score = score;
+    else f.ratings.push({ userId: user.id, score });
+    const avg = f.ratings.reduce((s, r) => s + r.score, 0) / f.ratings.length;
+    saveDb();
+    ok(res, { avgRating: Math.round(avg * 10) / 10, ratingCount: f.ratings.length, myRating: score });
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/files/:id/rating",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f) return send(res, 404, { error: "File not found" });
+    if (f.ratings) f.ratings = f.ratings.filter((r) => r.userId !== user.id);
+    const avg = f.ratings && f.ratings.length ? f.ratings.reduce((s, r) => s + r.score, 0) / f.ratings.length : 0;
+    saveDb();
+    ok(res, { avgRating: Math.round(avg * 10) / 10, ratingCount: (f.ratings || []).length, myRating: 0 });
   }
 });
 

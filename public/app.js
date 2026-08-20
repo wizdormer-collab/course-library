@@ -5,13 +5,40 @@ const state = {
   user: null,
   toast: "",
   courses: [],
-  theme: localStorage.getItem("theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+  theme: localStorage.getItem("theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
+  themeSchedule: null
 };
 
 function applyTheme() {
   document.documentElement.dataset.theme = state.theme;
 }
 applyTheme();
+
+function applyThemeSchedule() {
+  const sched = state.themeSchedule;
+  if (!sched || !sched.enabled || !sched.darkStart || !sched.darkEnd) return;
+  const now = new Date();
+  const [sh, sm] = sched.darkStart.split(":").map(Number);
+  const [eh, em] = sched.darkEnd.split(":").map(Number);
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const startMins = sh * 60 + sm;
+  const endMins = eh * 60 + em;
+  let shouldBeDark;
+  if (startMins <= endMins) {
+    shouldBeDark = mins >= startMins && mins < endMins;
+  } else {
+    shouldBeDark = mins >= startMins || mins < endMins;
+  }
+  const newTheme = shouldBeDark ? "dark" : "light";
+  if (state.theme !== newTheme) {
+    state.theme = newTheme;
+    localStorage.setItem("theme", state.theme);
+    applyTheme();
+    renderNav();
+  }
+}
+
+setInterval(applyThemeSchedule, 60000);
 
 function token() {
   return localStorage.getItem("token");
@@ -171,7 +198,8 @@ function fileRow(f, opts = {}) {
     ? `<div class="file-tags">${f.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>`
     : "";
   return `
-    <div class="file-row">
+    <div class="file-row" data-fid="${f.id}">
+      ${opts.showCheckboxes ? `<label class="file-check"><input type="checkbox" data-bulk-check="${f.id}" /></label>` : ""}
       <span class="file-icon">${icon("pdf")}</span>
       <div class="file-info">
         <button class="file-name" data-preview="${f.id}">${esc(f.name)}</button>
@@ -191,6 +219,10 @@ function fileRow(f, opts = {}) {
       </div>
       <div class="file-actions">
         <button class="icon-btn heart ${f.liked ? "on" : ""}" data-like="${f.id}" title="Like">${icon("heart")} <span class="like-count">${f.likes || 0}</span></button>
+        <div class="star-rating" data-rate-file="${f.id}">
+          ${[1,2,3,4,5].map(n => `<button class="star ${(f.myRating || 0) >= n ? "on" : ""}" data-star="${n}" title="${n} star${n > 1 ? "s" : ""}">&#9733;</button>`).join("")}
+          ${f.ratingCount ? `<span class="rating-info">${f.avgRating} (${f.ratingCount})</span>` : ""}
+        </div>
         <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save for later">${icon("star")}</button>
         <button class="icon-btn" data-collect="${f.id}" title="Add to collection">${icon("folder")}</button>
         ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-edit-tags="${f.id}" data-etags="${esc(JSON.stringify(f.tags || []))}" title="Edit tags">${icon("tag")}</button>` : ""}
@@ -199,6 +231,62 @@ function fileRow(f, opts = {}) {
         ${isAdmin ? `<button class="btn btn-danger btn-sm" data-del="${f.id}">${icon("trash")} Delete</button>` : ""}
       </div>
     </div>`;
+}
+
+function bulkActionBarHTML() {
+  return `
+    <div class="bulk-bar hidden" id="bulk-bar">
+      <label class="bulk-select-all"><input type="checkbox" id="bulk-select-all" /> Select all</label>
+      <span class="bulk-count" id="bulk-count">0 selected</span>
+      <div class="bulk-actions">
+        <button class="btn btn-outline btn-sm" id="bulk-download">${icon("download")} Download</button>
+        ${state.user && state.user.role === "admin" ? `<button class="btn btn-danger btn-sm" id="bulk-delete">${icon("trash")} Delete</button>` : ""}
+      </div>
+    </div>`;
+}
+
+function bindBulkActions() {
+  const bar = document.getElementById("bulk-bar");
+  const countEl = document.getElementById("bulk-count");
+  const selectAll = document.getElementById("bulk-select-all");
+  if (!bar) return;
+  const checkboxes = document.querySelectorAll("[data-bulk-check]");
+  function updateBar() {
+    const checked = document.querySelectorAll("[data-bulk-check]:checked");
+    if (checked.length > 0) {
+      bar.classList.remove("hidden");
+      countEl.textContent = checked.length + " selected";
+    } else {
+      bar.classList.add("hidden");
+    }
+    if (selectAll) selectAll.checked = checked.length === checkboxes.length && checkboxes.length > 0;
+  }
+  checkboxes.forEach((cb) => cb.addEventListener("change", updateBar));
+  if (selectAll) selectAll.addEventListener("change", () => {
+    checkboxes.forEach((cb) => { cb.checked = selectAll.checked; });
+    updateBar();
+  });
+  const dlBtn = document.getElementById("bulk-download");
+  if (dlBtn) dlBtn.addEventListener("click", async () => {
+    const ids = [...document.querySelectorAll("[data-bulk-check]:checked")].map((cb) => cb.dataset.bulkCheck);
+    if (!ids.length) return;
+    try {
+      const blob = await fetchBlob("/api/files/bulk-action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileIds: ids, action: "download" }) });
+      triggerDownload(blob, "files.zip");
+      showToast("Downloaded " + ids.length + " files");
+    } catch (err) { alert(err.message); }
+  });
+  const delBtn = document.getElementById("bulk-delete");
+  if (delBtn) delBtn.addEventListener("click", async () => {
+    const ids = [...document.querySelectorAll("[data-bulk-check]:checked")].map((cb) => cb.dataset.bulkCheck);
+    if (!ids.length) return;
+    if (!confirm("Delete " + ids.length + " files permanently?")) return;
+    try {
+      const d = await api("/api/files/bulk-action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileIds: ids, action: "delete" }) });
+      showToast("Deleted " + d.count + " files");
+      render();
+    } catch (err) { alert(err.message); }
+  });
 }
 
 function emptyState(iconName, title, description, ctaHtml) {
@@ -295,6 +383,33 @@ async function bindRowActions({ showCourse = false, counts = false } = {}) {
         alert(err.message);
       }
     }));
+  document.querySelectorAll("[data-rate-file]").forEach((wrap) => {
+    wrap.addEventListener("click", async (e) => {
+      const star = e.target.closest("[data-star]");
+      if (!star || !state.user) return;
+      const fid = wrap.dataset.rateFile;
+      const score = parseInt(star.dataset.star);
+      try {
+        const current = star.classList.contains("on") && wrap.querySelectorAll(".star.on").length === score;
+        if (current) {
+          await api("/api/files/" + fid + "/rating", { method: "DELETE" });
+        } else {
+          await api("/api/files/" + fid + "/rating", { method: "POST", body: { score } });
+        }
+        const stars = wrap.querySelectorAll(".star");
+        stars.forEach((s, i) => s.classList.toggle("on", !current && i < score));
+        let infoEl = wrap.querySelector(".rating-info");
+        if (current) {
+          if (infoEl) infoEl.remove();
+        } else {
+          if (!infoEl) { infoEl = document.createElement("span"); infoEl.className = "rating-info"; wrap.appendChild(infoEl); }
+          infoEl.textContent = "Rated!";
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  });
   document.querySelectorAll("[data-download]").forEach((btn) =>
     btn.addEventListener("click", async () => {
       try {
@@ -895,6 +1010,16 @@ async function renderSettings() {
         ${state.user.role === "admin" ? '<p class="muted small"><a href="#/admin" class="view-all">Open admin panel</a></p>' : ""}
         <button class="btn btn-danger" id="settings-logout">${icon("logout")} Log out</button>
       </div>
+      <div class="card">
+        <h3>Dark mode schedule</h3>
+        <p class="muted small">Automatically switch between light and dark mode at set times.</p>
+        <form id="theme-schedule-form" class="stack">
+          <label class="inline-label"><input type="checkbox" id="ts-enabled" ${state.themeSchedule?.enabled ? "checked" : ""} /> Enable schedule</label>
+          <label>Dark mode starts at <input type="time" id="ts-dark-start" value="${state.themeSchedule?.darkStart || '20:00'}" /></label>
+          <label>Light mode starts at <input type="time" id="ts-dark-end" value="${state.themeSchedule?.darkEnd || '07:00'}" /></label>
+          <button class="btn btn-primary">Save schedule</button>
+        </form>
+      </div>
     </div>`);
 
   document.getElementById("pw-form").addEventListener("submit", async (e) => {
@@ -961,6 +1086,27 @@ async function renderSettings() {
     }
   });
 
+  document.getElementById("theme-schedule-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const d = await api("/api/auth/theme-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: document.getElementById("ts-enabled").checked,
+          darkStart: document.getElementById("ts-dark-start").value,
+          darkEnd: document.getElementById("ts-dark-end").value
+        })
+      });
+      state.themeSchedule = d.themeSchedule;
+      localStorage.setItem("auth", JSON.stringify(state));
+      applyThemeSchedule();
+      showToast("Theme schedule saved");
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
   const so = document.getElementById("settings-logout");
   if (so) so.addEventListener("click", () => {
     clearAuth();
@@ -1008,6 +1154,14 @@ function continueCardHTML(c, prog) {
       ${emptyState("grad", "No courses yet", "Start building your library.", '<a class="btn btn-primary" href="#/courses">Browse courses</a>')}
     </div>`;
   const p = prog || { viewed: 0, total: 0, pct: 0 };
+  const lv = state.user && state.user.lastViewed || {};
+  let lastViewedText = "";
+  let latestTime = 0;
+  for (const [fid, ts] of Object.entries(lv)) {
+    const t = new Date(ts).getTime();
+    if (t > latestTime) latestTime = t;
+  }
+  if (latestTime > 0) lastViewedText = "Last viewed " + relTime(new Date(latestTime).toISOString());
   const label = p.viewed > 0
     ? esc(c.description || "Keep going — you're making great progress.")
     : "No progress yet. Open this course to start learning.";
@@ -1023,6 +1177,7 @@ function continueCardHTML(c, prog) {
           <span class="muted small">${p.pct}% complete</span>
         </div>
         <div class="progress-bar"><div class="progress-fill" style="width:${p.pct}%"></div></div>
+        ${lastViewedText ? `<span class="muted small" style="margin-top:6px;display:block">${lastViewedText}</span>` : ""}
         <a class="btn btn-primary continue-btn" href="#/course/${c.id}">Continue &rarr;</a>
       </div>
     </div>`;
@@ -1671,9 +1826,11 @@ function tagFileModalHTML() {
         <form id="tag-file-form">
           <input type="hidden" id="tf-id" />
           <label>Tags (comma-separated)
-            <input id="tf-tags" placeholder="e.g. past-question, notes, textbook" />
+            <input id="tf-tags" placeholder="e.g. past-question, notes, textbook" autocomplete="off" />
           </label>
-          <div class="suggested-tags" id="tf-suggested"></div>
+          <div class="tag-autocomplete-wrap">
+            <div class="tag-autocomplete hidden" id="tf-suggested"></div>
+          </div>
           <p class="error" id="tf-error"></p>
           <div class="modal-actions">
             <button type="button" class="btn btn-outline" id="tf-cancel">Cancel</button>
@@ -1690,24 +1847,39 @@ async function bindTagFileModal() {
   const close = () => modal.classList.add("hidden");
   document.getElementById("tf-cancel").addEventListener("click", close);
   modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  let allTags = [];
   try {
     const { tags } = await api("/api/tags");
-    const box = document.getElementById("tf-suggested");
-    if (box && tags.length) {
-      box.innerHTML = `<span class="muted small">Suggested:</span> ` +
-        tags.map((t) => `<button type="button" class="tag tag-suggest" data-stag="${esc(t)}">${esc(t)}</button>`).join("");
-      box.querySelectorAll("[data-stag]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const inp = document.getElementById("tf-tags");
-          const current = inp.value.split(",").map((s) => s.trim()).filter(Boolean);
-          if (!current.includes(btn.dataset.stag)) {
-            current.push(btn.dataset.stag);
-            inp.value = current.join(", ");
-          }
-        });
-      });
-    }
+    allTags = tags || [];
   } catch {}
+  const inp = document.getElementById("tf-tags");
+  const acBox = document.getElementById("tf-suggested");
+  function updateAC() {
+    if (!acBox || !allTags.length) return;
+    const val = inp.value.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const current = val[val.length - 1] || "";
+    const already = new Set(val.slice(0, -1));
+    if (!current) { acBox.classList.add("hidden"); return; }
+    const matches = allTags.filter((t) => t.includes(current) && !already.has(t)).slice(0, 8);
+    if (!matches.length) { acBox.classList.add("hidden"); return; }
+    acBox.classList.remove("hidden");
+    acBox.innerHTML = matches.map((t) => `<button type="button" class="tag-ac-item" data-stag="${esc(t)}">${esc(t)}</button>`).join("");
+    acBox.querySelectorAll(".tag-ac-item").forEach((btn) => {
+      btn.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        const parts = inp.value.split(",").map((s) => s.trim());
+        parts[parts.length - 1] = btn.dataset.stag;
+        inp.value = parts.join(", ") + ", ";
+        acBox.classList.add("hidden");
+        inp.focus();
+      });
+    });
+  }
+  if (inp) {
+    inp.addEventListener("input", updateAC);
+    inp.addEventListener("focus", updateAC);
+    inp.addEventListener("blur", () => { setTimeout(() => acBox.classList.add("hidden"), 150); });
+  }
   document.getElementById("tag-file-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const id = document.getElementById("tf-id").value;
@@ -1759,7 +1931,7 @@ async function renderCourseDetail(hash) {
   const isAdmin = state.user.role === "admin";
 
   const rows = files.length
-    ? files.map((f) => fileRow(f, { counts: true })).join("")
+    ? files.map((f) => fileRow(f, { counts: true, showCheckboxes: true })).join("")
     : "";
   const baseHash = "#/course/" + id + "?sort=" + sortParam + "&order=" + orderParam;
 
@@ -1801,6 +1973,7 @@ async function renderCourseDetail(hash) {
           </select>
           <button class="icon-btn" id="sort-order-btn" title="Toggle order">${icon(orderParam === "asc" ? "chevronRight" : "chevronLeft")}</button>
         </div>
+        ${bulkActionBarHTML()}
         <div class="file-list">${rows}</div>
         ${paginationNav(pagination, baseHash)}` : emptyState("pdf", "No materials uploaded yet", "Be the first to add a resource!", '<button class="btn btn-primary btn-sm" id="upload-btn-empty">+ Upload PDF</button>')}
 
@@ -1809,19 +1982,19 @@ async function renderCourseDetail(hash) {
 
       <div class="modal-overlay hidden" id="upload-modal">
         <div class="modal">
-          <h2>Upload PDF</h2>
+          <h2>Upload PDFs</h2>
           <form id="upload-form">
             <div class="drop-zone" id="drop-zone">
               <span class="drop-icon">${icon("plus")}</span>
-              <p class="drop-text">Drag &amp; drop a PDF here, or click to browse</p>
-              <input type="file" id="up-file" accept="application/pdf" class="drop-input" />
+              <p class="drop-text">Drag &amp; drop PDFs here, or click to browse</p>
+              <input type="file" id="up-file" accept="application/pdf" class="drop-input" multiple />
             </div>
             <div class="drop-preview hidden" id="drop-preview">
               <span class="file-icon">${icon("pdf")}</span>
               <span class="drop-fname" id="drop-fname"></span>
               <button type="button" class="icon-btn" id="drop-clear">${icon("close")}</button>
             </div>
-            <label>File name (optional) <input id="up-name" placeholder="e.g. Lecture 3 - Arrays.pdf" /></label>
+            <div class="multi-upload-list hidden" id="multi-upload-list"></div>
             <div class="upload-progress hidden" id="upload-progress">
               <div class="progress-bar"><div class="progress-fill" id="upload-pbar" style="width:0%"></div></div>
               <span class="muted small" id="upload-ptxt">0%</span>
@@ -1838,6 +2011,7 @@ async function renderCourseDetail(hash) {
   if (!course) return;
 
   bindRowActions({ counts: true });
+  bindBulkActions();
   bindRenameFileModal();
   bindTagFileModal();
 
@@ -1863,51 +2037,72 @@ async function renderCourseDetail(hash) {
   document.getElementById("upload-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("up-file");
-    const f = input.files[0];
-    if (!f) return (document.getElementById("up-error").textContent = "Choose a PDF file first");
-    if (!f.type.includes("pdf") && !/\.pdf$/i.test(f.name)) {
-      return (document.getElementById("up-error").textContent = "Only PDF files are allowed");
-    }
-    const name = document.getElementById("up-name").value;
-    const buf = await f.arrayBuffer();
+    const files = [...input.files];
+    if (!files.length) return (document.getElementById("up-error").textContent = "Choose at least one PDF file");
+    const pdfs = files.filter((f) => f.type.includes("pdf") || /\.pdf$/i.test(f.name));
+    if (!pdfs.length) return (document.getElementById("up-error").textContent = "Only PDF files are allowed");
     const progress = document.getElementById("upload-progress");
     const pbar = document.getElementById("upload-pbar");
     const ptxt = document.getElementById("upload-ptxt");
     const submitBtn = document.getElementById("up-submit");
+    const multiList = document.getElementById("multi-upload-list");
     submitBtn.disabled = true;
     progress.classList.remove("hidden");
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.upload.addEventListener("progress", (ev) => {
-        if (ev.lengthComputable) {
-          const pct = Math.round((ev.loaded / ev.total) * 100);
-          pbar.style.width = pct + "%";
-          ptxt.textContent = pct + "%";
-        }
-      });
-      const d = await new Promise((resolve, reject) => {
-        xhr.onload = () => {
-          try { resolve(JSON.parse(xhr.responseText)); }
-          catch { reject(new Error("Upload failed")); }
-        };
-        xhr.onerror = () => reject(new Error("Network error"));
-        xhr.open("POST", "/api/files");
-        const t = token();
-        if (t) xhr.setRequestHeader("Authorization", "Bearer " + t);
-        xhr.setRequestHeader("Content-Type", "application/octet-stream");
-        xhr.setRequestHeader("X-File-Name", encodeURIComponent(name.trim() || f.name));
-        xhr.setRequestHeader("X-Original-Name", encodeURIComponent(f.name));
-        xhr.setRequestHeader("X-Course-Id", id);
-        xhr.send(buf);
-      });
-      if (!xhr.status || xhr.status >= 400) throw new Error(d.error || "Upload failed");
-      document.getElementById("upload-modal").classList.add("hidden");
-      showToast(d.message || "File uploaded");
-      renderCourseDetail(hash);
-    } catch (err) {
-      document.getElementById("up-error").textContent = err.message;
+    if (pdfs.length > 1 && multiList) {
+      multiList.classList.remove("hidden");
+      multiList.innerHTML = pdfs.map((f, i) => `<div class="multi-upload-item" data-mui="${i}"><span>${esc(f.name)}</span><span class="muted small multi-status">Waiting...</span></div>`).join("");
+    }
+    let successCount = 0;
+    let failCount = 0;
+    for (let i = 0; i < pdfs.length; i++) {
+      const f = pdfs[i];
+      const statusEl = multiList ? multiList.querySelector(`[data-mui="${i}"] .multi-status`) : null;
+      if (statusEl) statusEl.textContent = "Uploading...";
+      pbar.style.width = Math.round(((i) / pdfs.length) * 100) + "%";
+      ptxt.textContent = (i + 1) + "/" + pdfs.length;
+      try {
+        const buf = await f.arrayBuffer();
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.addEventListener("progress", (ev) => {
+            if (ev.lengthComputable) {
+              const filePct = Math.round((ev.loaded / ev.total) * 100);
+              const totalPct = Math.round(((i + ev.loaded / ev.total) / pdfs.length) * 100);
+              pbar.style.width = totalPct + "%";
+              ptxt.textContent = (i + 1) + "/" + pdfs.length + " (" + filePct + "%)";
+            }
+          });
+          xhr.onload = () => {
+            try { const d = JSON.parse(xhr.responseText); if (xhr.status >= 400) reject(new Error(d.error)); else resolve(d); }
+            catch { reject(new Error("Upload failed")); }
+          };
+          xhr.onerror = () => reject(new Error("Network error"));
+          xhr.open("POST", "/api/files");
+          const t = token();
+          if (t) xhr.setRequestHeader("Authorization", "Bearer " + t);
+          xhr.setRequestHeader("Content-Type", "application/octet-stream");
+          xhr.setRequestHeader("X-File-Name", encodeURIComponent(f.name));
+          xhr.setRequestHeader("X-Original-Name", encodeURIComponent(f.name));
+          xhr.setRequestHeader("X-Course-Id", id);
+          xhr.send(buf);
+        });
+        successCount++;
+        if (statusEl) { statusEl.textContent = "Done"; statusEl.style.color = "var(--success)"; }
+      } catch (err) {
+        failCount++;
+        if (statusEl) { statusEl.textContent = "Failed: " + err.message; statusEl.style.color = "var(--danger)"; }
+      }
+    }
+    pbar.style.width = "100%";
+    ptxt.textContent = successCount + " uploaded" + (failCount ? ", " + failCount + " failed" : "");
+    if (successCount > 0) {
+      showToast(successCount + " file" + (successCount > 1 ? "s" : "") + " uploaded");
+      setTimeout(() => {
+        document.getElementById("upload-modal").classList.add("hidden");
+        renderCourseDetail(hash);
+      }, 800);
+    } else {
       submitBtn.disabled = false;
-      progress.classList.add("hidden");
     }
   });
 
@@ -1925,18 +2120,22 @@ async function renderCourseDetail(hash) {
       dropZone.classList.remove("drag-over");
       if (e.dataTransfer.files.length) {
         dropFile.files = e.dataTransfer.files;
-        showDropPreview(e.dataTransfer.files[0]);
+        showDropPreview(e.dataTransfer.files);
       }
     });
     dropFile.addEventListener("change", () => {
-      if (dropFile.files.length) showDropPreview(dropFile.files[0]);
+      if (dropFile.files.length) showDropPreview(dropFile.files);
     });
   }
-  function showDropPreview(f) {
-    if (!f || !dropPreview) return;
+  function showDropPreview(files) {
+    if (!files || !dropPreview || !files.length) return;
     dropPreview.classList.remove("hidden");
     dropDropZone && dropDropZone.classList.add("hidden");
-    if (dropName) dropName.textContent = f.name + " (" + fmtSize(f.size) + ")";
+    if (dropName) {
+      const total = files.length;
+      const totalSize = [...files].reduce((s, f) => s + f.size, 0);
+      dropName.textContent = total + " file" + (total > 1 ? "s" : "") + " (" + fmtSize(totalSize) + ")";
+    }
   }
   const dropDropZone = dropZone;
   if (dropClear) dropClear.addEventListener("click", () => {
@@ -2286,9 +2485,12 @@ async function renderCollectionDetail(hash) {
 (async function init() {
   if (token()) {
     try {
-      state.user = (await api("/api/me")).user;
+      const me = await api("/api/me");
+      state.user = me.user;
+      state.themeSchedule = me.user.themeSchedule || null;
     } catch {}
   }
+  applyThemeSchedule();
   render();
 })();
 
