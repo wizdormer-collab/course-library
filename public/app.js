@@ -1226,6 +1226,7 @@ async function onboardStep4() {
   try {
     const d = await api("/api/schools");
     schoolsData = d.schools || [];
+    state.onboardData._catalog = d.courseCatalog || {};
   } catch {}
   const school = schoolsData.find((s) => s.id === state.onboardData.university);
   const facSel = document.getElementById("ob-faculty");
@@ -1272,24 +1273,36 @@ async function onboardStep4() {
 function onboardStep5() {
   const demoCourses = generateDemoCourses();
   state.onboardData.selectedCourses = demoCourses.map((c) => c.code);
-  app.innerHTML = onboardCard(`
-    ${onboardProgress(4, 4)}
-    <button class="onboard-back-btn" id="onboard-back">${icon("chevronLeft")} Back</button>
-    <h1>We found your courses 🎉</h1>
-    <p class="muted">These are the courses available for your programme and level.</p>
-    <div class="onboard-course-list" id="ob-courses">
-      ${demoCourses.map((c) => `
+  const tagLabel = { gst: "General Studies", faculty: "Faculty Courses", dept: "Departmental Courses" };
+  const grouped = {};
+  demoCourses.forEach((c) => { const g = grouped[c.tag] || []; g.push(c); grouped[c.tag] = g; });
+  let courseHtml = "";
+  ["gst", "faculty", "dept"].forEach((tag) => {
+    const items = grouped[tag];
+    if (!items || items.length === 0) return;
+    courseHtml += `<div class="onboard-course-group"><span class="onboard-course-group-label">${tagLabel[tag]}</span>`;
+    items.forEach((c) => {
+      courseHtml += `
         <label class="onboard-course-item">
           <input type="checkbox" value="${c.code}" checked class="ob-course-check" />
           <div class="onboard-course-info">
             <span class="onboard-course-code">${c.code}</span>
             <span class="onboard-course-title">${c.title}</span>
           </div>
-        </label>
-      `).join("")}
+        </label>`;
+    });
+    courseHtml += `</div>`;
+  });
+  app.innerHTML = onboardCard(`
+    ${onboardProgress(4, 4)}
+    <button class="onboard-back-btn" id="onboard-back">${icon("chevronLeft")} Back</button>
+    <h1>We found your courses</h1>
+    <p class="muted">${demoCourses.length} courses recommended for ${state.onboardData.level || ""} level. Uncheck any you don't need.</p>
+    <div class="onboard-course-list" id="ob-courses">
+      ${courseHtml}
     </div>
     <div class="onboard-course-actions">
-      <button class="btn btn-ghost btn-block" id="ob-select-all">Select All</button>
+      <button class="btn btn-ghost btn-block" id="ob-select-all">Deselect All</button>
     </div>
     <button class="btn btn-primary btn-block btn-lg" id="ob-next">Continue to Course Library</button>
   `);
@@ -1309,25 +1322,36 @@ function onboardStep5() {
 }
 
 function generateDemoCourses() {
-  const dept = state.onboardData.department || "";
+  const dept = (state.onboardData.department || "").toLowerCase();
   const level = state.onboardData.level || "100";
-  const prefix = level.charAt(0);
-  const baseCourses = [
-    { code: `GST${prefix}01`, title: "Communication in English" },
-    { code: `GST${prefix}02`, title: "Nigerian Peoples and Culture" },
-    { code: `CSC${prefix}01`, title: "Introduction to Computer Science" },
-    { code: `CSC${prefix}02`, title: "Computer Programming I" },
-    { code: `MTH${prefix}01`, title: "Elementary Mathematics I" },
-    { code: `PHY${prefix}01`, title: "General Physics I" },
-    { code: `CHM${prefix}01`, title: "General Chemistry I" },
-    { code: `BIO${prefix}01`, title: "General Biology I" },
-    { code: `STA${prefix}01`, title: "Introduction to Statistics" },
-    { code: `ECN${prefix}01`, title: "Principles of Economics" }
-  ];
-  if (dept.toLowerCase().includes("computer")) {
-    return baseCourses.filter((c) => c.code.startsWith("CSC") || c.code.startsWith("GST") || c.code.startsWith("MTH"));
+  const facultyType = state.onboardData.studentType || "science";
+  const catalog = state.onboardData._catalog || {};
+  const seen = new Set();
+  const result = [];
+  function add(arr, tag) {
+    (arr || []).forEach((c) => {
+      if (!seen.has(c.code)) { seen.add(c.code); result.push({ code: c.code, title: c.title, tag: tag }); }
+    });
   }
-  return baseCourses.slice(0, 6);
+  add(catalog.gst && catalog.gst[level], "gst");
+  add(catalog[facultyType] && catalog[facultyType][level], "faculty");
+  if (catalog.department) {
+    Object.keys(catalog.department).forEach((key) => {
+      if (dept.includes(key)) add(catalog.department[key], "dept");
+    });
+  }
+  if (result.length === 0) {
+    const prefix = level.charAt(0);
+    result.push(
+      { code: "GST" + prefix + "11", title: "Communication in English I", tag: "gst" },
+      { code: "GST" + prefix + "21", title: "Nigerian Peoples and Culture", tag: "gst" },
+      { code: "CSC" + prefix + "01", title: "Introduction to Computer Science", tag: "faculty" },
+      { code: "MTH" + prefix + "01", title: "Elementary Mathematics I", tag: "faculty" },
+      { code: "PHY" + prefix + "01", title: "General Physics I", tag: "faculty" },
+      { code: "CHM" + prefix + "01", title: "General Chemistry I", tag: "faculty" }
+    );
+  }
+  return result;
 }
 
 /* Screen 6 — Complete */

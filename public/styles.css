@@ -2725,6 +2725,20 @@ body.auth-page main {
 .onboard-page .auth-card .onboard-course-actions {
   margin-bottom: 4px;
 }
+.onboard-course-group {
+  margin-bottom: 6px;
+}
+.onboard-course-group-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+  padding: 3px 0 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 3px;
+}
 .onboard-welcome-brand {
   display: flex;
   align-items: center;

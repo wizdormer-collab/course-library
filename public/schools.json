@@ -412,5 +412,268 @@
         { "name": "Medicine and Health Sciences", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Medical Laboratory Science", "Human Anatomy", "Human Physiology"] }
       ]
     }
-  ]
+  ],
+  "courseCatalog": {
+    "gst": {
+      "100": [
+        { "code": "GST111", "title": "Communication in English I" },
+        { "code": "GST121", "title": "Nigerian Peoples and Culture" },
+        { "code": "GST122", "title": "Use of Library and Study Skills" },
+        { "code": "GST112", "title": "Logic, Philosophy and Human Existence" }
+      ],
+      "200": [
+        { "code": "GST211", "title": "Communication in English II" },
+        { "code": "GST221", "title": "Peace Studies and Humanitarianism" },
+        { "code": "GST222", "title": "Environmental Impact Assessment" }
+      ],
+      "300": [
+        { "code": "GST311", "title": "Entrepreneurship and Innovation" },
+        { "code": "GST321", "title": "Leadership and Governance" }
+      ],
+      "400": [
+        { "code": "GST411", "title": "Security Studies and Civil Defence" }
+      ]
+    },
+    "science": {
+      "100": [
+        { "code": "MTH111", "title": "Elementary Mathematics I" },
+        { "code": "PHY101", "title": "General Physics I" },
+        { "code": "CHM101", "title": "General Chemistry I" },
+        { "code": "BIO101", "title": "General Biology I" },
+        { "code": "CSC101", "title": "Introduction to Computer Science" }
+      ],
+      "200": [
+        { "code": "MTH211", "title": "Elementary Mathematics II" },
+        { "code": "PHY201", "title": "General Physics II" },
+        { "code": "CHM201", "title": "General Chemistry II" },
+        { "code": "STA201", "title": "Introduction to Statistics" },
+        { "code": "CSC201", "title": "Computer Programming I" }
+      ],
+      "300": [
+        { "code": "MTH311", "title": "Mathematical Methods I" },
+        { "code": "STA301", "title": "Statistical Methods I" },
+        { "code": "CSC301", "title": "Computer Programming II" }
+      ],
+      "400": [
+        { "code": "CSC401", "title": "Software Engineering" },
+        { "code": "CSC402", "title": "Project I" }
+      ]
+    },
+    "arts": {
+      "100": [
+        { "code": "PHL101", "title": "Introduction to Logic" },
+        { "code": "HIS101", "title": "General History of Africa" },
+        { "code": "ENG101", "title": "Reading and Composition" },
+        { "code": "REL101", "title": "Introduction to the Study of Religion" }
+      ],
+      "200": [
+        { "code": "PHL201", "title": "Introduction to Ethics" },
+        { "code": "HIS201", "title": "History of Nigeria to 1800" },
+        { "code": "ENG201", "title": "African Literature in English" },
+        { "code": "LIN201", "title": "Introduction to Linguistics" }
+      ],
+      "300": [
+        { "code": "HIS301", "title": "Nigeria Since 1800" },
+        { "code": "PHL301", "title": "African Philosophy" }
+      ],
+      "400": [
+        { "code": "HIS401", "title": "Research Methodology in History" }
+      ]
+    },
+    "commercial": {
+      "100": [
+        { "code": "ECN101", "title": "Principles of Economics I" },
+        { "code": "ACC101", "title": "Introduction to Financial Accounting" },
+        { "code": "BUS101", "title": "Introduction to Business" },
+        { "code": "MAT101", "title": "Business Mathematics" }
+      ],
+      "200": [
+        { "code": "ECN201", "title": "Principles of Economics II" },
+        { "code": "ACC201", "title": "Financial Accounting I" },
+        { "code": "BUS201", "title": "Business Communication" },
+        { "code": "BFS201", "title": "Principles of Banking and Finance" },
+        { "code": "MGT201", "title": "Principles of Management" }
+      ],
+      "300": [
+        { "code": "ECN301", "title": "Microeconomic Theory" },
+        { "code": "ACC301", "title": "Cost Accounting" },
+        { "code": "MGT301", "title": "Organisational Behaviour" }
+      ],
+      "400": [
+        { "code": "ECN401", "title": "Macroeconomic Theory" },
+        { "code": "ACC401", "title": "Auditing and Investigation" },
+        { "code": "MGT401", "title": "Strategic Management" }
+      ]
+    },
+    "engineering": {
+      "100": [
+        { "code": "MTH111", "title": "Elementary Mathematics I" },
+        { "code": "PHY101", "title": "General Physics I" },
+        { "code": "CHM101", "title": "General Chemistry I" },
+        { "code": "ENG101", "title": "Engineering Drawing I" }
+      ],
+      "200": [
+        { "code": "MTH211", "title": "Elementary Mathematics II" },
+        { "code": "PHY201", "title": "General Physics II" },
+        { "code": "ENG201", "title": "Engineering Drawing II" },
+        { "code": "CSC201", "title": "Computer Programming I" },
+        { "code": "CVE201", "title": "Engineering Mechanics I" }
+      ],
+      "300": [
+        { "code": "MTH311", "title": "Mathematical Methods I" },
+        { "code": "ENG301", "title": "Strength of Materials" },
+        { "code": "ENG302", "title": "Thermodynamics I" }
+      ],
+      "400": [
+        { "code": "ENG401", "title": "Design Project I" },
+        { "code": "ENG402", "title": "Engineering Management" }
+      ]
+    },
+    "medical": {
+      "100": [
+        { "code": "MTH111", "title": "Elementary Mathematics I" },
+        { "code": "PHY101", "title": "General Physics I" },
+        { "code": "CHM101", "title": "General Chemistry I" },
+        { "code": "BIO101", "title": "General Biology I" }
+      ],
+      "200": [
+        { "code": "CHM201", "title": "General Chemistry II" },
+        { "code": "BIO201", "title": "Human Anatomy I" },
+        { "code": "BIO202", "title": "Human Physiology I" },
+        { "code": "PHY201", "title": "General Physics II" }
+      ],
+      "300": [
+        { "code": "BIO301", "title": "Medical Biochemistry I" },
+        { "code": "BIO302", "title": "Medical Physiology II" },
+        { "code": "PHM301", "title": "Introduction to Pharmacology" }
+      ],
+      "400": [
+        { "code": "BIO401", "title": "Pathology I" },
+        { "code": "BIO402", "title": "Microbiology I" }
+      ]
+    },
+    "law": {
+      "100": [
+        { "code": "LS101", "title": "Introduction to Nigerian Legal System" },
+        { "code": "PHL101", "title": "Introduction to Logic" },
+        { "code": "ECN101", "title": "Principles of Economics I" }
+      ],
+      "200": [
+        { "code": "LS201", "title": "Legal Method and Legal Writing" },
+        { "code": "LS202", "title": "Law of Contract I" },
+        { "code": "LS203", "title": "Constitutional Law I" }
+      ],
+      "300": [
+        { "code": "LS301", "title": "Law of Contract II" },
+        { "code": "LS302", "title": "Constitutional Law II" },
+        { "code": "LS303", "title": "Criminal Law I" }
+      ],
+      "400": [
+        { "code": "LS401", "title": "Property Law I" },
+        { "code": "LS402", "title": "Commercial Law I" }
+      ]
+    },
+    "education": {
+      "100": [
+        { "code": "EDU101", "title": "Introduction to Education" },
+        { "code": "EDU102", "title": "Fundamentals of Psychology" },
+        { "code": "PHL101", "title": "Introduction to Logic" }
+      ],
+      "200": [
+        { "code": "EDU201", "title": "Educational Psychology" },
+        { "code": "EDU202", "title": "Introduction to Educational Technology" },
+        { "code": "EDU203", "title": "Classroom Management" }
+      ],
+      "300": [
+        { "code": "EDU301", "title": "Curriculum Development" },
+        { "code": "EDU302", "title": "Educational Research Methods" }
+      ],
+      "400": [
+        { "code": "EDU401", "title": "Teaching Practice" },
+        { "code": "EDU402", "title": "Educational Management and Planning" }
+      ]
+    },
+    "department": {
+      "computer science": [
+        { "code": "CSC101", "title": "Introduction to Computer Science" },
+        { "code": "CSC102", "title": "Introduction to Programming (C++)" },
+        { "code": "CSC201", "title": "Computer Programming I (C)" },
+        { "code": "CSC202", "title": "Discrete Mathematics" },
+        { "code": "CSC203", "title": "Computer Organization and Architecture" },
+        { "code": "CSC301", "title": "Data Structures and Algorithms" },
+        { "code": "CSC302", "title": "Operating Systems" },
+        { "code": "CSC303", "title": "Database Management Systems" },
+        { "code": "CSC304", "title": "Software Engineering" },
+        { "code": "CSC401", "title": "Computer Networks" },
+        { "code": "CSC402", "title": "Artificial Intelligence" },
+        { "code": "CSC403", "title": "Compiler Construction" },
+        { "code": "CSC404", "title": "Final Year Project" }
+      ],
+      "mass communication": [
+        { "code": "MCM101", "title": "Introduction to Mass Communication" },
+        { "code": "MCM201", "title": "News Writing and Reporting" },
+        { "code": "MCM202", "title": "History of Nigerian Media" },
+        { "code": "MCM301", "title": "Media Law and Ethics" },
+        { "code": "MCM302", "title": "Public Relations" },
+        { "code": "MCM401", "title": "Broadcast Journalism" }
+      ],
+      "economics": [
+        { "code": "ECN101", "title": "Principles of Economics I" },
+        { "code": "ECN102", "title": "Principles of Economics II" },
+        { "code": "ECN201", "title": "Microeconomic Theory I" },
+        { "code": "ECN202", "title": "Macroeconomic Theory I" },
+        { "code": "ECN301", "title": "Money and Banking" },
+        { "code": "ECN302", "title": "Public Finance" },
+        { "code": "ECN401", "title": "Econometrics" },
+        { "code": "ECN402", "title": "Development Economics" }
+      ],
+      "accounting": [
+        { "code": "ACC101", "title": "Introduction to Financial Accounting" },
+        { "code": "ACC201", "title": "Financial Accounting I" },
+        { "code": "ACC202", "title": "Business Law I" },
+        { "code": "ACC301", "title": "Cost Accounting" },
+        { "code": "ACC302", "title": "Taxation I" },
+        { "code": "ACC401", "title": "Auditing and Investigation" },
+        { "code": "ACC402", "title": "Government Accounting" }
+      ],
+      "political science": [
+        { "code": "POL101", "title": "Introduction to Political Science" },
+        { "code": "POL201", "title": "Nigerian Government and Politics" },
+        { "code": "POL202", "title": "Comparative Government" },
+        { "code": "POL301", "title": "International Relations I" },
+        { "code": "POL302", "title": "Public Administration" },
+        { "code": "POL401", "title": "Research Methods in Political Science" }
+      ],
+      "law": [
+        { "code": "LS101", "title": "Introduction to Nigerian Legal System" },
+        { "code": "LS201", "title": "Legal Method and Legal Writing" },
+        { "code": "LS202", "title": "Law of Contract I" },
+        { "code": "LS203", "title": "Constitutional Law I" },
+        { "code": "LS301", "title": "Law of Contract II" },
+        { "code": "LS302", "title": "Constitutional Law II" },
+        { "code": "LS303", "title": "Criminal Law I" },
+        { "code": "LS401", "title": "Property Law I" },
+        { "code": "LS402", "title": "Commercial Law I" },
+        { "code": "LS403", "title": "Jurisprudence" }
+      ],
+      "medicine": [
+        { "code": "MED201", "title": "Anatomy I" },
+        { "code": "MED202", "title": "Physiology I" },
+        { "code": "MED301", "title": "Medical Biochemistry" },
+        { "code": "MED302", "title": "Pathology I" },
+        { "code": "MED303", "title": "Microbiology I" },
+        { "code": "MED401", "title": "Pharmacology I" },
+        { "code": "MED402", "title": "Clinical Methods and Patient Care" }
+      ],
+      "engineering": [
+        { "code": "CVE101", "title": "Engineering Drawing I" },
+        { "code": "CVE201", "title": "Engineering Mechanics I" },
+        { "code": "CVE202", "title": "Strength of Materials I" },
+        { "code": "EEE201", "title": "Basic Electrical Engineering" },
+        { "code": "MEE201", "title": "Workshop Practice" },
+        { "code": "CVE301", "title": "Fluid Mechanics I" },
+        { "code": "MEE301", "title": "Thermodynamics I" }
+      ]
+    }
+  }
 }
