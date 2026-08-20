@@ -859,7 +859,7 @@ async function renderNav() {
   if (bottomNav) {
     const cur = location.hash.replace(/^#/, "") || "/";
     const isAuthPage = !state.user && ["/login", "/register", "/verify", "/forgot", "/onboard"].includes(cur);
-    const isOnboard = !state.user && cur === "/onboard";
+    const isOnboard = !state.user && ["/onboard", "/login"].includes(cur);
     document.body.classList.toggle("auth-page", isAuthPage);
     document.body.classList.toggle("onboard-page", isOnboard);
     if (isAuthPage) {

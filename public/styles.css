@@ -2645,6 +2645,9 @@ body.auth-page main {
 .onboard-page .auth-brand .auth-tag {
   display: none;
 }
+.auth-page.onboard-page .auth-brand .auth-tag {
+  display: block;
+}
 .onboard-page .auth-brand .auth-logo {
   width: 44px;
   height: 44px;

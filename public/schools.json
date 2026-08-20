@@ -4,310 +4,359 @@
       "id": "unilag",
       "name": "University of Lagos (UNILAG)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics", "Microbiology", "Industrial Mathematics", "Actuarial Science"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Metallurgical Engineering", "Surveying", "Systems Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Chinese", "Russian", "Creative Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Marketing", "Insurance"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Psychology", "Sociology", "Geography", "Public Administration", "Social Work"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Physiotherapy", "Radiography", "Medical Laboratory Science", "Pharmacy"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration", "Counselling Psychology", "Library and Information Science"] },
-        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Quantity Surveying", "Urban and Regional Planning", "Estate Management", "Building"] }
+        { "name": "Arts", "type": "arts", "departments": ["English", "Linguistics", "Philosophy", "Creative Arts", "History and Strategic Studies", "European Languages and Integration Studies"] },
+        { "name": "Basic Medical Sciences", "type": "science", "departments": ["Anatomy", "Physiology", "Biochemistry", "Medical Laboratory Science", "Microbiology and Parasitology", "Pharmacology, Therapeutics and Toxicology"] },
+        { "name": "Clinical Sciences", "type": "science", "departments": ["Medicine", "Surgery", "Paediatrics", "Obstetrics and Gynaecology", "Psychiatry", "Ophthalmology", "Radiology"] },
+        { "name": "Dental Sciences", "type": "science", "departments": ["Dentistry", "Oral and Maxillofacial Surgery", "Preventive Dentistry", "Restorative Dentistry"] },
+        { "name": "Education", "type": "arts", "departments": ["Adult Education", "Early Childhood Education", "Education Management", "Human Kinetics Education", "Arts and Social Science Education", "Science and Technology Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Chemical Engineering", "Civil and Environmental Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Systems Engineering", "Surveying and Geo-informatics", "Metallurgical and Materials Engineering"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Building", "Estate Management", "Quantity Surveying", "Urban and Regional Planning"] },
+        { "name": "Law", "type": "arts", "departments": ["Commercial and Industrial Law", "Jurisprudence and International Law", "Private and Property Law", "Public Law"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Actuarial Science and Insurance", "Banking and Finance", "Business Administration", "Industrial Relations and Personnel Management"] },
+        { "name": "Pharmacy", "type": "science", "departments": ["Pharmacy"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Botany", "Cell Biology and Genetics", "Chemistry", "Computer Sciences", "Geosciences", "Marine Sciences", "Mathematics", "Microbiology", "Physics", "Zoology"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Geography", "Mass Communication", "Political Science", "Psychology", "Social Work", "Sociology"] }
       ]
     },
     {
       "id": "oau",
       "name": "Obafemi Awolowo University (OAU)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics", "Microbiology", "Geology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Materials Science"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Drama", "Music"] },
-        { "name": "Administration", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Psychology", "Sociology", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Physiotherapy", "Medical Laboratory Science", "Pharmacy"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration", "Guidance and Counselling"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Soil Science", "Forestry"] }
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics and African Languages", "Fine and Applied Arts", "Dramatic Arts", "Music", "Religious Studies", "Foreign Languages"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics and Extension", "Animal Sciences", "Crop Production", "Soil Science", "Forestry and Wildlife Management"] },
+        { "name": "Basic Medical Sciences", "type": "science", "departments": ["Anatomy and Cell Biology", "Physiology", "Pharmacology", "Medical Biochemistry"] },
+        { "name": "Technology", "type": "science", "departments": ["Chemical Engineering", "Civil Engineering", "Electronic and Electrical Engineering", "Mechanical Engineering", "Materials Science and Engineering", "Computer Science and Engineering", "Food Science and Technology", "Agricultural and Environmental Engineering"] },
+        { "name": "Environmental Design and Management", "type": "science", "departments": ["Architecture", "Building", "Estate Management", "Quantity Surveying", "Urban and Regional Planning"] },
+        { "name": "Law", "type": "arts", "departments": ["Business Law", "International Law", "Jurisprudence and Private Law", "Public Law"] },
+        { "name": "Administration", "type": "commercial", "departments": ["Management and Accounting", "Economics", "Local Government Studies", "Public Administration"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Psychology", "Sociology and Anthropology", "Demography and Social Statistics", "International Relations", "Geography"] },
+        { "name": "Dentistry", "type": "science", "departments": ["Child Dental Health", "Oral and Maxillofacial Surgery", "Preventive and Community Dentistry", "Restorative Dentistry"] },
+        { "name": "Education", "type": "arts", "departments": ["Adult Education and Lifelong Learning", "Educational Management", "Educational Technology and Library Studies", "Physical and Health Education", "Arts and Social Science Education", "Science and Technology Education", "Educational Foundation and Counselling", "Special Education and Curriculum Studies"] },
+        { "name": "Clinical Sciences", "type": "science", "departments": ["Medicine", "Surgery", "Obstetrics and Gynaecology", "Paediatrics and Child Health", "Ophthalmology", "Psychiatry", "Radiology"] },
+        { "name": "Pharmacy", "type": "science", "departments": ["Clinical Pharmacy and Pharmacy Administration", "Pharmaceutical Chemistry", "Pharmaceutics", "Pharmacognosy", "Pharmacology"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Botany", "Chemistry", "Geology", "Mathematics", "Microbiology", "Physics", "Plant Science", "Zoology"] }
       ]
     },
     {
       "id": "ui",
       "name": "University of Ibadan (UI)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics", "Microbiology", "Geology", "Botany", "Zoology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Food Engineering", "Agricultural Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Arabic", "Islamic Studies", "Theatre Arts"] },
-        { "name": "The Social Sciences", "type": "arts", "departments": ["Economics", "Geography", "Political Science", "Sociology", "Psychology"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Physiotherapy", "Radiography", "Pharmacy", "Medical Laboratory Science"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Management", "Counselling and Human Development"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Science", "Animal Science", "Soil Science", "Agricultural Extension"] },
-        { "name": "Dentistry", "type": "science", "departments": ["Dentistry", "Dental Surgery"] },
-        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Surgery"] }
+        { "name": "Agriculture and Forestry", "type": "science", "departments": ["Agricultural Economics", "Agronomy", "Forest Resources Management", "Animal Science", "Agricultural Extension and Rural Development", "Crop Protection and Environmental Biology"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics and African Languages", "Theatre Arts", "Arabic and Islamic Studies", "Communication and Language Arts", "European Studies", "Classics", "Religious Studies", "Music", "Archaeology and Anthropology"] },
+        { "name": "Basic Medical Sciences", "type": "science", "departments": ["Biochemistry", "Physiology", "Anatomy", "Medical Microbiology and Parasitology", "Pharmacology and Therapeutics", "Chemical Pathology", "Haematology"] },
+        { "name": "Clinical Sciences", "type": "science", "departments": ["Medicine", "Surgery", "Obstetrics and Gynaecology", "Paediatrics", "Psychiatry", "Ophthalmology", "Otorhinolaryngology"] },
+        { "name": "Dentistry", "type": "science", "departments": ["Dentistry", "Oral Surgery", "Preventive Dentistry"] },
+        { "name": "Education", "type": "arts", "departments": ["Guidance and Counselling", "Library Archival and Information Studies", "Special Education", "Arts and Social Sciences Education", "Educational Management", "Human Kinetics and Health Education", "Science and Technology Education", "Adult Education"] },
+        { "name": "Law", "type": "arts", "departments": ["Private and Property Law", "Jurisprudence and International Law", "Commercial and Industrial Law", "Public Law"] },
+        { "name": "Pharmacy", "type": "science", "departments": ["Pharmaceutical Chemistry", "Pharmaceutics and Industrial Pharmacy", "Pharmacognosy", "Pharmaceutical Microbiology", "Clinical Pharmacy and Pharmacy Administration", "Pharmacology and Therapeutics"] },
+        { "name": "Renewable Natural Resources", "type": "science", "departments": ["Aquaculture and Fisheries Management", "Forest Production and Products", "Social and Environmental Forestry", "Wildlife and Ecotourism Management"] },
+        { "name": "Science", "type": "science", "departments": ["Chemistry", "Computer Science", "Geography", "Geology", "Mathematics", "Microbiology", "Physics", "Statistics", "Botany", "Zoology", "Industrial Chemistry", "Archaeology and Anthropology"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Geography", "Political Science", "Sociology", "Psychology"] },
+        { "name": "Technology", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Food Technology", "Industrial and Production Engineering", "Mechanical Engineering", "Petroleum Engineering", "Agricultural and Environmental Engineering"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Anatomy", "Veterinary Microbiology", "Veterinary Physiology and Biochemistry", "Veterinary Parasitology", "Veterinary Pathology", "Veterinary Pharmacology and Toxicology", "Veterinary Surgery and Radiology", "Theriogenology", "Veterinary Public Health and Preventive Medicine"] }
       ]
     },
     {
       "id": "uniben",
       "name": "University of Benin (UNIBEN)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Industrial Chemistry"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Production Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Fine Arts", "Drama"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Public Administration", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry", "Medical Laboratory Science", "Pharmacy"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Management", "Library and Information Science"] }
+        { "name": "Arts", "type": "arts", "departments": ["English and Literature", "Foreign Languages", "Fine and Applied Arts", "Linguistics and African Languages", "Philosophy and Religions", "Theatre Arts and Mass Communication"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Animal Science", "Agricultural Economics and Extension Services", "Crop Science", "Fisheries", "Food Science", "Soil Science"] },
+        { "name": "Education", "type": "arts", "departments": ["Adult and Non-formal Education", "Curriculum and Instructional Technology", "Human Kinetics and Sports Science", "Educational Foundations and Counselling", "Educational Management", "Library and Information Science", "Science Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Computer Engineering", "Chemical Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Production Engineering", "Petroleum Engineering"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Geomatics", "Quantity Surveying", "Estate Management", "Fine and Applied Arts"] },
+        { "name": "Law", "type": "arts", "departments": ["Business Law", "Public Law", "Private and Property Law", "Jurisprudence and International Law"] },
+        { "name": "Life Sciences", "type": "science", "departments": ["Biochemistry", "Optometry", "Plant Biology and Biotechnology", "Environmental Management and Toxicology", "Microbiology"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Actuarial Science", "Business Administration", "Banking and Finance", "Human Resource Management", "Entrepreneurship", "Marketing", "Insurance"] },
+        { "name": "Physical Sciences", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Geology", "Statistics"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics and Statistics", "Public Administration", "Political Science", "Social Work", "Sociology and Anthropology", "Geography and Regional Planning"] },
+        { "name": "Medical Sciences", "type": "science", "departments": ["Medicine", "Nursing Sciences", "Dentistry", "Medical Laboratory Science", "Pharmacy", "Physiotherapy", "Radiography", "Physiology"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Surgery", "Veterinary Pathology", "Veterinary Public Health"] }
       ]
     },
     {
       "id": "uniabuja",
       "name": "University of Abuja (UNIABUJA)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology"] },
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "History", "Philosophy", "Linguistics", "French", "Arabic", "Theatre Arts"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration", "Guidance and Counselling", "Library and Information Science"] },
         { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Arabic"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "International Relations", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration"] }
+        { "name": "Law", "type": "arts", "departments": ["Private Law", "Public Law", "Jurisprudence and International Law", "Commercial Law"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration", "Banking and Finance"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Pharmacy", "Medical Laboratory Science", "Human Anatomy", "Human Physiology"] },
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Statistics"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "International Relations", "Geography", "Economics", "Mass Communication"] }
       ]
     },
     {
       "id": "uniport",
       "name": "University of Port Harcourt (UNIPORT)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Geology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Petroleum Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Creative Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry", "Pharmacy"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Science Education", "Educational Management"] }
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics and Extension", "Animal Science", "Crop and Soil Science", "Fisheries", "Forestry and Wildlife"] },
+        { "name": "Dentistry", "type": "science", "departments": ["Restoration Dentistry", "Child Dental Health", "Oral and Maxillofacial Surgery", "Preventive and Social Dentistry", "Oral Pathology and Oral Biology"] },
+        { "name": "Education", "type": "arts", "departments": ["Educational Psychology", "Curriculum Studies and Educational Technology", "Social Sciences Education", "Science Education", "Arts Education", "Human Kinetics Education", "Library and Information Science", "Early Childhood and Primary Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Chemical Engineering", "Petroleum Engineering", "Civil Engineering", "Mechanical Engineering", "Electrical Engineering", "Gas Engineering", "Environmental Engineering"] },
+        { "name": "Humanities", "type": "arts", "departments": ["English Studies", "History and International Studies", "Linguistics and Communication Studies", "Foreign Languages and Literature", "Religious and Cultural Studies", "Philosophy"] },
+        { "name": "Law", "type": "arts", "departments": ["Private Law", "Public Law", "Jurisprudence and International Law"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Finance and Banking", "Management", "Marketing", "Hospitality Management and Tourism"] },
+        { "name": "Pharmaceutical Sciences", "type": "science", "departments": ["Clinical Pharmacy and Management", "Pharmaceutical Chemistry", "Pharmaceutics", "Pharmacognosy", "Pharmacology", "Pharmaceutical and Medicinal Chemistry"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Chemistry", "Physics", "Mathematics", "Computer Science", "Geology", "Microbiology", "Plant Science and Biotechnology", "Animal and Environmental Biology"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Political and Administrative Studies", "Sociology", "Geography and Environmental Management", "Social Work"] },
+        { "name": "Computing", "type": "science", "departments": ["Cyber Security", "Information Technology", "Computer Science"] },
+        { "name": "Medical Sciences", "type": "science", "departments": ["Medicine", "Surgery", "Nursing", "Physiology", "Anatomy", "Radiography", "Medical Laboratory Science", "Pharmacy", "Physiotherapy"] }
       ]
     },
     {
       "id": "unijos",
       "name": "University of Jos (UNIJOS)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Geology", "Pharmacology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Mining Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Theatre Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Science Education", "Educational Administration"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Forestry"] }
+        { "name": "Agricultural Sciences", "type": "science", "departments": ["Agricultural Economics and Extension", "Animal Production", "Crop Production", "Soil Science", "Forestry and Wildlife Management"] },
+        { "name": "Arts", "type": "arts", "departments": ["English", "History and International Studies", "Mass Communication", "Religious Studies", "Linguistics and Nigerian Languages", "Theatre and Film Arts", "Foreign Languages"] },
+        { "name": "Education", "type": "arts", "departments": ["Arts Education", "Educational Foundation", "Science and Technology Education", "Social Science Education", "Special Education and Rehabilitation Sciences", "Educational Administration and Planning"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Mining Engineering"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Building", "Estate Management", "Geography and Planning", "Quantity Surveying", "Urban and Regional Planning"] },
+        { "name": "Health Science and Technology", "type": "science", "departments": ["Medical Laboratory Science", "Nursing Sciences", "Physiotherapy", "Radiography", "Medical Rehabilitation"] },
+        { "name": "Law", "type": "arts", "departments": ["Commercial Law", "International Law and Jurisprudence", "Private Law", "Public Law"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Management", "Banking and Finance", "Marketing"] },
+        { "name": "Natural Sciences", "type": "science", "departments": ["Biochemistry", "Chemistry", "Computer Science", "Geology and Mining", "Mathematics", "Microbiology", "Physics", "Plant Science and Technology", "Science Laboratory Technology", "Zoology"] },
+        { "name": "Pharmaceutical Sciences", "type": "science", "departments": ["Clinical Pharmacy and Pharmacy Practice", "Pharmaceutical Chemistry", "Pharmaceutical Microbiology", "Pharmaceutical Technology and Industrial Pharmacy", "Pharmacognosy and Traditional Medicine", "Pharmacology"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Political Science", "Psychology", "Sociology", "Geography and Planning", "Criminology and Security Studies"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Anatomy", "Veterinary Medicine Surgery and Radiology", "Veterinary Microbiology and Pathology", "Veterinary Parasitology and Entomology", "Veterinary Physiology Biochemistry and Pharmacology", "Veterinary Public Health and Preventive Medicine", "Theriogenology and Production"] },
+        { "name": "Medical Sciences", "type": "science", "departments": ["Medicine", "Surgery", "Anatomy", "Physiology", "Biochemistry", "Nursing", "Pharmacy", "Dentistry", "Medical Laboratory Science"] }
       ]
     },
     {
       "id": "unn",
       "name": "University of Nigeria, Nsukka (UNN)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry", "Geology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Metallurgical Engineering", "Agricultural Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Igbo", "French", "Music", "Fine Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Public Administration", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry", "Pharmacy", "Medical Laboratory Science"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Foundations", "Library and Information Science"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Science", "Animal Science", "Soil Science", "Fisheries"] }
+        { "name": "Agricultural Sciences", "type": "science", "departments": ["Agricultural Economics", "Agricultural Extension", "Animal Science", "Crop Science", "Soil Science", "Fisheries and Aquaculture", "Food Science and Technology", "Home Science, Nutrition and Dietetics"] },
+        { "name": "Arts", "type": "arts", "departments": ["English and Literary Studies", "History and International Studies", "Linguistics and Nigerian Languages", "Mass Communication", "Fine and Applied Arts", "Foreign Languages", "Music", "Performing Arts", "Archaeology and Tourism"] },
+        { "name": "Biological Sciences", "type": "science", "departments": ["Microbiology", "Biochemistry", "Plant Sciences", "Zoology"] },
+        { "name": "Business Administration", "type": "commercial", "departments": ["Accounting", "Banking and Finance", "Marketing", "Management"] },
+        { "name": "Dentistry", "type": "science", "departments": ["Dentistry", "Oral and Maxillofacial Surgery"] },
+        { "name": "Education", "type": "arts", "departments": ["Adult Education and Extra-Mural Studies", "Educational Foundations", "Guidance and Counselling", "Human Kinetics and Health Education", "Library and Information Science", "Science Education", "Social Science Education", "Vocational and Technical Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Agricultural and Bioresources Engineering", "Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Metallurgical and Materials Engineering", "Electronic Engineering", "Computer Engineering"] },
+        { "name": "Environmental Studies", "type": "science", "departments": ["Architecture", "Estate Management", "Urban and Regional Planning", "Surveying and Geodesy", "Building"] },
+        { "name": "Health Science and Technology", "type": "science", "departments": ["Medical Laboratory Technology", "Medical Rehabilitation", "Nursing Sciences"] },
+        { "name": "Law", "type": "arts", "departments": ["Public and Private Law", "International Law and Jurisprudence", "Property Law"] },
+        { "name": "Medical Sciences", "type": "science", "departments": ["Medicine", "Surgery", "Obstetrics and Gynaecology", "Paediatrics", "Psychiatry", "Ophthalmology", "Otorhinolaryngology", "Anatomy", "Physiology", "Radiology"] },
+        { "name": "Pharmaceutical Sciences", "type": "science", "departments": ["Clinical Pharmacy", "Pharmaceutical and Medicinal Chemistry", "Pharmacology and Toxicology", "Pharmaceutics", "Pharmaceutical Technology", "Pharmacognosy", "Pharmacognosy and Environmental Medicines"] },
+        { "name": "Physical Sciences", "type": "science", "departments": ["Computer Science", "Geology", "Mathematics", "Physics and Astronomy", "Pure and Industrial Chemistry", "Statistics"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Geography", "Philosophy", "Political Science", "Psychology", "Public Administration", "Sociology and Anthropology", "Social Work"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Surgery", "Veterinary Pathology and Microbiology", "Veterinary Public Health and Preventive Medicine", "Veterinary Physiology and Biochemistry"] }
       ]
     },
     {
       "id": "unaab",
       "name": "Federal University of Agriculture, Abeokuta (FUNAAB)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Biological Sciences"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Food Engineering", "Agricultural Engineering"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Soil Science", "Agricultural Extension", "Forestry"] },
-        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Surgery"] },
-        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management"] }
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Biological Sciences", "Statistics"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Food Engineering", "Agricultural Engineering", "Computer Engineering"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Banking and Finance"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Soil Science", "Agricultural Extension and Rural Development", "Forestry and Wildlife Management", "Fisheries and Aquaculture"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Surgery", "Veterinary Anatomy", "Veterinary Pathology", "Veterinary Physiology and Biochemistry"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Agricultural Education", "Home Science Education"] },
+        { "name": "Food Science and Human Nutrition", "type": "science", "departments": ["Food Science and Technology", "Human Nutrition and Dietetics"] }
       ]
     },
     {
       "id": "futo",
       "name": "Federal University of Technology, Owerri (FUTO)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Biological Sciences", "Environmental Science"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Food Science Technology", "Materials Science", "Metallurgical Engineering", "Petroleum Engineering", "Agricultural Engineering"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Financial Management Technology", "Management Technology", "Project Management Technology"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Animal Science", "Crop Science", "Fisheries"] }
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Animal Science", "Crop Science", "Fisheries and Aquaculture", "Forestry and Wildlife Management", "Soil Science"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Food Science and Technology", "Materials and Metallurgical Engineering", "Metallurgical and Materials Engineering", "Petroleum Engineering", "Agricultural and Bioresources Engineering", "Biomedical Engineering"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Estate Management", "Quantity Surveying", "Urban and Regional Planning", "Environmental Technology"] },
+        { "name": "Health Sciences", "type": "science", "departments": ["Dentistry", "Optometry", "Nursing Science", "Physiotherapy", "Prosthetics and Orthotics"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Financial Management Technology", "Management Technology", "Project Management Technology", "Engineering Management Technology", "Entrepreneurship"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Biological Sciences", "Chemistry", "Computer Science", "Mathematics", "Microbiology", "Physics", "Statistics", "Environmental Science", "Marine Science and Technology"] },
+        { "name": "Information Technology", "type": "science", "departments": ["Cyber Security", "Information Technology", "Software Engineering", "Information Science and Technology"] }
       ]
     },
     {
       "id": "futminna",
       "name": "Federal University of Technology, Minna (FUTMINNA)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Statistics"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Agricultural Engineering", "Materials Engineering"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Forestry", "Fisheries"] },
-        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Technology"] }
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics and Extension", "Animal Production", "Crop Production", "Fisheries and Aquaculture", "Forestry and Wildlife Management", "Soil Science"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Technology", "Educational Foundations", "Library and Information Science"] },
+        { "name": "Engineering and Engineering Technology", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Agricultural and Bioresources Engineering", "Materials Engineering", "Telecommunication Engineering", "Biomedical Engineering"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Estate Management", "Quantity Surveying", "Urban and Regional Planning", "Surveying and Geoinformatics"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Entrepreneurship"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Biology", "Chemistry", "Computer Science", "Mathematics", "Microbiology", "Physics", "Statistics", "Geology", "Industrial Physics", "Science Laboratory Technology"] },
+        { "name": "Life Sciences", "type": "science", "departments": ["Food Science and Technology", "Water Resources, Aquaculture and Fisheries Technology"] }
       ]
     },
     {
       "id": "futa",
       "name": "Federal University of Technology, Akure (FUTA)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Statistics", "Environmental Science"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Food Engineering", "Agricultural Engineering", "Metallurgical Engineering", "Mining Engineering"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Financial Management"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Science", "Animal Science", "Soil Science", "Fisheries"] }
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Soil and Pest Management", "Animal Production and Health", "Fisheries and Aquaculture Technology", "Forestry and Wood Technology", "Ecotourism and Wildlife Management"] },
+        { "name": "Engineering and Engineering Technology", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Electrical/Electronics Engineering", "Food Engineering", "Agricultural and Environmental Engineering", "Metallurgical and Materials Engineering", "Mining Engineering"] },
+        { "name": "Environmental Technology", "type": "science", "departments": ["Architecture", "Estate Management", "Quantity Surveying", "Urban and Regional Planning", "Industrial Design"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Financial Management Technology"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Biology", "Chemistry", "Computer Science", "Mathematics", "Microbiology", "Physics", "Statistics", "Geology", "Industrial Chemistry", "Environmental Science"] },
+        { "name": "Earth and Mineral Sciences", "type": "science", "departments": ["Geology", "Mining Engineering", "Meteorology"] },
+        { "name": "Food and Consumer Sciences", "type": "science", "departments": ["Food Science and Technology", "Nutrition and Dietetics"] }
       ]
     },
     {
       "id": "ksu",
       "name": "Kogi State University (KSU)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Arabic"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing"] },
-        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Administration"] }
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "History and International Studies", "Philosophy", "Linguistics", "Arabic Language", "Performing Arts"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Administration", "Arts Education", "Social Science Education", "Library and Information Science"] },
+        { "name": "Law", "type": "arts", "departments": ["Common Law", "Islamic Law", "Jurisprudence and International Law", "Private and Property Law", "Public Law"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration", "Banking and Finance"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Medical Laboratory Science", "Human Anatomy", "Human Physiology"] },
+        { "name": "Natural Sciences", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Statistics", "Microbiology", "Biochemistry", "Geology"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Geography", "Economics", "Mass Communication"] }
       ]
     },
     {
       "id": "au",
       "name": "Ambrose Alli University (AAU)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Fine and Applied Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Medical Laboratory Science"] },
-        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Guidance and Counselling"] }
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "History", "Philosophy", "Linguistics", "Fine and Applied Arts", "Theatre and Media Arts"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Guidance and Counselling", "Social Science Education", "Arts Education", "Library and Information Science"] },
+        { "name": "Engineering and Technology", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Industrial and Production Engineering"] },
+        { "name": "Law", "type": "arts", "departments": ["Private Law", "Public and International Law", "Jurisprudence and Legal Theory"] },
+        { "name": "Life Sciences", "type": "science", "departments": ["Biochemistry", "Botany", "Microbiology", "Zoology", "Genetics and Biotechnology"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration", "Banking and Finance", "Marketing"] },
+        { "name": "Medical Sciences", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Medical Laboratory Science", "Human Anatomy", "Human Physiology"] },
+        { "name": "Physical Sciences", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Industrial Chemistry", "Geography and Environmental Management"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Economics", "International Studies and Diplomacy"] }
       ]
     },
     {
       "id": "lasu",
       "name": "Lagos State University (LASU)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Creative Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Public Administration", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science", "Dentistry"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration", "Counselling Psychology"] },
-        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Quantity Surveying", "Estate Management", "Urban and Regional Planning"] }
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "History and International Studies", "Philosophy", "Linguistics and African Languages", "French", "Creative Arts", "Performing Arts"] },
+        { "name": "Education", "type": "arts", "departments": ["English Education", "Mathematics Education", "Science Education", "Educational Administration", "Counselling Psychology", "Library and Information Science", "Social Sciences Education", "Arts Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Quantity Surveying", "Estate Management", "Urban and Regional Planning"] },
+        { "name": "Law", "type": "arts", "departments": ["Common Law", "Islamic Law", "Jurisprudence and International Law", "Private and Property Law", "Public Law"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance", "Public Administration", "Industrial Relations and Personnel Management"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Pharmacy", "Medical Laboratory Science", "Dentistry", "Physiotherapy", "Radiography"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Botany", "Chemistry", "Computer Science", "Mathematics", "Microbiology", "Physics", "Zoology", "Industrial Chemistry", "Fisheries"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Geography and Planning", "Mass Communication", "Political Science", "Psychology", "Social Work", "Sociology"] }
       ]
     },
     {
       "id": "delsu",
       "name": "Delta State University (DELSU)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Fine Arts", "Theatre Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
-        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Library and Information Science"] }
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Animal Science", "Crop Science", "Fisheries", "Forestry and Wildlife", "Soil Science"] },
+        { "name": "Arts", "type": "arts", "departments": ["English and Literary Studies", "History and Civilization", "Fine and Applied Arts", "Linguistics and Languages", "French", "Theatre Arts", "Mass Communication", "Music"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Library and Information Science", "Counselling and Educational Psychology", "Vocational Education", "Social Science Education", "Arts Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Petroleum Engineering", "Computer Engineering"] },
+        { "name": "Law", "type": "arts", "departments": ["Private Law", "Public Law", "International Law and Jurisprudence"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Banking and Finance", "Mass Communication", "Marketing"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Pharmacy", "Medical Laboratory Science", "Human Anatomy", "Human Physiology", "Physiotherapy"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Botany", "Chemistry", "Computer Science", "Geology", "Industrial Chemistry", "Mathematics", "Microbiology", "Physics", "Statistics", "Zoology"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Geography and Regional Planning", "Political Science", "Psychology", "Sociology"] }
       ]
     },
     {
       "id": "abu",
       "name": "Ahmadu Bello University (ABU)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Geology", "Statistics"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Metallurgical Engineering", "Agricultural Engineering", "Water Resources Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Arabic", "Hausa", "Islamic Studies"] },
-        { "name": "Administration", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "International Studies", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science", "Dentistry"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Science Education", "Educational Administration", "Library and Information Science"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Science", "Animal Science", "Soil Science", "Forestry"] }
+        { "name": "Administration", "type": "commercial", "departments": ["Accounting", "Business Administration", "Public Administration", "Local Government and Development Studies"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics and Extension", "Animal Science", "Crop Protection", "Soil Science", "Forestry and Wildlife Management", "Water Resources Management"] },
+        { "name": "Arts", "type": "arts", "departments": ["English and Literary Studies", "Linguistics", "French", "History", "Arabic Studies", "Hausa", "Islamic Studies"] },
+        { "name": "Education", "type": "arts", "departments": ["Educational Foundations", "Educational Management and Counselling", "Science Education", "Library and Information Science", "Arts and Social Science Education", "Vocational and Technical Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronic Engineering", "Mechanical Engineering", "Chemical Engineering", "Metallurgical Engineering", "Agricultural and Bioresources Engineering", "Water Resources Engineering", "Materials Engineering", "Computer Engineering"] },
+        { "name": "Environmental Design", "type": "science", "departments": ["Architecture", "Estate Management", "Quantity Surveying", "Urban and Regional Planning", "Surveying and Geoinformatics"] },
+        { "name": "Law", "type": "arts", "departments": ["Private Law", "Public Law", "Islamic Law", "Jurisprudence and International Law"] },
+        { "name": "Life Sciences", "type": "science", "departments": ["Biochemistry", "Microbiology", "Plant Biology", "Zoology", "Biological Sciences"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Dentistry", "Pharmacy", "Medical Laboratory Science", "Human Anatomy", "Human Physiology"] },
+        { "name": "Physical Sciences", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Geology", "Statistics", "Industrial Chemistry"] },
+        { "name": "Pharmaceutical Sciences", "type": "science", "departments": ["Pharmaceutical Chemistry", "Pharmaceutics", "Pharmacology", "Pharmacognosy", "Clinical Pharmacy"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Political Science", "International Studies", "Sociology", "Geography", "Mass Communication"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Medicine", "Veterinary Surgery", "Veterinary Pathology", "Veterinary Parasitology", "Veterinary Public Health", "Veterinary Pharmacology"] }
       ]
     },
     {
       "id": "buk",
       "name": "Bayero University, Kano (BUK)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Statistics"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Arabic", "Hausa", "Islamic Studies"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "International Studies", "Geography"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
-        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Administration"] }
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "Linguistics", "French", "History", "Arabic Studies", "Hausa", "Islamic Studies", "Theatre Arts"] },
+        { "name": "Education", "type": "arts", "departments": ["Educational Administration and Planning", "Science Education", "Arts Education", "Social Science Education", "Library and Information Science", "Counselling in Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Computer Engineering", "Agricultural Engineering", "Mechatronics Engineering"] },
+        { "name": "Law", "type": "arts", "departments": ["Private Law", "Public Law", "Islamic Law", "Jurisprudence and International Law"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Public Administration", "Banking and Finance", "Taxation"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Dentistry", "Pharmacy", "Medical Laboratory Science", "Human Physiology", "Human Anatomy"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Biology", "Chemistry", "Computer Science", "Geography", "Geology", "Mathematics", "Microbiology", "Physics", "Statistics", "Industrial Chemistry"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Political Science", "International Studies", "Sociology", "Mass Communication", "Geography"] }
       ]
     },
     {
       "id": "uniuyo",
       "name": "University of Uyo (UNIUYO)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Agricultural Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Fine Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography", "Public Administration"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Pharmacy", "Medical Laboratory Science"] },
-        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Guidance and Counselling"] }
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Animal Science", "Crop Science", "Fisheries and Aquaculture", "Forestry and Wildlife", "Soil Science", "Food Science and Technology"] },
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "History and International Studies", "Linguistics", "Performing Arts", "Fine and Applied Arts", "Religious Studies"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Guidance and Counselling", "Library and Information Science", "Vocational Education", "Arts Education", "Social Sciences Education"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Chemical Engineering", "Agricultural Engineering", "Computer Engineering", "Food Engineering"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Estate Management", "Quantity Surveying", "Urban and Regional Planning", "Geography and Environmental Management"] },
+        { "name": "Law", "type": "arts", "departments": ["Private and Property Law", "Public Law", "International Law and Jurisprudence", "Commercial Law"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Marketing", "Banking and Finance", "Public Administration"] },
+        { "name": "Medicine", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Pharmacy", "Medical Laboratory Science", "Human Anatomy", "Human Physiology", "Physiotherapy", "Radiography"] },
+        { "name": "Science", "type": "science", "departments": ["Biochemistry", "Botany", "Chemistry", "Computer Science", "Geology", "Mathematics", "Microbiology", "Physics", "Statistics", "Zoology"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Geography", "Mass Communication", "Political Science", "Psychology", "Sociology", "Public Administration"] }
       ]
     },
     {
       "id": "uniilorin",
       "name": "University of Ilorin (UNILORIN)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology", "Microbiology", "Biochemistry", "Statistics", "Geology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Chemical Engineering", "Agricultural Engineering", "Food Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "French", "Arabic", "Performing Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Marketing"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Psychology", "Geography", "Social Work"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry", "Pharmacy", "Medical Laboratory Science", "Physiotherapy"] },
-        { "name": "Education", "type": "arts", "departments": ["English Education", "Science Education", "Educational Management", "Counselling Psychology", "Library and Information Science"] },
-        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics", "Crop Production", "Animal Science", "Soil Science", "Forestry", "Fisheries"] }
+        { "name": "Agriculture", "type": "science", "departments": ["Agricultural Economics and Farm Management", "Agricultural Extension and Rural Development", "Animal Production", "Agronomy", "Crop Production", "Home Economics and Food Science", "Forest Resources Management"] },
+        { "name": "Arts", "type": "arts", "departments": ["Arabic", "English", "French", "History and International Studies", "Linguistics and Nigerian Languages", "Performing Arts", "Religious Studies"] },
+        { "name": "Communication and Information Sciences", "type": "arts", "departments": ["Computer Science", "Information and Communication Science", "Library and Information Science", "Mass Communication", "Telecommunication Science"] },
+        { "name": "Education", "type": "arts", "departments": ["Adult and Primary Education", "Arts Education", "Computer Science Education", "Counsellor Education", "Educational Management", "Educational Technology", "Human Kinetics Education", "Science Education", "Social Science Education"] },
+        { "name": "Engineering and Technology", "type": "science", "departments": ["Agricultural Engineering", "Biomedical Engineering", "Chemical Engineering", "Civil Engineering", "Computer Engineering", "Electrical Engineering", "Food and Bio-process Engineering", "Materials and Metallurgical Engineering", "Mechanical Engineering", "Water Resources and Environmental Engineering"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architectural Science", "Estate Management", "Quantity Surveying", "Urban and Regional Planning"] },
+        { "name": "Law", "type": "arts", "departments": ["Business Law", "Common Law", "Islamic Law", "Jurisprudence and International Law", "Private and Property Law", "Public Law"] },
+        { "name": "Life Sciences", "type": "science", "departments": ["Biochemistry", "Microbiology", "Plant Biology", "Zoology"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Marketing", "Public Administration"] },
+        { "name": "Pharmaceutical Sciences", "type": "science", "departments": ["Pharmaceutical Chemistry", "Pharmaceutics and Microbiology", "Pharmacognosy", "Pharmacology and Toxicology"] },
+        { "name": "Physical Sciences", "type": "science", "departments": ["Chemistry", "Geology and Mineral Science", "Mathematics", "Physics", "Statistics"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Economics", "Geography", "Political Science", "Psychology", "Social Work", "Sociology"] },
+        { "name": "Veterinary Medicine", "type": "science", "departments": ["Veterinary Anatomy", "Veterinary Medicine", "Veterinary Microbiology", "Veterinary Parasitology and Entomology", "Veterinary Pathology", "Veterinary Pharmacology and Toxicology", "Veterinary Physiology and Biochemistry", "Veterinary Public Health and Preventive Medicine", "Veterinary Surgery and Radiology", "Theriogenology and Production"] }
       ]
     },
     {
       "id": "uni",
       "name": "University of Nigeria, Enugu Campus (UNI-ENC)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biology"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics", "Igbo"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Dentistry"] }
+        { "name": "Business Administration", "type": "commercial", "departments": ["Accounting", "Banking and Finance", "Marketing", "Management"] },
+        { "name": "Environmental Sciences", "type": "science", "departments": ["Architecture", "Estate Management", "Urban and Regional Planning", "Surveying and Geodesy", "Building"] },
+        { "name": "Law", "type": "arts", "departments": ["Public and Private Law", "International Law and Jurisprudence", "Property Law"] },
+        { "name": "Medical Sciences", "type": "science", "departments": ["Medicine", "Surgery", "Obstetrics and Gynaecology", "Paediatrics", "Psychiatry", "Ophthalmology", "Otorhinolaryngology", "Anatomy", "Physiology", "Radiology"] },
+        { "name": "Dentistry", "type": "science", "departments": ["Dentistry", "Oral and Maxillofacial Surgery"] }
       ]
     },
     {
       "id": "babcock",
       "name": "Babcock University",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Biotechnology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Computer Engineering", "Electrical Engineering", "Mechanical Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Music", "Theatre Arts"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Sociology", "Mass Communication", "International Relations"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Medicine", "type": "science", "departments": ["Medicine", "Nursing", "Medical Laboratory Science", "Public Health"] },
-        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education", "Educational Administration"] }
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Biotechnology", "Industrial Chemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Computer Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Civil Engineering"] },
+        { "name": "Arts and Humanities", "type": "arts", "departments": ["English", "History and International Studies", "Music", "Theatre Arts", "Mass Communication"] },
+        { "name": "Business and Social Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing", "Mass Communication", "International Relations", "Political Science", "Sociology"] },
+        { "name": "Law", "type": "arts", "departments": ["Private and Business Law", "Public and International Law"] },
+        { "name": "Medicine and Health Sciences", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Medical Laboratory Science", "Public Health", "Human Anatomy", "Human Physiology"] },
+        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education", "Educational Administration"] },
+        { "name": "Agriculture", "type": "science", "departments": ["Animal Science", "Agronomy", "Agricultural Economics"] }
       ]
     },
     {
       "id": "covenant",
       "name": "Covenant University",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Industrial Chemistry", "Microbiology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Computer Engineering", "Information and Communication Technology"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Marketing"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Mass Communication", "Political Science", "International Relations", "Sociology"] },
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Industrial Chemistry", "Microbiology", "Biotechnology"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Computer Engineering", "Information and Communication Technology"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Finance", "Marketing", "Banking and Finance"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Mass Communication", "Political Science", "International Relations", "Sociology", "Policy and Strategic Studies"] },
         { "name": "Architecture", "type": "science", "departments": ["Architecture", "Building Technology", "Quantity Surveying", "Estate Management"] }
       ]
     },
@@ -315,49 +364,52 @@
       "id": "lead",
       "name": "Lead City University",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology"] },
-        { "name": "Engineering", "type": "science", "departments": ["Computer Engineering", "Electrical Engineering"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Linguistics"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Mass Communication", "International Relations"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education"] }
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Industrial Chemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Computer Engineering", "Electrical and Electronics Engineering", "Civil Engineering"] },
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "History", "Philosophy", "Linguistics", "Performing Arts"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Mass Communication", "International Relations", "Sociology"] },
+        { "name": "Law", "type": "arts", "departments": ["Private and Business Law", "Public and International Law"] },
+        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education", "Business Education", "Educational Management"] },
+        { "name": "Medicine and Health Sciences", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Medical Laboratory Science", "Public Health"] }
       ]
     },
     {
       "id": "elizade",
       "name": "Elizade University",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry"] },
-        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical Engineering", "Mechanical Engineering", "Automotive Engineering"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "Mass Communication"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "International Relations"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] }
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Industrial Chemistry"] },
+        { "name": "Engineering", "type": "science", "departments": ["Civil Engineering", "Electrical and Electronics Engineering", "Mechanical Engineering", "Automotive Engineering", "Computer Engineering"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance"] },
+        { "name": "Arts and Humanities", "type": "arts", "departments": ["English Language", "Mass Communication", "History and International Studies"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "International Relations", "Sociology"] },
+        { "name": "Law", "type": "arts", "departments": ["Private and Business Law", "Public and International Law"] },
+        { "name": "Medicine and Health Sciences", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Medical Laboratory Science"] }
       ]
     },
     {
       "id": "oua",
       "name": "Oduduwa University",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Mass Communication"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Public Administration"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education", "Educational Management"] }
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Industrial Chemistry"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing", "Public Administration"] },
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "History", "Mass Communication", "French", "Performing Arts"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Public Administration", "International Relations", "Sociology"] },
+        { "name": "Law", "type": "arts", "departments": ["Private Law", "Public Law"] },
+        { "name": "Education", "type": "arts", "departments": ["Computer Education", "Science Education", "Educational Management", "Arts Education"] }
       ]
     },
     {
       "id": "iwo",
       "name": "Joseph Ayo Babalola University (JABU)",
       "faculties": [
-        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology"] },
-        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance"] },
-        { "name": "Arts", "type": "arts", "departments": ["English", "History", "Philosophy", "Religious Studies"] },
-        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Mass Communication", "International Relations"] },
-        { "name": "Law", "type": "arts", "departments": ["Law"] },
-        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management"] }
+        { "name": "Science", "type": "science", "departments": ["Computer Science", "Mathematics", "Physics", "Chemistry", "Biochemistry", "Microbiology", "Industrial Chemistry", "Geography"] },
+        { "name": "Management Sciences", "type": "commercial", "departments": ["Accounting", "Business Administration", "Economics", "Banking and Finance", "Marketing"] },
+        { "name": "Arts", "type": "arts", "departments": ["English Language", "History", "Philosophy", "Religious Studies", "Performing Arts", "Mass Communication"] },
+        { "name": "Social Sciences", "type": "arts", "departments": ["Political Science", "Mass Communication", "International Relations", "Sociology", "Public Administration"] },
+        { "name": "Law", "type": "arts", "departments": ["Private Law", "Public and International Law"] },
+        { "name": "Education", "type": "arts", "departments": ["Science Education", "Educational Management", "Arts Education", "Social Science Education", "Library and Information Science"] },
+        { "name": "Medicine and Health Sciences", "type": "science", "departments": ["Medicine and Surgery", "Nursing Sciences", "Medical Laboratory Science", "Human Anatomy", "Human Physiology"] }
       ]
     }
   ]
