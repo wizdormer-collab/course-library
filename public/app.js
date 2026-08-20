@@ -1199,11 +1199,18 @@ async function renderHome() {
       </div>
     </section>
 
-    ${announcements.length ? `
+    ${announcements.length || isAdmin ? `
     <section class="home-section">
       <h2 class="section-title">${icon("bell")} Announcements</h2>
+      ${isAdmin ? `<div class="ann-compose card" style="margin-bottom:12px">
+        <textarea id="ann-input" class="ann-textarea" rows="2" placeholder="Post an announcement to all students..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;resize:none;font:inherit;background:var(--card-2);color:var(--text);margin-bottom:8px"></textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-primary btn-sm" id="ann-post-btn">Post</button>
+        </div>
+      </div>` : ""}
       <div class="ann-list">
-        ${announcements.slice(0, 3).map((a) => `
+        ${announcements.length
+          ? announcements.slice(0, 3).map((a) => `
           <div class="ann-card">
             <div class="ann-head">
               <span class="ann-author">${esc(a.authorName)}</span>
@@ -1211,7 +1218,8 @@ async function renderHome() {
             </div>
             <div class="ann-text">${esc(a.text)}</div>
             ${isAdmin ? `<button class="link-btn" style="margin-top:6px;font-size:0.8rem" data-del-ann="${a.id}">Delete</button>` : ""}
-          </div>`).join("")}
+          </div>`).join("")
+          : emptyState("bell", "No announcements yet", "Announcements from admins will appear here.", "")}
       </div>
     </section>` : ""}
 
@@ -1277,6 +1285,18 @@ async function renderHome() {
         renderHome();
       } catch (err) { alert(err.message); }
     }));
+
+  const annPostBtn = document.getElementById("ann-post-btn");
+  if (annPostBtn) annPostBtn.addEventListener("click", async () => {
+    const input = document.getElementById("ann-input");
+    const text = input.value.trim();
+    if (!text) return;
+    try {
+      await api("/api/announcements", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      showToast("Announcement posted");
+      renderHome();
+    } catch (err) { alert(err.message); }
+  });
 
   document.querySelectorAll("[data-profile]").forEach((el) =>
     el.addEventListener("click", () => { location.hash = "#/profile/" + el.dataset.profile; }));
