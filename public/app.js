@@ -226,11 +226,11 @@ function fileRow(f, opts = {}) {
           ${[1,2,3,4,5].map(n => `<button class="star ${(f.myRating || 0) >= n ? "on" : ""}" data-star="${n}" title="${n} star${n > 1 ? "s" : ""}">&#9733;</button>`).join("")}
           ${f.ratingCount ? `<span class="rating-info">${f.avgRating} (${f.ratingCount})</span>` : ""}
         </div>
-        <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save for later">${icon("star")}</button>
-        <button class="icon-btn" data-collect="${f.id}" title="Add to collection">${icon("folder")}</button>
-        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-edit-tags="${f.id}" data-etags="${esc(JSON.stringify(f.tags || []))}" title="Edit tags">${icon("tag")}</button>` : ""}
-        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-rename="${f.id}" data-rname="${esc(f.name)}" title="Rename">${icon("edit")}</button>` : ""}
-        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-new-version="${f.id}" title="Upload new version">${icon("clock")}</button>` : ""}
+        <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save for later" aria-label="Save for later">${icon("star")}</button>
+        <button class="icon-btn" data-collect="${f.id}" title="Add to collection" aria-label="Add to collection">${icon("folder")}</button>
+        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-edit-tags="${f.id}" data-etags="${esc(JSON.stringify(f.tags || []))}" title="Edit tags" aria-label="Edit tags">${icon("tag")}</button>` : ""}
+        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-rename="${f.id}" data-rname="${esc(f.name)}" title="Rename" aria-label="Rename">${icon("edit")}</button>` : ""}
+        ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-new-version="${f.id}" title="Upload new version" aria-label="Upload new version">${icon("clock")}</button>` : ""}
         <button class="btn btn-outline btn-sm" data-download="${f.id}" data-name="${esc(f.originalName || f.name)}">${icon("download")} Download</button>
         ${isAdmin ? `<button class="btn btn-danger btn-sm" data-del="${f.id}">${icon("trash")} Delete</button>` : ""}
       </div>
@@ -836,7 +836,7 @@ async function renderNav() {
     const unread = notifications.filter((n) => !n.read).length;
     notifHtml = `
       <div class="notif-wrap">
-        <button class="icon-btn" id="notif-btn" title="Notifications">${icon("bell")}</button>
+        <button class="icon-btn" id="notif-btn" title="Notifications" aria-label="Notifications" aria-expanded="false">${icon("bell")}</button>
         ${unread ? `<span class="notif-dot">${unread > 9 ? "9+" : unread}</span>` : ""}
         <div class="notif-drop hidden" id="notif-drop">
           <div class="notif-head">
@@ -859,7 +859,7 @@ async function renderNav() {
       <a href="#/settings" class="nav-link">Settings</a>
       ${state.user.role === "admin" ? '<a href="#/admin" class="nav-link">Admin</a>' : ""}
       ${notifHtml}
-      <button class="icon-btn" id="theme-btn" title="Toggle theme">${state.theme === "dark" ? icon("sun") : icon("moon")}</button>
+      <button class="icon-btn" id="theme-btn" title="Toggle theme" aria-label="Toggle theme">${state.theme === "dark" ? icon("sun") : icon("moon")}</button>
       <span class="nav-user">${esc(state.user.username)} <small>(${esc(state.user.role)})</small></span>`
     : `
       <a href="#/login" class="nav-link">Log in</a>
@@ -911,15 +911,20 @@ async function renderNav() {
     notifBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       notifDrop.classList.toggle("hidden");
+      notifBtn.setAttribute("aria-expanded", !notifDrop.classList.contains("hidden"));
     });
     const readBtn = document.getElementById("notif-read");
     if (readBtn) readBtn.addEventListener("click", async () => {
       await api("/api/notifications/read", { method: "POST" });
       renderNav();
     });
-    document.addEventListener("click", (e) => {
-      if (!e.target.closest(".notif-wrap")) notifDrop.classList.add("hidden");
-    });
+    if (!window._notifDocBound) {
+      window._notifDocBound = true;
+      document.addEventListener("click", (e) => {
+        const drop = document.getElementById("notif-drop");
+        if (drop && !e.target.closest(".notif-wrap")) drop.classList.add("hidden");
+      });
+    }
   }
 }
 
@@ -1052,7 +1057,7 @@ function renderRegister() {
           <label>Answer <input id="reg-a" placeholder="your answer" /></label>
         </div>
         <p class="error" id="reg-error"></p>
-        <button class="btn btn-primary btn-block btn-lg">Sign up</button>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">Sign up</button>
         <p class="auth-switch">Already registered? <a href="#/login">Log in</a></p>
       </form>`);
   document.getElementById("reg-form").addEventListener("submit", async (e) => {
@@ -1804,6 +1809,8 @@ async function renderHome() {
 
   const newBtn = document.getElementById("new-course-btn");
   if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
+  const newBtnEmpty = document.getElementById("new-course-btn-empty");
+  if (newBtnEmpty) newBtnEmpty.addEventListener("click", () => showModal("course-modal"));
 
   document.querySelectorAll("[data-del-ann]").forEach((btn) =>
     btn.addEventListener("click", async (e) => {
@@ -1915,6 +1922,8 @@ async function renderCourses(hash) {
 
   const newBtn = document.getElementById("new-course-btn");
   if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
+  const newBtnEmpty2 = document.getElementById("new-course-btn-empty");
+  if (newBtnEmpty2) newBtnEmpty2.addEventListener("click", () => showModal("course-modal"));
 
   if (q) document.getElementById("search-input").dispatchEvent(new Event("input"));
 }
@@ -2064,6 +2073,10 @@ function showModal(id) {
   const m = document.getElementById(id);
   if (!m) return;
   m.classList.remove("hidden");
+  m.setAttribute("role", "dialog");
+  m.setAttribute("aria-modal", "true");
+  const heading = m.querySelector("h2, h3");
+  if (heading) { const hid = "modal-title-" + id; heading.id = hid; m.setAttribute("aria-labelledby", hid); }
   const focusable = m.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
   if (focusable.length) focusable[0].focus();
   m._trapHandler = (e) => {
@@ -2405,6 +2418,8 @@ async function renderCourseDetail(hash) {
   });
 
   document.getElementById("upload-btn").addEventListener("click", () => showModal("upload-modal"));
+  const uploadEmpty = document.getElementById("upload-btn-empty");
+  if (uploadEmpty) uploadEmpty.addEventListener("click", () => showModal("upload-modal"));
   document.getElementById("up-cancel").addEventListener("click", () =>
     document.getElementById("upload-modal").classList.add("hidden"));
   const upModal = document.getElementById("upload-modal");

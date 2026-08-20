@@ -168,29 +168,15 @@ try {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: newkidEmail, password: "pass1234" })
   });
-  check("register creates pending account", reg.status === 201 && reg.data.pending === true && !!reg.data.devCode);
+  check("register creates account", reg.status === 201 && !!reg.data.token && reg.data.user.verified === true);
+  const newkidToken = reg.data.token;
 
   const preVerify = await api("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: newkidEmail, password: "pass1234" })
   });
-  check("login blocked before verification (403)", preVerify.status === 403);
-
-  const wrongCode = await api("/api/auth/verify", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: newkidEmail, code: "000000" })
-  });
-  check("wrong verification code rejected (401)", wrongCode.status === 401);
-
-  const verifyNew = await api("/api/auth/verify", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: newkidEmail, code: reg.data.devCode })
-  });
-  check("correct code activates account", verifyNew.status === 200 && verifyNew.data.user.verified === true);
-  const newkidToken = verifyNew.data.token;
+  check("registered user can log in immediately", preVerify.status === 200);
 
   const badEmail = await api("/api/auth/register", {
     method: "POST",
@@ -219,22 +205,8 @@ try {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: bossEmail, password: "pass1234", inviteCode: "admin2026" })
   });
-  check("valid invite code creates pending admin", adminReg.status === 201 && adminReg.data.pending === true);
-
-  const resend = await api("/api/auth/resend", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: bossEmail })
-  });
-  check("resend issues a new code", resend.status === 200 && !!resend.data.devCode);
-
-  const verifyBoss = await api("/api/auth/verify", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: bossEmail, code: resend.data.devCode })
-  });
-  check("admin account verified with resent code", verifyBoss.status === 200 && verifyBoss.data.user.role === "admin");
-  const bossToken = verifyBoss.data.token;
+  check("valid invite code creates admin", adminReg.status === 201 && adminReg.data.user.role === "admin");
+  const bossToken = adminReg.data.token;
   const bossCanAdmin = await api("/api/files/pending", { token: bossToken });
   check("invite-signed admin has admin powers", bossCanAdmin.status === 200);
 
@@ -532,7 +504,7 @@ try {
     method: "POST",
     token: studentToken,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileIds: [], action: "approve" })
+    body: JSON.stringify({ fileIds: ["fake"], action: "approve" })
   });
   check("student cannot use bulk action", bulkDenied.status === 403);
 
@@ -665,6 +637,242 @@ try {
 
   const selfDel = await api(`/api/users/${adminLogin.data.user.id}`, { method: "DELETE", token: adminToken });
   check("admin cannot delete self", selfDel.status === 400);
+
+  const me = await api("/api/me", { token: adminToken });
+  check("/api/me returns current user", me.status === 200 && me.data.user.role === "admin");
+
+  const freshUpload = await api("/api/files", {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/octet-stream", "X-File-Name": encodeURIComponent("Fresh test.pdf"), "X-Course-Id": courseId },
+    body: pdf
+  });
+  check("fresh upload for new tests", freshUpload.status === 201 && !!freshUpload.data.file);
+  const freshFileId = freshUpload.data.file.id;
+
+  const searchUsers = await api("/api/users/search?q=student", { token: adminToken });
+  check("user search works", searchUsers.status === 200 && searchUsers.data.users.length >= 1);
+
+  const profile = await api(`/api/profile/${studentLogin.data.user.id}`, { token: adminToken });
+  check("get user profile", profile.status === 200 && !!profile.data.profile.username);
+
+  const setBio = await api("/api/profile/bio", {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ bio: "CS student who loves coding" })
+  });
+  check("set bio", setBio.status === 200);
+
+  const setNotifPrefs = await api("/api/auth/notif-prefs", {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prefs: { upload: true, comment: false } })
+  });
+  check("set notification prefs", setNotifPrefs.status === 200);
+
+  const changeUsername = await api("/api/auth/change-username", {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "student1renamed" })
+  });
+  check("change username", changeUsername.status === 200 && changeUsername.data.user.username === "student1renamed");
+
+  const changeUsernameBack = await api("/api/auth/change-username", {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "student1" })
+  });
+  check("change username back", changeUsernameBack.status === 200);
+
+  const lb = await api("/api/leaderboard", { token: adminToken });
+  check("leaderboard returns data", lb.status === 200 && Array.isArray(lb.data.leaderboard));
+
+  const follow1 = await api(`/api/users/${studentLogin.data.user.id}/follow`, {
+    method: "POST", token: adminToken
+  });
+  check("follow user", follow1.status === 200);
+
+  const followers = await api(`/api/users/${studentLogin.data.user.id}/followers`, { token: adminToken });
+  check("get followers", followers.status === 200 && followers.data.followers.length >= 1);
+
+  const following = await api(`/api/users/${adminLogin.data.user.id}/following`, { token: adminToken });
+  check("get following", following.status === 200 && following.data.following.length >= 1);
+
+  const unfollow = await api(`/api/users/${studentLogin.data.user.id}/follow`, {
+    method: "DELETE", token: adminToken
+  });
+  check("unfollow user", unfollow.status === 200);
+
+  const bookmark1 = await api(`/api/files/${freshFileId}/bookmarks`, {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "Important concept", page: 1 })
+  });
+  check("create bookmark", bookmark1.status === 200);
+
+  const bookmarks = await api(`/api/files/${freshFileId}/bookmarks`, { token: adminToken });
+  check("list bookmarks", bookmarks.status === 200 && bookmarks.data.bookmarks.length >= 1);
+
+  const bmId = bookmarks.data.bookmarks[0].id;
+  const delBm = await api(`/api/files/${freshFileId}/bookmarks/${bmId}`, { method: "DELETE", token: adminToken });
+  check("delete bookmark", delBm.status === 200);
+
+  const like1 = await api(`/api/files/${freshFileId}/like`, {
+    method: "POST", token: studentToken
+  });
+  check("like file", like1.status === 200);
+
+  const like2 = await api(`/api/files/${freshFileId}/like`, {
+    method: "POST", token: studentToken
+  });
+  check("duplicate like idempotent", like2.status === 200);
+
+  const unlike = await api(`/api/files/${freshFileId}/like`, {
+    method: "DELETE", token: studentToken
+  });
+  check("unlike file", unlike.status === 200);
+
+  const rate = await api(`/api/files/${freshFileId}/rating`, {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ score: 4 })
+  });
+  check("rate file", rate.status === 200);
+
+  const rateDup = await api(`/api/files/${freshFileId}/rating`, {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ score: 5 })
+  });
+  check("re-rate file updates", rateDup.status === 200);
+
+  const delRate = await api(`/api/files/${freshFileId}/rating`, { method: "DELETE", token: studentToken });
+  check("delete rating", delRate.status === 200);
+
+  const saveProg = await api(`/api/files/${freshFileId}/progress`, {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pct: 45 })
+  });
+  check("save read progress", saveProg.status === 200);
+
+  const getProg = await api("/api/files/progress", { token: studentToken });
+  check("get all progress", getProg.status === 200 && getProg.data.progress[freshFileId]?.pct >= 45);
+
+  const versions = await api(`/api/files/${freshFileId}/versions`, { token: adminToken });
+  check("list versions", versions.status === 200 && Array.isArray(versions.data.versions));
+
+  const newVer = await api(`/api/files/${freshFileId}/version`, {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/octet-stream", "X-File-Name": "test-v2.pdf" },
+    body: pdf
+  });
+  check("upload new version", newVer.status === 200);
+
+  const flashcards = await api(`/api/files/${freshFileId}/flashcards`, { token: adminToken });
+  check("get flashcards", flashcards.status === 200 && Array.isArray(flashcards.data.cards));
+
+  const createCol = await api("/api/collections", {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Test Collection", description: "A test" })
+  });
+  check("create collection", createCol.status === 201 && !!createCol.data.collection);
+  const colId = createCol.data.collection.id;
+
+  const addToFileCol = await api(`/api/collections/${colId}/add`, {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileId: freshFileId })
+  });
+  check("add file to collection", addToFileCol.status === 200);
+
+  const listCols = await api("/api/collections", { token: adminToken });
+  check("list collections", listCols.status === 200 && listCols.data.collections.length >= 1);
+
+  const colZip = await fetch(BASE + `/api/collections/${colId}/zip`, { headers: { Authorization: "Bearer " + adminToken } });
+  check("export collection as ZIP", colZip.status === 200 && colZip.headers.get("content-type") === "application/zip");
+
+  const removeFromCol = await api(`/api/collections/${colId}/remove`, {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileId: freshFileId })
+  });
+  check("remove file from collection", removeFromCol.status === 200);
+
+  const deleteCol = await api(`/api/collections/${colId}`, { method: "DELETE", token: adminToken });
+  check("delete collection", deleteCol.status === 200);
+
+  const ann1 = await api("/api/announcements", {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "Test announcement" })
+  });
+  check("create announcement", ann1.status === 201);
+
+  const listAnns = await api("/api/announcements", { token: adminToken });
+  check("list announcements", listAnns.status === 200 && listAnns.data.announcements.length >= 1);
+  const annId = listAnns.data.announcements[0].id;
+
+  const delAnn = await api(`/api/announcements/${annId}`, { method: "DELETE", token: adminToken });
+  check("delete announcement", delAnn.status === 200);
+
+  const createGroup = await api("/api/groups", {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Study Group" })
+  });
+  check("create group", createGroup.status === 200 && !!createGroup.data.group);
+  const groupId = createGroup.data.group.id;
+
+  const listGroups = await api("/api/groups", { token: adminToken });
+  check("list groups", listGroups.status === 200 && listGroups.data.groups.length >= 1);
+
+  const joinGroup = await api(`/api/groups/${groupId}/join`, {
+    method: "POST", token: studentToken
+  });
+  check("join group", joinGroup.status === 200);
+
+  const groupDetail = await api(`/api/groups/${groupId}`, { token: adminToken });
+  check("get group detail", groupDetail.status === 200 && groupDetail.data.group.members.length >= 2);
+
+  const leaveGroup = await api(`/api/groups/${groupId}/leave`, {
+    method: "POST", token: studentToken
+  });
+  check("leave group", leaveGroup.status === 200);
+
+  const delGroup = await api(`/api/groups/${groupId}`, { method: "DELETE", token: adminToken });
+  check("delete group", delGroup.status === 200);
+
+  const searchResult2 = await api("/api/search?q=library", { token: adminToken });
+  check("search works", searchResult2.status === 200 && Array.isArray(searchResult2.data.files));
+
+  const searchContent2 = await api("/api/search?q=library&content=1", { token: adminToken });
+  check("content search works", searchContent2.status === 200);
+
+  const stats2 = await api("/api/stats", { token: adminToken });
+  check("admin stats", stats2.status === 200 && stats2.data.stats.totalUsers >= 3);
+
+  const notifs2 = await api("/api/notifications", { token: adminToken });
+  check("list notifications", notifs2.status === 200 && Array.isArray(notifs2.data.notifications));
+
+  const readNotifs = await api("/api/notifications/read", { method: "POST", token: adminToken });
+  check("mark notifications read", readNotifs.status === 200);
+
+  const feed2 = await api("/api/feed?following=1", { token: adminToken });
+  check("activity feed", feed2.status === 200 && Array.isArray(feed2.data.activity));
+
+  const themeSchedule = await api("/api/auth/theme-schedule", {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lightAt: "07:00", darkAt: "19:00" })
+  });
+  check("set theme schedule", themeSchedule.status === 200);
+
+  const delFile = await api(`/api/files/${freshFileId}`, { method: "DELETE", token: adminToken });
+  check("delete file", delFile.status === 200);
+
+  const delFileAuth = await api(`/api/files/nonexistent`, { method: "DELETE", token: adminToken });
+  check("delete nonexistent file 404", delFileAuth.status === 404);
 } catch (err) {
   results.push("ERROR " + err.message);
   if (serverLog) results.push("SERVER LOG: " + serverLog.slice(0, 2000));

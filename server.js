@@ -49,7 +49,14 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 let db;
 if (fs.existsSync(DATA_FILE)) {
-  db = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  try {
+    db = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  } catch (e) {
+    console.error("WARNING: data.json is corrupted, backing up and re-seeding:", e.message);
+    try { fs.copyFileSync(DATA_FILE, DATA_FILE + ".bak." + Date.now()); } catch {}
+    db = seedDb();
+    saveDb();
+  }
 } else if (supabaseConfigured()) {
   const remote = await loadDbFromSupabase();
   if (remote) {
@@ -62,6 +69,9 @@ if (fs.existsSync(DATA_FILE)) {
 } else {
   db = seedDb();
 }
+
+if (!db.announcements) db.announcements = [];
+if (!db.groups) db.groups = [];
 
 function seedDb() {
   const SEED_FILE = path.join(__dirname, "seed-data.json");
@@ -243,7 +253,7 @@ function publicUser(u) {
   return { id: u.id, username: u.username, email: u.email || "", role: u.role, verified: !!u.verified };
 }
 
-function send(res, status, data) {
+function send(res, status, data, contentType, extraHeaders) {
   const body = JSON.stringify(data);
   const etag = '"' + crypto.createHash("md5").update(body).digest("hex") + '"';
   const ifNoneMatch = res.req?.headers?.["if-none-match"];
@@ -252,11 +262,13 @@ function send(res, status, data) {
     res.end();
     return;
   }
-  res.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
+  const headers = {
+    "Content-Type": contentType || "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(body),
-    "ETag": etag
-  });
+    "ETag": etag,
+    ...extraHeaders
+  };
+  res.writeHead(status, headers);
   res.end(body);
 }
 
@@ -410,7 +422,7 @@ async function handleApi(req, res, pathname) {
   }
 }
 
-const ok = (res) => send(res, 200, { ok: true });
+const ok = (res, data) => send(res, 200, data || { ok: true });
 
 /* ---------- auth ---------- */
 
@@ -1295,17 +1307,22 @@ routes.push({
         const fp = path.join(UPLOAD_DIR, f.storedName);
         try {
           const data = fs.readFileSync(fp);
-          entries.push({ name: (f.originalName || f.name || f.id) + ".pdf", data });
+          entries.push({ name: (f.originalName || f.name || f.id) + ".pdf", buffer: data });
         } catch {}
       }
       if (!entries.length) return send(res, 404, { error: "No files found on disk" });
       const zipData = buildZip(entries);
       for (const f of files) {
-        f.downloads = (f.downloads || 0) + 1;
-        trackActivity(f, "download");
+        if (!f.downloads) f.downloads = 0;
+        f.downloads++;
       }
       saveDb();
-      send(res, 200, zipData, "application/zip", { "Content-Disposition": "attachment; filename=\"files.zip\"" });
+      res.writeHead(200, {
+        "Content-Type": "application/zip",
+        "Content-Disposition": "attachment; filename=\"files.zip\"",
+        "Content-Length": zipData.length
+      });
+      res.end(zipData);
       return;
     }
     let count = 0;
@@ -1480,6 +1497,19 @@ routes.push({
 
 /* ---------- discovery: search / feed / popular ---------- */
 
+function extractSnippet(text, query, len) {
+  if (!text) return "";
+  const low = text.toLowerCase();
+  const idx = low.indexOf(query.toLowerCase().split(/\s+/)[0]);
+  if (idx === -1) return text.slice(0, len);
+  const start = Math.max(0, idx - Math.floor(len / 3));
+  const end = Math.min(text.length, start + len);
+  let snippet = text.slice(start, end);
+  if (start > 0) snippet = "..." + snippet;
+  if (end < text.length) snippet = snippet + "...";
+  return snippet;
+}
+
 routes.push({
   method: "GET", path: "/api/search",
   handler: (req, res) => {
@@ -1499,18 +1529,6 @@ routes.push({
       ].join(" ").toLowerCase();
       return tokens.every((t) => hay.includes(t));
     });
-    function extractSnippet(text, query, len) {
-      if (!text) return "";
-      const low = text.toLowerCase();
-      const idx = low.indexOf(query.toLowerCase().split(/\s+/)[0]);
-      if (idx === -1) return text.slice(0, len);
-      const start = Math.max(0, idx - Math.floor(len / 3));
-      const end = Math.min(text.length, start + len);
-      let snippet = text.slice(start, end);
-      if (start > 0) snippet = "..." + snippet;
-      if (end < text.length) snippet = snippet + "...";
-      return snippet;
-    }
     const ranked = matches
       .sort((a, b) => {
         if (contentOnly) {
@@ -1654,7 +1672,6 @@ routes.push({
   handler: (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    if (!db.announcements) db.announcements = [];
     const visible = db.announcements.filter((a) => {
       if (!a.courseId) return true;
       const course = db.courses.find((c) => c.id === a.courseId);
@@ -1673,7 +1690,6 @@ routes.push({
     const body = JSON.parse((await readBody(req, 1024 * 4)).toString() || "{}");
     const text = String(body.text || "").trim();
     if (!text) return send(res, 400, { error: "Announcement text is required" });
-    if (!db.announcements) db.announcements = [];
     const a = {
       id: "ann" + Date.now(),
       text,
@@ -1695,7 +1711,6 @@ routes.push({
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
     if (user.role !== "admin") return send(res, 403, { error: "Admins only" });
-    if (!db.announcements) db.announcements = [];
     db.announcements = db.announcements.filter((a) => a.id !== params.id);
     saveDb();
     ok(res);
@@ -1835,14 +1850,11 @@ routes.push({
 
 /* ---------- study groups ---------- */
 
-function initGroups() { if (!db.groups) db.groups = []; }
-
 routes.push({
   method: "GET", path: "/api/groups",
   handler: (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    initGroups();
     const myGroups = db.groups.filter((g) => g.memberIds.includes(user.id));
     send(res, 200, { groups: myGroups.map((g) => ({
       id: g.id, name: g.name, description: g.description, ownerId: g.ownerId,
@@ -1858,7 +1870,6 @@ routes.push({
   handler: async (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    initGroups();
     const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
     const name = String(body.name || "").trim();
     if (!name) return send(res, 400, { error: "Group name required" });
@@ -1883,7 +1894,6 @@ routes.push({
   handler: (req, res, params) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    initGroups();
     const g = db.groups.find((x) => x.id === params.id);
     if (!g) return send(res, 404, { error: "Group not found" });
     if (!g.memberIds.includes(user.id)) return send(res, 403, { error: "Not a member" });
@@ -1907,7 +1917,6 @@ routes.push({
   handler: (req, res, params) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    initGroups();
     const g = db.groups.find((x) => x.id === params.id);
     if (!g) return send(res, 404, { error: "Group not found" });
     if (g.memberIds.includes(user.id)) return send(res, 400, { error: "Already a member" });
@@ -1923,7 +1932,6 @@ routes.push({
   handler: (req, res, params) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    initGroups();
     const g = db.groups.find((x) => x.id === params.id);
     if (!g) return send(res, 404, { error: "Group not found" });
     if (g.ownerId === user.id) return send(res, 400, { error: "Owner cannot leave. Transfer ownership or delete." });
@@ -1938,7 +1946,6 @@ routes.push({
   handler: (req, res, params) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    initGroups();
     const g = db.groups.find((x) => x.id === params.id);
     if (!g) return send(res, 404, { error: "Group not found" });
     if (g.ownerId !== user.id) return send(res, 403, { error: "Only owner can delete" });
@@ -1953,7 +1960,6 @@ routes.push({
   handler: async (req, res, params) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    initGroups();
     const g = db.groups.find((x) => x.id === params.id);
     if (!g) return send(res, 404, { error: "Group not found" });
     if (!g.memberIds.includes(user.id)) return send(res, 403, { error: "Not a member" });

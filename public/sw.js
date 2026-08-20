@@ -1,10 +1,12 @@
-const CACHE_NAME = "courselib-v8";
+const CACHE_NAME = "courselib-v9";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
-  "/manifest.json"
+  "/manifest.json",
+  "/favicon.svg",
+  "/icon-192.svg"
 ];
 
 self.addEventListener("install", (event) => {

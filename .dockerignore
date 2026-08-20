@@ -5,4 +5,13 @@ uploads/
 *.log
 servercheck.txt
 test-results.txt
+test-output.txt
 sample-test.pdf
+AGENTS.md
+render.yaml
+seed-data.json
+test.js
+IMG_2469.MOV
+tunnel.log
+.DS_Store
+node_modules

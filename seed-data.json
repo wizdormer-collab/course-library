@@ -21,6 +21,17 @@
       "verified": true,
       "securityQuestion": "What city were you born in?",
       "securityAnswerHash": "b3b21d379ef1419fbe45274299ceb83c:fe7a0b976abb481f8fbba0449200be5b5df8cfa94ef825809bb2522396ff139f"
+    },
+    {
+      "id": "u3",
+      "username": "lecturer",
+      "email": "lecturer@university.edu.ng",
+      "hash": "796e307deba0881cd73b487180896229:93b250062b1725308f17a1b2c386796e8b6f85a6a9a9e50e75f7b955541e9e43",
+      "role": "lecturer",
+      "notifications": [],
+      "verified": true,
+      "securityQuestion": "What is your favorite course?",
+      "securityAnswerHash": "b3b21d379ef1419fbe45274299ceb83c:fe7a0b976abb481f8fbba0449200be5b5df8cfa94ef825809bb2522396ff139f"
     }
   ],
   "courses": [
@@ -31,6 +42,7 @@
       "description": "Foundations of computing: algorithms, programming, and problem solving.",
       "category": "Sciences",
       "semester": "First",
+      "createdBy": "u1",
       "createdAt": 1786607067360
     },
     {
@@ -40,6 +52,7 @@
       "description": "Differential and integral calculus of functions of one variable.",
       "category": "Sciences",
       "semester": "First",
+      "createdBy": "u1",
       "createdAt": 1786607067360
     },
     {
@@ -49,6 +62,7 @@
       "description": "Academic writing, rhetoric, and critical reading.",
       "category": "Arts",
       "semester": "Second",
+      "createdBy": "u3",
       "createdAt": 1786607067360
     }
   ],
