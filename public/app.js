@@ -1375,6 +1375,9 @@ function onboardStep6() {
   document.getElementById("ob-finish").addEventListener("click", async () => {
     const btn = document.getElementById("ob-finish");
     const done = btnLoading(btn, "Setting up");
+    const allCourses = generateDemoCourses();
+    const selectedSet = new Set(data.selectedCourses || []);
+    const coursesToSend = allCourses.filter((c) => selectedSet.has(c.code)).map((c) => ({ code: c.code, title: c.title }));
     try {
       const d = await api("/api/auth/register", {
         method: "POST",
@@ -1390,7 +1393,8 @@ function onboardStep6() {
           matricNumber: data.matricNumber || "",
           studentType: data.studentType || "",
           securityQuestion: data.securityQuestion || "",
-          securityAnswer: data.securityAnswer || ""
+          securityAnswer: data.securityAnswer || "",
+          selectedCourses: coursesToSend
         })
       });
       storeAuth(d);

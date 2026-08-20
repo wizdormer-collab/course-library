@@ -507,6 +507,22 @@ routes.push({
     if (level) user.level = level;
     if (matricNumber) user.matricNumber = matricNumber;
     if (studentType) user.studentType = studentType;
+    const userCourses = [];
+    if (Array.isArray(body.selectedCourses) && body.selectedCourses.length) {
+      body.selectedCourses.forEach((c) => {
+        const code = String(c.code || "").trim();
+        const title = String(c.title || "").trim();
+        if (!code) return;
+        let existing = db.courses.find((x) => x.code === code);
+        if (!existing) {
+          existing = { id: "c" + Date.now() + Math.random().toString(36).slice(2, 6), name: title || code, code, description: "", category: "", semester: "" };
+          db.courses.push(existing);
+        }
+        userCourses.push(existing.id);
+      });
+      saveDb();
+    }
+    if (userCourses.length) user.enrolledCourses = userCourses;
     db.users.push(user);
     saveDb();
     send(res, 201, {
