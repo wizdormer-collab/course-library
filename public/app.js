@@ -197,6 +197,8 @@ function fileRow(f, opts = {}) {
   const tagsHtml = (f.tags || []).length
     ? `<div class="file-tags">${f.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>`
     : "";
+  const rp = state.readProgress && state.readProgress[f.id];
+  const progressHtml = rp ? `<div class="file-progress"><div class="progress-bar" style="height:3px"><div class="progress-fill" style="width:${rp.pct}%"></div></div><span class="muted small">${rp.pct}% read</span></div>` : "";
   return `
     <div class="file-row" data-fid="${f.id}">
       ${opts.showCheckboxes ? `<label class="file-check"><input type="checkbox" data-bulk-check="${f.id}" /></label>` : ""}
@@ -210,6 +212,7 @@ function fileRow(f, opts = {}) {
           ${!f.approved ? '<span class="badge badge-pending">pending</span>' : ""}
         </span>
         ${tagsHtml}
+        ${progressHtml}
         ${opts.showCounts ? `
           <span class="muted">
             <span class="stat" title="Views">${icon("eye")} ${fmtCount(f.views || 0)}</span>
@@ -460,11 +463,25 @@ async function openPdf(fileId, showCourse) {
       <div class="modal modal-wide">
         <div class="modal-actions pdf-head">
           <h2 class="pdf-title" id="pdf-title">${esc(title || "Loading...")}</h2>
+          <div class="pdf-progress-wrap" id="pdf-progress-wrap" style="display:none">
+            <div class="progress-bar" style="height:4px;flex:1"><div class="progress-fill" id="pdf-progress-bar" style="width:0%"></div></div>
+            <span class="muted small" id="pdf-progress-pct">0%</span>
+          </div>
+          <button class="btn btn-outline btn-sm" id="bm-toggle">${icon("edit")} Notes</button>
           <button class="btn btn-outline" id="pdf-close">Close</button>
         </div>
         <div class="pdf-body">
           <iframe class="pdf-frame" id="pdf-frame" title="PDF preview"></iframe>
           <div class="comments" id="comments"></div>
+          <div class="bm-panel hidden" id="bm-panel">
+            <h3>Notes</h3>
+            <form id="bm-form" class="bm-add">
+              <input id="bm-page" type="number" min="1" placeholder="Page" style="width:60px" />
+              <input id="bm-text" placeholder="Add a note..." maxlength="500" style="flex:1" />
+              <button class="btn btn-primary btn-sm">Add</button>
+            </form>
+            <div id="bm-list" class="bm-list"></div>
+          </div>
         </div>
       </div>
     </div>`;
@@ -479,20 +496,102 @@ async function openPdf(fileId, showCourse) {
   titleEl.textContent = "Loading...";
   frame.src = "";
 
-  (async () => {
+  let saveTimer = null;
+  const saveProgress = (pct) => {
+    if (saveTimer) return;
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      api("/api/files/" + fileId + "/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pct }) }).catch(() => {});
+    }, 2000);
+  };
+
+  frame.addEventListener("load", () => {
+    const wrap = document.getElementById("pdf-progress-wrap");
+    if (wrap) wrap.style.display = "flex";
     try {
-      const blob = await fetchBlob("/api/files/" + fileId + "/inline");
-      frame.src = URL.createObjectURL(blob);
-    } catch (err) {
-      titleEl.textContent = "Preview unavailable";
-    }
-  })();
+      const iDoc = frame.contentDocument || frame.contentWindow.document;
+      const scrollEl = iDoc.documentElement || iDoc.body;
+      if (scrollEl) {
+        scrollEl.addEventListener("scroll", () => {
+          const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+          if (maxScroll > 0) {
+            const pct = Math.round((scrollEl.scrollTop / maxScroll) * 100);
+            const bar = document.getElementById("pdf-progress-bar");
+            const pctEl = document.getElementById("pdf-progress-pct");
+            if (bar) bar.style.width = pct + "%";
+            if (pctEl) pctEl.textContent = pct + "%";
+            saveProgress(pct);
+          }
+        });
+      }
+    } catch {}
+  });
 
   try {
     const list = await api("/api/files");
     const found = list.files.find((x) => x.id === fileId);
     if (found) titleEl.textContent = found.name;
   } catch {}
+
+  try {
+    const blob = await fetchBlob("/api/files/" + fileId + "/inline");
+    frame.src = URL.createObjectURL(blob);
+  } catch (err) {
+    titleEl.textContent = "Preview unavailable";
+  }
+
+  const bmToggle = document.getElementById("bm-toggle");
+  const bmPanel = document.getElementById("bm-panel");
+  const bmList = document.getElementById("bm-list");
+
+  async function loadBookmarks() {
+    try {
+      const d = await api("/api/files/" + fileId + "/bookmarks");
+      const bms = d.bookmarks || [];
+      if (bmList) {
+        bmList.innerHTML = bms.length ? bms.map((b) => `
+          <div class="bm-item">
+            <span class="bm-page-badge">p.${b.page}</span>
+            <span class="bm-text">${esc(b.text)}</span>
+            <span class="muted small">${fmtDate(b.createdAt)}</span>
+            <button class="icon-btn bm-del" data-bid="${b.id}" title="Delete">${icon("close")}</button>
+          </div>`).join("") : '<p class="muted small" style="text-align:center;padding:12px 0">No notes yet</p>';
+        bmList.querySelectorAll(".bm-del").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            await api("/api/files/" + fileId + "/bookmarks/" + btn.dataset.bid, { method: "DELETE" });
+            loadBookmarks();
+          });
+        });
+      }
+    } catch {}
+  }
+
+  if (bmToggle && bmPanel) {
+    bmToggle.addEventListener("click", () => {
+      bmPanel.classList.toggle("hidden");
+      if (!bmPanel.classList.contains("hidden")) loadBookmarks();
+    });
+  }
+
+  const bmForm = document.getElementById("bm-form");
+  if (bmForm) {
+    bmForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = document.getElementById("bm-text").value.trim();
+      if (!text) return;
+      try {
+        await api("/api/files/" + fileId + "/bookmarks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, page: document.getElementById("bm-page").value || 1 })
+        });
+        document.getElementById("bm-text").value = "";
+        loadBookmarks();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  }
 
   await loadComments(fileId);
 }
@@ -1088,6 +1187,19 @@ async function renderSettings() {
           <button class="btn btn-primary">Save schedule</button>
         </form>
       </div>
+      <div class="card">
+        <h3>Notification preferences</h3>
+        <p class="muted small">Choose which notifications you want to receive.</p>
+        <form id="notif-prefs-form" class="stack">
+          <label class="inline-label"><input type="checkbox" id="np-upload" ${state.notifPrefs?.upload !== false ? "checked" : ""} /> New uploads in my courses</label>
+          <label class="inline-label"><input type="checkbox" id="np-approval" ${state.notifPrefs?.approval !== false ? "checked" : ""} /> File approval/rejection</label>
+          <label class="inline-label"><input type="checkbox" id="np-comment" ${state.notifPrefs?.comment !== false ? "checked" : ""} /> Comments on my files</label>
+          <label class="inline-label"><input type="checkbox" id="np-mention" ${state.notifPrefs?.mention !== false ? "checked" : ""} /> @mentions in comments</label>
+          <label class="inline-label"><input type="checkbox" id="np-follow" ${state.notifPrefs?.follow !== false ? "checked" : ""} /> New followers</label>
+          <label class="inline-label"><input type="checkbox" id="np-group" ${state.notifPrefs?.group !== false ? "checked" : ""} /> Study group activity</label>
+          <button class="btn btn-primary">Save preferences</button>
+        </form>
+      </div>
     </div>`);
 
   document.getElementById("pw-form").addEventListener("submit", async (e) => {
@@ -1187,6 +1299,29 @@ async function renderSettings() {
       localStorage.setItem("auth", JSON.stringify(state));
       applyThemeSchedule();
       showToast("Theme schedule saved");
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.getElementById("notif-prefs-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const d = await api("/api/auth/notif-prefs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          upload: document.getElementById("np-upload").checked,
+          approval: document.getElementById("np-approval").checked,
+          comment: document.getElementById("np-comment").checked,
+          mention: document.getElementById("np-mention").checked,
+          follow: document.getElementById("np-follow").checked,
+          group: document.getElementById("np-group").checked
+        })
+      });
+      state.notifPrefs = d.notifPrefs;
+      localStorage.setItem("auth", JSON.stringify(state));
+      showToast("Notification preferences saved");
     } catch (err) {
       alert(err.message);
     }
@@ -2305,36 +2440,86 @@ async function renderAdmin() {
   if (state.user.role !== "admin") return (location.hash = "#/");
   let pending = [];
   let stats = null;
+  let topFiles = [];
+  let uploadTrend = [];
+  let topUsers = [];
+  let courseStats = [];
   let users = [];
   try {
     pending = (await api("/api/files/pending")).files;
   } catch {}
   try {
-    stats = (await api("/api/stats")).stats;
+    const d = await api("/api/stats");
+    stats = d.stats;
+    topFiles = d.topFiles || [];
+    uploadTrend = d.uploadTrend || [];
+    topUsers = d.topUsers || [];
+    courseStats = d.courseStats || [];
   } catch {}
   try {
     users = (await api("/api/users")).users;
   } catch {}
 
+  const maxTrend = Math.max(1, ...uploadTrend.map((d) => d.count));
   const statCards = stats
     ? `
       <div class="stat-grid">
         ${[["Files", stats.totalFiles], ["Downloads", stats.totalDownloads], ["Views", stats.totalViews],
-          ["Courses", stats.totalCourses], ["Users", stats.totalUsers], ["Pending", stats.pending]]
+          ["Courses", stats.totalCourses], ["Users", stats.totalUsers], ["Pending", stats.pending],
+          ["Comments", stats.totalComments || 0], ["Ratings", stats.totalRatings || 0]]
           .map(([label, val]) => `<div class="stat-card"><div class="stat-num">${val}</div><div class="muted">${label}</div></div>`).join("")}
       </div>
-      ${stats.topFiles.length ? `
-        <h2 class="section-title">Top files</h2>
-        <div class="file-list">
-          ${stats.topFiles.map((f) => `
-            <div class="file-row">
-              <span class="file-icon">${icon("file")}</span>
-              <div class="file-info">
-                <div class="file-name">${esc(f.name)}</div>
-                <span class="muted">${esc(f.courseLabel)} &middot; ${f.views} views &middot; ${f.downloads} downloads</span>
-              </div>
-            </div>`).join("")}
-        </div>` : ""}`
+      <section class="home-section">
+        <h2 class="section-title">Upload trend (30 days)</h2>
+        <div class="analytics-chart">
+          ${uploadTrend.map((d) => `<div class="chart-bar" style="height:${Math.max(2, (d.count / maxTrend) * 100)}%" title="${d.date}: ${d.count} uploads"><span class="chart-label">${d.count}</span></div>`).join("")}
+        </div>
+      </section>
+      <div class="analytics-row">
+        ${topUsers.length ? `
+          <section class="home-section" style="flex:1;min-width:0">
+            <h2 class="section-title">Top contributors</h2>
+            <div class="lb-list">
+              ${topUsers.map((u, i) => `
+                <div class="lb-row" data-profile="${u.id}" style="cursor:pointer">
+                  <div class="lb-rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "normal"}">${i + 1}</div>
+                  <div class="lb-info">
+                    <h4>${esc(u.username)}</h4>
+                    <p>${u.uploads} uploads · ${fmtCount(u.views)} views · ${u.comments} comments</p>
+                  </div>
+                  <span class="lb-score">${fmtCount(u.score)} pts</span>
+                </div>`).join("")}
+            </div>
+          </section>` : ""}
+        ${courseStats.length ? `
+          <section class="home-section" style="flex:1;min-width:0">
+            <h2 class="section-title">Popular courses</h2>
+            <div class="lb-list">
+              ${courseStats.map((c, i) => `
+                <div class="lb-row">
+                  <div class="lb-rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "normal"}">${i + 1}</div>
+                  <div class="lb-info">
+                    <h4>${esc(c.name)}</h4>
+                    <p>${c.fileCount} files · ${fmtCount(c.totalViews)} views · ${fmtCount(c.totalDownloads)} downloads</p>
+                  </div>
+                </div>`).join("")}
+            </div>
+          </section>` : ""}
+      </div>
+      ${topFiles.length ? `
+        <section class="home-section">
+          <h2 class="section-title">Top files</h2>
+          <div class="file-list">
+            ${topFiles.map((f) => `
+              <div class="file-row">
+                <span class="file-icon">${icon("file")}</span>
+                <div class="file-info">
+                  <div class="file-name">${esc(f.name)}</div>
+                  <span class="muted">${esc(f.courseLabel)} &middot; ${f.views} views &middot; ${f.downloads} downloads</span>
+                </div>
+              </div>`).join("")}
+          </div>
+        </section>` : ""}`
     : "";
 
   app.innerHTML = shell(`
@@ -2850,7 +3035,11 @@ async function renderGroupDetail(hash) {
       const me = await api("/api/me");
       state.user = me.user;
       state.themeSchedule = me.user.themeSchedule || null;
+      state.notifPrefs = me.user.notifPrefs || null;
     } catch {}
+    try {
+      state.readProgress = (await api("/api/files/progress")).progress || {};
+    } catch { state.readProgress = {}; }
   }
   applyThemeSchedule();
   render();
@@ -2906,3 +3095,48 @@ if ("serviceWorker" in navigator) {
     }).catch(() => {});
   });
 }
+
+/* ---------- offline indicator ---------- */
+
+const offlineBar = document.getElementById("offline-bar");
+function updateOnlineStatus() {
+  if (offlineBar) offlineBar.classList.toggle("hidden", navigator.onLine);
+}
+window.addEventListener("online", updateOnlineStatus);
+window.addEventListener("offline", updateOnlineStatus);
+updateOnlineStatus();
+
+/* ---------- PWA install prompt ---------- */
+
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (!localStorage.getItem("installDismissed")) {
+    const bar = document.getElementById("install-bar");
+    if (bar) bar.classList.remove("hidden");
+  }
+});
+const installBtn = document.getElementById("install-btn");
+if (installBtn) {
+  installBtn.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === "accepted") {
+      document.getElementById("install-bar")?.classList.add("hidden");
+    }
+    deferredInstallPrompt = null;
+  });
+}
+const installDismiss = document.getElementById("install-dismiss");
+if (installDismiss) {
+  installDismiss.addEventListener("click", () => {
+    document.getElementById("install-bar")?.classList.add("hidden");
+    localStorage.setItem("installDismissed", "1");
+  });
+}
+window.addEventListener("appinstalled", () => {
+  document.getElementById("install-bar")?.classList.add("hidden");
+  deferredInstallPrompt = null;
+});

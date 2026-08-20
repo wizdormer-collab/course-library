@@ -284,9 +284,11 @@ function getAuthUser(req) {
   return verifyToken(h.slice(7));
 }
 
-function notify(userId, text) {
+function notify(userId, text, type) {
   const user = db.users.find((u) => u.id === userId);
   if (!user) return;
+  const prefs = user.notifPrefs || {};
+  if (type && prefs[type] === false) return;
   if (!Array.isArray(user.notifications)) user.notifications = [];
   user.notifications.unshift({ id: "n" + Date.now() + Math.random().toString(16).slice(2, 6), text, at: new Date().toISOString(), read: false });
   if (user.notifications.length > 100) user.notifications.length = 100;
@@ -555,7 +557,7 @@ routes.push({
   handler: (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    send(res, 200, { user: { ...publicUser(user), hasSecurityQuestion: !!user.securityQuestion, lastViewed: user.lastViewed || {}, themeSchedule: user.themeSchedule || { enabled: false, darkStart: "20:00", darkEnd: "07:00" } } });
+    send(res, 200, { user: { ...publicUser(user), hasSecurityQuestion: !!user.securityQuestion, lastViewed: user.lastViewed || {}, themeSchedule: user.themeSchedule || { enabled: false, darkStart: "20:00", darkEnd: "07:00" }, notifPrefs: user.notifPrefs || { upload: true, approval: true, comment: true, mention: true, follow: true, group: true }, bio: user.bio || "" } });
   }
 });
 
@@ -1029,12 +1031,12 @@ routes.push({
         const savedCourse = (u.id !== user.id) && db.files.some(
           (x) => x.courseId === courseId && (x.savedBy || []).includes(u.id)
         );
-        if (savedCourse) notify(u.id, `New material "${file.name}" added to ${courseLabel(courseId)}`);
+        if (savedCourse) notify(u.id, `New material "${file.name}" added to ${courseLabel(courseId)}`, "upload");
       }
     } else {
       for (const u of db.users) {
         if (u.role === "admin" && u.id !== user.id) {
-          notify(u.id, `New upload pending approval: "${file.name}" by ${user.username} in ${courseLabel(courseId)}`);
+          notify(u.id, `New upload pending approval: "${file.name}" by ${user.username} in ${courseLabel(courseId)}`, "upload");
         }
       }
     }
@@ -1088,6 +1090,72 @@ function servePdf(req, res, params, mode) {
 
 routes.push({ method: "GET", path: "/api/files/:id/inline", handler: (req, res, params) => servePdf(req, res, params, "inline") });
 routes.push({ method: "GET", path: "/api/files/:id/download", handler: (req, res, params) => servePdf(req, res, params, "download") });
+
+routes.push({
+  method: "POST", path: "/api/files/:id/progress",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f) return send(res, 404, { error: "File not found" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    const pct = Math.max(0, Math.min(100, Math.round(Number(body.pct) || 0)));
+    if (!user.readProgress) user.readProgress = {};
+    user.readProgress[f.id] = { pct, at: new Date().toISOString() };
+    saveDb();
+    ok(res, { pct });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/files/progress",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    send(res, 200, { progress: user.readProgress || {} });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/files/:id/bookmarks",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (!user.bookmarks) user.bookmarks = {};
+    send(res, 200, { bookmarks: user.bookmarks[params.id] || [] });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/files/:id/bookmarks",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    const text = String(body.text || "").trim().slice(0, 500);
+    const page = Math.max(1, Math.round(Number(body.page) || 1));
+    if (!text) return send(res, 400, { error: "Note text required" });
+    if (!user.bookmarks) user.bookmarks = {};
+    if (!user.bookmarks[params.id]) user.bookmarks[params.id] = [];
+    const bm = { id: "bm" + Date.now() + Math.random().toString(16).slice(2, 6), text, page, createdAt: new Date().toISOString() };
+    user.bookmarks[params.id].push(bm);
+    if (user.bookmarks[params.id].length > 50) user.bookmarks[params.id] = user.bookmarks[params.id].slice(-50);
+    saveDb();
+    ok(res, { bookmark: bm });
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/files/:id/bookmarks/:bid",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (!user.bookmarks || !user.bookmarks[params.id]) return send(res, 404, { error: "Not found" });
+    user.bookmarks[params.id] = user.bookmarks[params.id].filter((b) => b.id !== params.bid);
+    saveDb();
+    ok(res);
+  }
+});
 
 routes.push({
   method: "PUT", path: "/api/files/:id/rename",
@@ -1151,18 +1219,18 @@ routes.push({
         if (!f.approved) {
           f.approved = true;
           count++;
-          notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`);
+          notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`, "approval");
           for (const u of db.users) {
             const savedCourse =
               u.id !== f.uploadedBy &&
               db.files.some((x) => x.courseId === f.courseId && (x.savedBy || []).includes(u.id));
-            if (savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`);
+            if (savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`, "upload");
           }
         }
       } else if (action === "reject") {
         db.files.splice(idx, 1);
         count++;
-        notify(f.uploadedBy, `Your file "${f.name}" was rejected by an admin.`);
+        notify(f.uploadedBy, `Your file "${f.name}" was rejected by an admin.`, "approval");
         fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
         if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
       } else if (action === "delete") {
@@ -1221,12 +1289,12 @@ routes.push({
     if (!f) return send(res, 404, { error: "File not found" });
     f.approved = true;
     saveDb();
-    notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`);
+    notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`, "approval");
     for (const u of db.users) {
       const savedCourse =
         u.id !== f.uploadedBy &&
         db.files.some((x) => x.courseId === f.courseId && (x.savedBy || []).includes(u.id));
-      if (savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`);
+      if (savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`, "upload");
     }
     send(res, 200, { file: fileInfo(f, user) });
   }
@@ -1241,7 +1309,7 @@ routes.push({
     const idx = db.files.findIndex((x) => x.id === params.id);
     if (idx === -1) return send(res, 404, { error: "File not found" });
     const [f] = db.files.splice(idx, 1);
-    if (!f.approved) notify(f.uploadedBy, `Your file "${f.name}" was rejected by an admin.`);
+    if (!f.approved) notify(f.uploadedBy, `Your file "${f.name}" was rejected by an admin.`, "approval");
     fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
     if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
     saveDb();
@@ -1284,11 +1352,11 @@ routes.push({
     trackUserActivity(user, "comment", f.name);
     saveDb();
     if (f.uploadedBy !== user.id) {
-      notify(f.uploadedBy, `${user.username} commented on your file "${f.name}"`);
+      notify(f.uploadedBy, `${user.username} commented on your file "${f.name}"`, "comment");
     }
     for (const mu of mentionedUserIds) {
       if (mu.id !== f.uploadedBy) {
-        notify(mu.id, `${user.username} mentioned you in a comment on "${f.name}"`);
+        notify(mu.id, `${user.username} mentioned you in a comment on "${f.name}"`, "mention");
       }
     }
     send(res, 201, { comment: c });
@@ -1672,7 +1740,7 @@ routes.push({
     if (g.memberIds.includes(user.id)) return send(res, 400, { error: "Already a member" });
     g.memberIds.push(user.id);
     saveDb();
-    notify(g.ownerId, `${user.username} joined your group "${g.name}"`);
+    notify(g.ownerId, `${user.username} joined your group "${g.name}"`, "group");
     ok(res, { memberCount: g.memberIds.length });
   }
 });
@@ -1726,7 +1794,7 @@ routes.push({
     g.collectionIds.push(colId);
     saveDb();
     for (const mid of g.memberIds) {
-      if (mid !== user.id) notify(mid, `${user.username} shared "${col.name}" in group "${g.name}"`);
+      if (mid !== user.id) notify(mid, `${user.username} shared "${col.name}" in group "${g.name}"`, "group");
     }
     ok(res, { shared: true });
   }
@@ -1743,6 +1811,25 @@ routes.push({
     user.bio = String(body.bio || "").trim().slice(0, 500);
     saveDb();
     ok(res, { bio: user.bio });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/auth/notif-prefs",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    user.notifPrefs = {
+      upload: body.upload !== false,
+      approval: body.approval !== false,
+      comment: body.comment !== false,
+      mention: body.mention !== false,
+      follow: body.follow !== false,
+      group: body.group !== false
+    };
+    saveDb();
+    ok(res, { notifPrefs: user.notifPrefs });
   }
 });
 
@@ -1793,7 +1880,7 @@ routes.push({
     user.following.push(target.id);
     target.followers.push(user.id);
     saveDb();
-    notify(target.id, `${user.username} started following you`);
+    notify(target.id, `${user.username} started following you`, "follow");
     ok(res, { following: true, followerCount: target.followers.length });
   }
 });
@@ -1883,7 +1970,49 @@ routes.push({
       .sort((a, b) => (b.views || 0) + (b.downloads || 0) - ((a.views || 0) + (a.downloads || 0)))
       .slice(0, 5)
       .map((f) => ({ name: f.name, courseLabel: courseLabel(f.courseId), views: f.views || 0, downloads: f.downloads || 0 }));
-    send(res, 200, { stats: { totalFiles, totalDownloads, totalViews, totalCourses, totalUsers, pending }, topFiles });
+
+    const now = Date.now();
+    const dayMs = 86400000;
+    const uploadTrend = [];
+    for (let i = 29; i >= 0; i--) {
+      const dayStart = new Date(now - i * dayMs);
+      const dayStr = dayStart.toISOString().slice(0, 10);
+      const count = db.files.filter((f) => f.uploadedAt && f.uploadedAt.slice(0, 10) === dayStr).length;
+      uploadTrend.push({ date: dayStr, count });
+    }
+
+    const userActivity = {};
+    for (const f of db.files) {
+      if (!f.uploadedBy) continue;
+      if (!userActivity[f.uploadedBy]) userActivity[f.uploadedBy] = { uploads: 0, views: 0, downloads: 0, likes: 0, comments: 0 };
+      userActivity[f.uploadedBy].uploads++;
+      userActivity[f.uploadedBy].views += f.views || 0;
+      userActivity[f.uploadedBy].downloads += f.downloads || 0;
+      userActivity[f.uploadedBy].likes += (f.likedBy || []).length;
+      userActivity[f.uploadedBy].comments += (f.comments || []).length;
+    }
+    const topUsers = Object.entries(userActivity)
+      .map(([id, a]) => {
+        const u = db.users.find((x) => x.id === id);
+        return { id, username: u ? u.username : "Unknown", ...a, score: a.views + a.downloads + a.likes * 2 + a.comments };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    const courseStats = db.courses.map((c) => {
+      const files = db.files.filter((f) => f.courseId === c.id);
+      return {
+        name: c.name,
+        fileCount: files.length,
+        totalViews: files.reduce((s, f) => s + (f.views || 0), 0),
+        totalDownloads: files.reduce((s, f) => s + (f.downloads || 0), 0)
+      };
+    }).sort((a, b) => b.totalViews - a.totalViews).slice(0, 5);
+
+    const totalComments = db.files.reduce((s, f) => s + (f.comments || []).length, 0);
+    const totalRatings = db.files.reduce((s, f) => s + (f.ratings || []).length, 0);
+
+    send(res, 200, { stats: { totalFiles, totalDownloads, totalViews, totalCourses, totalUsers, pending, totalComments, totalRatings }, topFiles, uploadTrend, topUsers, courseStats });
   }
 });
 
