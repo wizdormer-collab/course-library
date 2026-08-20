@@ -2231,7 +2231,7 @@ routes.push({
     if (!target) return send(res, 404, { error: "User not found" });
     const followers = (target.followers || []).map((fid) => {
       const u = db.users.find((x) => x.id === fid);
-      return u ? { id: u.id, username: u.username, role: u.role } : null;
+      return u ? { id: u.id, username: u.username, role: u.role, avatarUrl: u.avatarUrl || "" } : null;
     }).filter(Boolean);
     send(res, 200, { followers });
   }
@@ -2246,7 +2246,7 @@ routes.push({
     if (!target) return send(res, 404, { error: "User not found" });
     const following = (target.following || []).map((fid) => {
       const u = db.users.find((x) => x.id === fid);
-      return u ? { id: u.id, username: u.username, role: u.role } : null;
+      return u ? { id: u.id, username: u.username, role: u.role, avatarUrl: u.avatarUrl || "" } : null;
     }).filter(Boolean);
     send(res, 200, { following });
   }

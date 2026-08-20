@@ -1772,14 +1772,6 @@ async function renderSettings() {
         </form>
       </div>
       <div class="card">
-        <h3>Bio</h3>
-        <p class="muted small">Tell others about yourself (shown on your profile).</p>
-        <form id="bio-form" class="stack">
-          <label>Bio <textarea id="bio-input" rows="3" maxlength="500" placeholder="Tell the community about yourself...">${esc(state.user.bio || "")}</textarea></label>
-          <button class="btn btn-primary">Save bio</button>
-        </form>
-      </div>
-      <div class="card">
         <h3>Change password</h3>
         <form id="pw-form" class="stack">
           <label>Current password <input id="pw-old" type="password" /></label>
@@ -1873,23 +1865,6 @@ async function renderSettings() {
       renderSettings();
     } catch (err) {
       document.getElementById("username-error").textContent = err.message;
-    }
-  });
-
-  document.getElementById("bio-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      const d = await api("/api/profile/bio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bio: document.getElementById("bio-input").value })
-      });
-      state.user.bio = d.bio;
-      localStorage.setItem("auth", JSON.stringify(state));
-      showToast("Bio updated");
-      renderSettings();
-    } catch (err) {
-      alert(err.message);
     }
   });
 
@@ -3560,7 +3535,7 @@ function showUserListModal(title, users) {
       <h2>${esc(title)}</h2>
       ${users.length ? `<div class="user-list">${users.map((u) =>
         `<a href="#/profile/${u.id}" class="user-list-item" onclick="this.closest('.modal-overlay').remove()">
-          <div style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-size:0.85rem;flex-shrink:0">${icon("user")}</div>
+          <div class="profile-avatar" style="width:36px;height:36px;border-radius:10px;font-size:0.85rem;flex-shrink:0">${u.avatarUrl ? `<img src="${esc(u.avatarUrl)}" alt="${esc(u.username)}" />` : icon("user")}</div>
           <div><strong>${esc(u.username)}</strong><br><span class="muted small">${esc(u.role)}</span></div>
         </a>`
       ).join("")}</div>` : `<p class="muted" style="text-align:center;padding:20px 0">No users yet</p>`}
