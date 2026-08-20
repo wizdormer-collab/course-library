@@ -298,6 +298,13 @@ function trackActivity(f, type) {
   if (f.activity.length > 300) f.activity = f.activity.slice(-300);
 }
 
+function trackUserActivity(user, type, detail) {
+  if (!user) return;
+  if (!Array.isArray(user.activity)) user.activity = [];
+  user.activity.unshift({ t: Date.now(), k: type, d: detail || "" });
+  if (user.activity.length > 100) user.activity.length = 100;
+}
+
 function weeklyScore(f) {
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
   let score = 0;
@@ -668,6 +675,22 @@ routes.push({
 });
 
 routes.push({
+  method: "GET", path: "/api/users/search",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const url = new URL(req.url, "http://localhost");
+    const q = String(url.searchParams.get("q") || "").trim().toLowerCase();
+    if (!q) return send(res, 200, { users: [] });
+    const matches = db.users
+      .filter((u) => u.username.toLowerCase().includes(q) && u.id !== user.id)
+      .slice(0, 10)
+      .map((u) => ({ id: u.id, username: u.username, role: u.role }));
+    send(res, 200, { users: matches });
+  }
+});
+
+routes.push({
   method: "POST", path: "/api/users/:id/role",
   handler: async (req, res, params) => {
     const user = getAuthUser(req);
@@ -723,6 +746,10 @@ routes.push({
       if (f.savedBy) f.savedBy = f.savedBy.filter((id) => id !== removed.id);
       if (f.viewedBy) f.viewedBy = f.viewedBy.filter((id) => id !== removed.id);
       if (f.comments) f.comments = f.comments.filter((c) => c.userId !== removed.id);
+    }
+    for (const u of db.users) {
+      if (u.followers) u.followers = u.followers.filter((id) => id !== removed.id);
+      if (u.following) u.following = u.following.filter((id) => id !== removed.id);
     }
     saveDb();
     ok(res);
@@ -995,6 +1022,7 @@ routes.push({
       text
     };
     db.files.push(file);
+    trackUserActivity(user, "upload", file.name);
     saveDb();
     if (file.approved) {
       for (const u of db.users) {
@@ -1245,11 +1273,23 @@ routes.push({
     const text = String(body.text || "").trim().slice(0, 2000);
     if (!text) return send(res, 400, { error: "Comment cannot be empty" });
     if (!f.comments) f.comments = [];
-    const c = { id: "cm" + Date.now() + Math.random().toString(16).slice(2, 6), userId: user.id, username: user.username, text, at: new Date().toISOString() };
+    const mentionUsernames = [...new Set((text.match(/@(\w+)/g) || []).map((m) => m.slice(1).toLowerCase()))];
+    const mentionedUserIds = [];
+    for (const uname of mentionUsernames) {
+      const mentioned = db.users.find((u) => u.username.toLowerCase() === uname);
+      if (mentioned && mentioned.id !== user.id) mentionedUserIds.push({ id: mentioned.id, username: mentioned.username });
+    }
+    const c = { id: "cm" + Date.now() + Math.random().toString(16).slice(2, 6), userId: user.id, username: user.username, text, at: new Date().toISOString(), mentions: mentionedUserIds.map((u) => u.id) };
     f.comments.push(c);
+    trackUserActivity(user, "comment", f.name);
     saveDb();
     if (f.uploadedBy !== user.id) {
       notify(f.uploadedBy, `${user.username} commented on your file "${f.name}"`);
+    }
+    for (const mu of mentionedUserIds) {
+      if (mu.id !== f.uploadedBy) {
+        notify(mu.id, `${user.username} mentioned you in a comment on "${f.name}"`);
+      }
     }
     send(res, 201, { comment: c });
   }
@@ -1308,13 +1348,30 @@ routes.push({
   handler: (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
+    const url = new URL(req.url, "http://localhost");
+    const followingOnly = url.searchParams.get("following") === "1";
+    const followingIds = followingOnly ? (user.following || []) : null;
     const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
     const files = db.files
-      .filter((f) => canSeeFile(f, user) && new Date(f.uploadedAt).getTime() >= weekAgo)
+      .filter((f) => canSeeFile(f, user) && new Date(f.uploadedAt).getTime() >= weekAgo && (!followingOnly || (followingIds && followingIds.includes(f.uploadedBy))))
       .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
-      .slice(0, 12)
+      .slice(0, 20)
       .map((f) => fileInfo(f, user));
-    send(res, 200, { files });
+    if (followingOnly) {
+      const comments = [];
+      for (const f of db.files) {
+        if (!f.comments) continue;
+        for (const c of f.comments) {
+          if (followingIds.includes(c.userId) && new Date(c.at).getTime() >= weekAgo) {
+            comments.push({ type: "comment", fileId: f.id, fileName: f.name, courseId: f.courseId, username: c.username, userId: c.userId, text: c.text, at: c.at });
+          }
+        }
+      }
+      comments.sort((a, b) => new Date(b.at) - new Date(a.at));
+      send(res, 200, { files, activity: comments.slice(0, 20) });
+    } else {
+      send(res, 200, { files });
+    }
   }
 });
 
@@ -1343,6 +1400,7 @@ routes.push({
     if (!f || !canSeeFile(f, user)) return send(res, 404, { error: "File not found" });
     if (!f.likedBy) f.likedBy = [];
     if (!f.likedBy.includes(user.id)) f.likedBy.push(user.id);
+    trackUserActivity(user, "like", f.name);
     saveDb();
     ok(res, { likes: f.likedBy.length, liked: true });
   }
@@ -1534,7 +1592,159 @@ routes.push({
   }
 });
 
+/* ---------- study groups ---------- */
+
+function initGroups() { if (!db.groups) db.groups = []; }
+
+routes.push({
+  method: "GET", path: "/api/groups",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    initGroups();
+    const myGroups = db.groups.filter((g) => g.memberIds.includes(user.id));
+    send(res, 200, { groups: myGroups.map((g) => ({
+      id: g.id, name: g.name, description: g.description, ownerId: g.ownerId,
+      ownerName: (db.users.find((u) => u.id === g.ownerId) || {}).username || "Unknown",
+      memberCount: g.memberIds.length, collectionCount: (g.collectionIds || []).length,
+      createdAt: g.createdAt
+    }))});
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/groups",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    initGroups();
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    const name = String(body.name || "").trim();
+    if (!name) return send(res, 400, { error: "Group name required" });
+    if (name.length > 60) return send(res, 400, { error: "Name too long" });
+    const g = {
+      id: "grp" + Date.now() + Math.random().toString(16).slice(2, 6),
+      name,
+      description: String(body.description || "").trim().slice(0, 200),
+      ownerId: user.id,
+      memberIds: [user.id],
+      collectionIds: [],
+      createdAt: new Date().toISOString()
+    };
+    db.groups.push(g);
+    saveDb();
+    ok(res, { group: { id: g.id, name: g.name, description: g.description, memberCount: 1 } });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/groups/:id",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    initGroups();
+    const g = db.groups.find((x) => x.id === params.id);
+    if (!g) return send(res, 404, { error: "Group not found" });
+    if (!g.memberIds.includes(user.id)) return send(res, 403, { error: "Not a member" });
+    const members = g.memberIds.map((mid) => {
+      const u = db.users.find((x) => x.id === mid);
+      return u ? { id: u.id, username: u.username, role: u.role } : null;
+    }).filter(Boolean);
+    const sharedCols = (g.collectionIds || []).map((cid) => {
+      for (const u of db.users) {
+        const col = (u.collections || []).find((c) => c.id === cid);
+        if (col) return { id: col.id, name: col.name, description: col.description, fileCount: (col.fileIds || []).length, ownerName: u.username };
+      }
+      return null;
+    }).filter(Boolean);
+    send(res, 200, { group: { id: g.id, name: g.name, description: g.description, ownerId: g.ownerId, ownerName: (db.users.find((u) => u.id === g.ownerId) || {}).username, members, sharedCollections: sharedCols, createdAt: g.createdAt } });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/groups/:id/join",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    initGroups();
+    const g = db.groups.find((x) => x.id === params.id);
+    if (!g) return send(res, 404, { error: "Group not found" });
+    if (g.memberIds.includes(user.id)) return send(res, 400, { error: "Already a member" });
+    g.memberIds.push(user.id);
+    saveDb();
+    notify(g.ownerId, `${user.username} joined your group "${g.name}"`);
+    ok(res, { memberCount: g.memberIds.length });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/groups/:id/leave",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    initGroups();
+    const g = db.groups.find((x) => x.id === params.id);
+    if (!g) return send(res, 404, { error: "Group not found" });
+    if (g.ownerId === user.id) return send(res, 400, { error: "Owner cannot leave. Transfer ownership or delete." });
+    g.memberIds = g.memberIds.filter((id) => id !== user.id);
+    saveDb();
+    ok(res, { memberCount: g.memberIds.length });
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/groups/:id",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    initGroups();
+    const g = db.groups.find((x) => x.id === params.id);
+    if (!g) return send(res, 404, { error: "Group not found" });
+    if (g.ownerId !== user.id) return send(res, 403, { error: "Only owner can delete" });
+    db.groups = db.groups.filter((x) => x.id !== params.id);
+    saveDb();
+    ok(res);
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/groups/:id/share",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    initGroups();
+    const g = db.groups.find((x) => x.id === params.id);
+    if (!g) return send(res, 404, { error: "Group not found" });
+    if (!g.memberIds.includes(user.id)) return send(res, 403, { error: "Not a member" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    const colId = String(body.collectionId || "");
+    if (!colId) return send(res, 400, { error: "collectionId required" });
+    const col = (user.collections || []).find((c) => c.id === colId);
+    if (!col) return send(res, 404, { error: "Collection not found" });
+    if (!g.collectionIds) g.collectionIds = [];
+    if (g.collectionIds.includes(colId)) return send(res, 400, { error: "Already shared" });
+    g.collectionIds.push(colId);
+    saveDb();
+    for (const mid of g.memberIds) {
+      if (mid !== user.id) notify(mid, `${user.username} shared "${col.name}" in group "${g.name}"`);
+    }
+    ok(res, { shared: true });
+  }
+});
+
 /* ---------- profiles & leaderboard ---------- */
+
+routes.push({
+  method: "POST", path: "/api/profile/bio",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    user.bio = String(body.bio || "").trim().slice(0, 500);
+    saveDb();
+    ok(res, { bio: user.bio });
+  }
+});
 
 routes.push({
   method: "GET", path: "/api/profile/:id",
@@ -1547,18 +1757,88 @@ routes.push({
     const totalViews = uploads.reduce((s, f) => s + (f.views || 0), 0);
     const totalDownloads = uploads.reduce((s, f) => s + (f.downloads || 0), 0);
     const totalLikes = uploads.reduce((s, f) => s + (f.likedBy || []).length, 0);
+    const isFollowing = user.following && user.following.includes(target.id);
     send(res, 200, {
       profile: {
         id: target.id,
         username: target.username,
         role: target.role,
+        bio: target.bio || "",
+        joinedAt: target.joinedAt || target.createdAt || null,
+        followerCount: (target.followers || []).length,
+        followingCount: (target.following || []).length,
+        isFollowing,
         uploadCount: uploads.length,
         totalViews,
         totalDownloads,
         totalLikes,
-        recentUploads: uploads.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)).slice(0, 5).map((f) => fileInfo(f, user))
+        recentUploads: uploads.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)).slice(0, 5).map((f) => fileInfo(f, user)),
+        activity: (target.activity || []).slice(0, 20)
       }
     });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/users/:id/follow",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (params.id === user.id) return send(res, 400, { error: "Cannot follow yourself" });
+    const target = db.users.find((u) => u.id === params.id);
+    if (!target) return send(res, 404, { error: "User not found" });
+    if (!user.following) user.following = [];
+    if (!target.followers) target.followers = [];
+    if (user.following.includes(target.id)) return send(res, 400, { error: "Already following" });
+    user.following.push(target.id);
+    target.followers.push(user.id);
+    saveDb();
+    notify(target.id, `${user.username} started following you`);
+    ok(res, { following: true, followerCount: target.followers.length });
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/users/:id/follow",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const target = db.users.find((u) => u.id === params.id);
+    if (!target) return send(res, 404, { error: "User not found" });
+    if (user.following) user.following = user.following.filter((id) => id !== target.id);
+    if (target.followers) target.followers = target.followers.filter((id) => id !== user.id);
+    saveDb();
+    ok(res, { following: false, followerCount: (target.followers || []).length });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/users/:id/followers",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const target = db.users.find((u) => u.id === params.id);
+    if (!target) return send(res, 404, { error: "User not found" });
+    const followers = (target.followers || []).map((fid) => {
+      const u = db.users.find((x) => x.id === fid);
+      return u ? { id: u.id, username: u.username, role: u.role } : null;
+    }).filter(Boolean);
+    send(res, 200, { followers });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/users/:id/following",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const target = db.users.find((u) => u.id === params.id);
+    if (!target) return send(res, 404, { error: "User not found" });
+    const following = (target.following || []).map((fid) => {
+      const u = db.users.find((x) => x.id === fid);
+      return u ? { id: u.id, username: u.username, role: u.role } : null;
+    }).filter(Boolean);
+    send(res, 200, { following });
   }
 });
 

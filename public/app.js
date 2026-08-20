@@ -497,6 +497,10 @@ async function openPdf(fileId, showCourse) {
   await loadComments(fileId);
 }
 
+function renderMentionText(text) {
+  return esc(text).replace(/@(\w+)/g, '<a class="mention" href="#/profile/$1" data-mention="$1">@$1</a>');
+}
+
 async function loadComments(fileId) {
   const box = document.getElementById("comments");
   if (!box) return;
@@ -507,18 +511,21 @@ async function loadComments(fileId) {
   const isAdmin = state.user && state.user.role === "admin";
   box.innerHTML = `
     <h3>Discussion (${comments.length})</h3>
-    <form id="comment-form">
-      <input id="comment-input" placeholder="Ask about this material..." maxlength="2000" />
-      <button class="btn btn-primary btn-sm">Post</button>
-    </form>
+    <div class="comment-input-wrap">
+      <form id="comment-form">
+        <input id="comment-input" placeholder="Ask about this material... Use @ to mention" maxlength="2000" autocomplete="off" />
+        <button class="btn btn-primary btn-sm">Post</button>
+      </form>
+      <div class="mention-dropdown hidden" id="mention-dropdown"></div>
+    </div>
     <div class="comment-list">
       ${comments.length ? comments.map((c) => `
         <div class="comment">
-          <strong>${esc(c.username)}</strong>
+          <a class="comment-author" href="#/profile/${c.userId}">${esc(c.username)}</a>
           <span class="muted">${fmtDate(c.at)}</span>
           ${isAdmin || (state.user && c.userId === state.user.id)
             ? `<button class="comment-del" data-cid="${c.id}" title="Delete">${icon("close")}</button>` : ""}
-          <p>${esc(c.text)}</p>
+          <p>${renderMentionText(c.text)}</p>
           </div>`).join("") : `<div class="empty-state"><div class="empty-icon">${icon("chat")}</div><h3>No discussion yet</h3><p>Start a conversation about this material.</p></div>`}
     </div>`;
 
@@ -538,6 +545,56 @@ async function loadComments(fileId) {
       alert(err.message);
     }
   });
+
+  const input = document.getElementById("comment-input");
+  const dropdown = document.getElementById("mention-dropdown");
+  let mentionQuery = null;
+  let mentionStart = -1;
+
+  if (input && dropdown) {
+    input.addEventListener("input", async () => {
+      const val = input.value;
+      const pos = input.selectionStart;
+      const before = val.slice(0, pos);
+      const atMatch = before.match(/@(\w*)$/);
+      if (atMatch) {
+        mentionQuery = atMatch[1];
+        mentionStart = pos - atMatch[0].length;
+        try {
+          const d = await api("/api/users/search?q=" + encodeURIComponent(mentionQuery));
+          if (d.users && d.users.length) {
+            dropdown.innerHTML = d.users.map((u) =>
+              `<div class="mention-item" data-username="${esc(u.username)}">@${esc(u.username)} <span class="muted small">${esc(u.role)}</span></div>`
+            ).join("");
+            dropdown.classList.remove("hidden");
+          } else {
+            dropdown.classList.add("hidden");
+          }
+        } catch {}
+      } else {
+        dropdown.classList.add("hidden");
+        mentionQuery = null;
+        mentionStart = -1;
+      }
+    });
+
+    dropdown.addEventListener("mousedown", (e) => {
+      const item = e.target.closest(".mention-item");
+      if (!item) return;
+      e.preventDefault();
+      const username = item.dataset.username;
+      const before = input.value.slice(0, mentionStart);
+      const after = input.value.slice(input.selectionStart);
+      input.value = before + "@" + username + " " + after;
+      dropdown.classList.add("hidden");
+      mentionQuery = null;
+      input.focus();
+    });
+
+    input.addEventListener("blur", () => {
+      setTimeout(() => dropdown.classList.add("hidden"), 200);
+    });
+  }
 
   document.querySelectorAll(".comment-del").forEach((btn) =>
     btn.addEventListener("click", async () => {
@@ -582,6 +639,7 @@ async function renderNav() {
     ? `
       <a href="#/" class="nav-link">Courses</a>
       <a href="#/saved" class="nav-link">Saved</a>
+      <a href="#/groups" class="nav-link">Groups</a>
       <a href="#/settings" class="nav-link">Settings</a>
       ${state.user.role === "admin" ? '<a href="#/admin" class="nav-link">Admin</a>' : ""}
       ${notifHtml}
@@ -665,6 +723,8 @@ async function render() {
     if (hash === "/forgot") { renderForgot(); return; }
     else if (hash.startsWith("/profile/")) { await renderProfile(hash); }
     else if (hash.startsWith("/collection/")) { await renderCollectionDetail(hash); }
+    else if (hash === "/groups") { await renderGroups(); }
+    else if (hash.startsWith("/group/")) { await renderGroupDetail(hash); }
     else if (hash === "/saved") { await renderSaved(); }
     else if (hash === "/settings") { await renderSettings(); }
     else if (hash === "/admin") { await renderAdmin(); }
@@ -985,6 +1045,14 @@ async function renderSettings() {
         </form>
       </div>
       <div class="card">
+        <h3>Bio</h3>
+        <p class="muted small">Tell others about yourself (shown on your profile).</p>
+        <form id="bio-form" class="stack">
+          <label>Bio <textarea id="bio-input" rows="3" maxlength="500" placeholder="Tell the community about yourself...">${esc(state.user.bio || "")}</textarea></label>
+          <button class="btn btn-primary">Save bio</button>
+        </form>
+      </div>
+      <div class="card">
         <h3>Change password</h3>
         <form id="pw-form" class="stack">
           <label>Current password <input id="pw-old" type="password" /></label>
@@ -1065,6 +1133,23 @@ async function renderSettings() {
       renderSettings();
     } catch (err) {
       document.getElementById("username-error").textContent = err.message;
+    }
+  });
+
+  document.getElementById("bio-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const d = await api("/api/profile/bio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio: document.getElementById("bio-input").value })
+      });
+      state.user.bio = d.bio;
+      localStorage.setItem("auth", JSON.stringify(state));
+      showToast("Bio updated");
+      renderSettings();
+    } catch (err) {
+      alert(err.message);
     }
   });
 
@@ -1266,13 +1351,14 @@ async function renderHome() {
   bindSearch();
   bindFilterToggle();
 
-  const [courses, feedData, savedData, annData, lbData, colData] = await Promise.allSettled([
+  const [courses, feedData, savedData, annData, lbData, colData, followingData] = await Promise.allSettled([
     api("/api/courses"),
     api("/api/feed"),
     api("/api/files/saved"),
     api("/api/announcements"),
     api("/api/leaderboard"),
-    api("/api/collections")
+    api("/api/collections"),
+    api("/api/feed?following=1")
   ]);
 
   state.courses = (courses.status === "fulfilled" && courses.value.courses) || [];
@@ -1282,6 +1368,8 @@ async function renderHome() {
   const announcements = (annData.status === "fulfilled" && annData.value.announcements) || [];
   const leaderboard = (lbData.status === "fulfilled" && lbData.value.leaderboard) || [];
   const collections = (colData.status === "fulfilled" && colData.value.collections) || [];
+  const followingFeed = (followingData.status === "fulfilled" && followingData.value.files) || [];
+  const followingActivity = (followingData.status === "fulfilled" && followingData.value.activity) || [];
 
   state.progressMap = {};
   state.courseMeta = {};
@@ -1344,6 +1432,22 @@ async function renderHome() {
       </div>
       ${continueCardHTML(cont, state.progressMap[cont ? cont.id : ""])}
     </section>
+
+    ${followingFeed.length || followingActivity.length ? `
+    <section class="home-section">
+      <h2 class="section-title">${icon("users")} Following</h2>
+      ${followingActivity.length ? `<div class="following-activity">
+        ${followingActivity.slice(0, 8).map((a) => `
+          <div class="following-item">
+            <a href="#/profile/${a.userId}" class="comment-author">${esc(a.username)}</a>
+            <span>commented on <a href="#/course/${a.courseId}" style="color:var(--primary)">${esc(a.fileName)}</a></span>
+            <span class="muted small">${fmtDate(a.at)}</span>
+          </div>`).join("")}
+      </div>` : ""}
+      ${followingFeed.length ? `<div class="file-list" style="margin-top:10px">
+        ${followingFeed.slice(0, 5).map((f) => fileRow(f, { showCourse: true })).join("")}
+      </div>` : ""}
+    </section>` : ""}
 
     <section class="home-section">
       <div class="section-head">
@@ -2414,7 +2518,13 @@ async function renderProfile(hash) {
       <div class="card" style="text-align:center;padding:32px 22px">
         <div style="width:72px;height:72px;border-radius:20px;display:grid;place-items:center;margin:0 auto 14px;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-size:2rem">${icon("user")}</div>
         <h1 style="margin:0;font-size:1.4rem;letter-spacing:-0.02em">${esc(p.username)}</h1>
-        <p class="muted" style="margin:4px 0 0">${p.role === "admin" ? "Admin" : "Student"}</p>
+        <p class="muted" style="margin:4px 0 0">${p.role === "admin" ? "Admin" : "Student"}${p.joinedAt ? " &middot; Joined " + fmtDate(p.joinedAt) : ""}</p>
+        ${p.bio ? `<p style="margin:10px auto 0;max-width:400px;color:var(--text-secondary)">${esc(p.bio)}</p>` : ""}
+        ${!isSelf ? `<button class="btn ${p.isFollowing ? "btn-outline" : "btn-primary"} btn-sm" id="follow-btn" style="margin-top:14px" data-uid="${p.id}">${p.isFollowing ? "Following" : "Follow"}</button>` : ""}
+        <div class="profile-social-row" style="margin-top:14px;display:flex;gap:20px;justify-content:center">
+          <span class="muted small clickable" data-show-followers="${p.id}" style="cursor:pointer"><strong>${p.followerCount}</strong> followers</span>
+          <span class="muted small clickable" data-show-following="${p.id}" style="cursor:pointer"><strong>${p.followingCount}</strong> following</span>
+        </div>
         <div class="stat-grid" style="margin-top:20px">
           <div class="stat-card"><div class="stat-num">${p.uploadCount}</div><div class="stat-lab">Uploads</div></div>
           <div class="stat-card"><div class="stat-num">${fmtCount(p.totalViews)}</div><div class="stat-lab">Views</div></div>
@@ -2428,8 +2538,60 @@ async function renderProfile(hash) {
           <div class="file-list">
             ${p.recentUploads.map((f) => fileRow(f, { showCourse: true, showCounts: true })).join("")}
           </div>
+        </section>` : ""}
+      ${p.activity && p.activity.length ? `
+        <section class="home-section">
+          <h2 class="section-title">Activity</h2>
+          <div class="activity-timeline">
+            ${p.activity.map((a) => {
+              const iconMap = { upload: "upload", comment: "chat", like: "heart" };
+              const labelMap = { upload: "Uploaded", comment: "Commented on", like: "Liked" };
+              return `<div class="activity-item">
+                <span class="activity-icon">${icon(iconMap[a.k] || "star")}</span>
+                <span>${labelMap[a.k] || a.k} <strong>${esc(a.d || "")}</strong></span>
+                <span class="muted small">${fmtDate(new Date(a.t).toISOString())}</span>
+              </div>`;
+            }).join("")}
+          </div>
         </section>` : ""}`);
     bindRowActions({ showCourse: true, counts: true });
+
+    const followBtn = document.getElementById("follow-btn");
+    if (followBtn) {
+      followBtn.addEventListener("click", async () => {
+        const uid = followBtn.dataset.uid;
+        const isFollowing = followBtn.classList.contains("btn-outline");
+        try {
+          if (isFollowing) {
+            await api("/api/users/" + uid + "/follow", { method: "DELETE" });
+            followBtn.textContent = "Follow";
+            followBtn.classList.remove("btn-outline");
+            followBtn.classList.add("btn-primary");
+          } else {
+            await api("/api/users/" + uid + "/follow", { method: "POST" });
+            followBtn.textContent = "Following";
+            followBtn.classList.remove("btn-primary");
+            followBtn.classList.add("btn-outline");
+          }
+          renderProfile(hash);
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    }
+
+    document.querySelectorAll("[data-show-followers]").forEach((el) => {
+      el.addEventListener("click", async () => {
+        const d = await api("/api/users/" + el.dataset.showFollowers + "/followers");
+        showUserListModal("Followers", d.followers);
+      });
+    });
+    document.querySelectorAll("[data-show-following]").forEach((el) => {
+      el.addEventListener("click", async () => {
+        const d = await api("/api/users/" + el.dataset.showFollowing + "/following");
+        showUserListModal("Following", d.following);
+      });
+    });
   } catch (err) {
     app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
       <h2>Profile not found</h2>
@@ -2437,6 +2599,28 @@ async function renderProfile(hash) {
       <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
     </div>`);
   }
+}
+
+function showUserListModal(title, users) {
+  const existing = document.getElementById("user-list-modal");
+  if (existing) existing.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "user-list-modal";
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>${esc(title)}</h2>
+      ${users.length ? `<div class="user-list">${users.map((u) =>
+        `<a href="#/profile/${u.id}" class="user-list-item" onclick="this.closest('.modal-overlay').remove()">
+          <div style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-size:0.85rem;flex-shrink:0">${icon("user")}</div>
+          <div><strong>${esc(u.username)}</strong><br><span class="muted small">${esc(u.role)}</span></div>
+        </a>`
+      ).join("")}</div>` : `<p class="muted" style="text-align:center;padding:20px 0">No users yet</p>`}
+      <div class="modal-actions"><button class="btn btn-outline" id="ul-close">Close</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector("#ul-close").addEventListener("click", () => overlay.remove());
 }
 
 /* ---------- collection detail ---------- */
@@ -2476,6 +2660,184 @@ async function renderCollectionDetail(hash) {
       <h2>Collection not found</h2>
       <p class="muted">${esc(err.message)}</p>
       <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
+    </div>`);
+  }
+}
+
+/* ---------- study groups ---------- */
+
+async function renderGroups() {
+  if (!state.user) return (location.hash = "#/login");
+  let groups = [];
+  try { groups = (await api("/api/groups")).groups; } catch {}
+  app.innerHTML = shell(`
+    <div class="page-head">
+      <div>
+        <h1>${icon("users")} Study Groups</h1>
+        <p class="muted">Collaborate and share collections with classmates</p>
+      </div>
+      <button class="btn btn-primary" id="new-group-btn">+ New group</button>
+    </div>
+    ${groups.length ? `<div class="group-grid">${groups.map((g) => `
+      <a href="#/group/${g.id}" class="col-card">
+        <div class="col-icon">${icon("users")}</div>
+        <div class="col-info">
+          <h3>${esc(g.name)}</h3>
+          <p>${g.memberCount} member${g.memberCount !== 1 ? "s" : ""} · ${g.collectionCount} collection${g.collectionCount !== 1 ? "s" : ""}</p>
+          ${g.description ? `<p class="muted small">${esc(g.description)}</p>` : ""}
+        </div>
+      </a>`).join("")}</div>` : emptyState("users", "No study groups yet", "Create a group to share collections with classmates.")}
+    <div class="modal-overlay hidden" id="group-modal">
+      <div class="modal">
+        <h2>Create Study Group</h2>
+        <form id="group-form" class="stack">
+          <label>Group name <input id="grp-name" placeholder="e.g. CS101 Study Group" maxlength="60" /></label>
+          <label>Description (optional) <input id="grp-desc" placeholder="What's this group for?" maxlength="200" /></label>
+          <p class="error" id="grp-error"></p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" id="grp-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create</button>
+          </div>
+        </form>
+      </div>
+    </div>`);
+
+  const newBtn = document.getElementById("new-group-btn");
+  const modal = document.getElementById("group-modal");
+  const close = () => modal.classList.add("hidden");
+  if (newBtn) newBtn.addEventListener("click", () => modal.classList.remove("hidden"));
+  if (modal) {
+    document.getElementById("grp-cancel").addEventListener("click", close);
+    modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  }
+  document.getElementById("group-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const d = await api("/api/groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: document.getElementById("grp-name").value, description: document.getElementById("grp-desc").value })
+      });
+      showToast("Group created");
+      location.hash = "#/group/" + d.group.id;
+    } catch (err) {
+      document.getElementById("grp-error").textContent = err.message;
+    }
+  });
+}
+
+async function renderGroupDetail(hash) {
+  if (!state.user) return (location.hash = "#/login");
+  const groupId = hash.split("/group/")[1];
+  try {
+    const d = await api("/api/groups/" + groupId);
+    const g = d.group;
+    const isOwner = g.ownerId === state.user.id;
+    const myCols = state.user ? (await api("/api/collections")).collections : [];
+    app.innerHTML = shell(`
+      <a href="#/groups" class="back-link">${icon("chevronLeft")} Back to groups</a>
+      <div class="card" style="padding:24px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+          <div style="width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-size:1.4rem;flex-shrink:0">${icon("users")}</div>
+          <div>
+            <h1 style="margin:0;font-size:1.3rem">${esc(g.name)}</h1>
+            <p class="muted small">${esc(g.description || "")} · Created by ${esc(g.ownerName || "Unknown")}</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          ${!isOwner ? `<button class="btn btn-danger btn-sm" id="leave-group-btn">Leave group</button>` : `<button class="btn btn-danger btn-sm" id="delete-group-btn">${icon("trash")} Delete group</button>`}
+        </div>
+      </div>
+      <div class="card" style="padding:20px">
+        <h3 style="margin-top:0">Members (${g.members.length})</h3>
+        <div class="user-list">
+          ${g.members.map((m) => `
+            <a href="#/profile/${m.id}" class="user-list-item">
+              <div style="width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-size:0.75rem;flex-shrink:0">${icon("user")}</div>
+              <div><strong>${esc(m.username)}</strong> ${m.id === g.ownerId ? '<span class="muted small">(owner)</span>' : ""}</div>
+            </a>`).join("")}
+        </div>
+      </div>
+      <div class="card" style="padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">Shared Collections (${g.sharedCollections.length})</h3>
+          <button class="btn btn-primary btn-sm" id="share-col-btn">${icon("folder")} Share a collection</button>
+        </div>
+        ${g.sharedCollections.length ? `<div class="col-grid">${g.sharedCollections.map((col) => `
+          <div class="col-card">
+            <div class="col-icon">${icon("folder")}</div>
+            <div class="col-info">
+              <h3>${esc(col.name)}</h3>
+              <p>${col.fileCount} file${col.fileCount !== 1 ? "s" : ""} · by ${esc(col.ownerName)}</p>
+            </div>
+          </div>`).join("")}</div>` : `<p class="muted" style="text-align:center;padding:16px 0">No collections shared yet. Share one to get started!</p>`}
+      </div>
+      <div class="modal-overlay hidden" id="share-col-modal">
+        <div class="modal">
+          <h2>Share a Collection</h2>
+          <div class="share-col-list" id="share-col-list">
+            ${myCols.length ? myCols.map((c) => `
+              <button class="share-col-item" data-col-id="${c.id}">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span>${icon("folder")}</span>
+                  <div style="text-align:left">
+                    <strong>${esc(c.name)}</strong><br>
+                    <span class="muted small">${c.files.length} file${c.files.length !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+              </button>`).join("") : `<p class="muted" style="text-align:center;padding:20px 0">No collections to share</p>`}
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-outline" id="sc-cancel">Close</button>
+          </div>
+        </div>
+      </div>`);
+
+    if (isOwner) {
+      document.getElementById("delete-group-btn").addEventListener("click", async () => {
+        if (!confirm("Delete this group?")) return;
+        await api("/api/groups/" + groupId, { method: "DELETE" });
+        showToast("Group deleted");
+        location.hash = "#/groups";
+      });
+    } else {
+      document.getElementById("leave-group-btn").addEventListener("click", async () => {
+        if (!confirm("Leave this group?")) return;
+        await api("/api/groups/" + groupId + "/leave", { method: "POST" });
+        showToast("Left group");
+        location.hash = "#/groups";
+      });
+    }
+
+    const shareBtn = document.getElementById("share-col-btn");
+    const shareModal = document.getElementById("share-col-modal");
+    const shareClose = () => shareModal.classList.add("hidden");
+    if (shareBtn) shareBtn.addEventListener("click", () => shareModal.classList.remove("hidden"));
+    if (shareModal) {
+      document.getElementById("sc-cancel").addEventListener("click", shareClose);
+      shareModal.addEventListener("click", (e) => { if (e.target === shareModal) shareClose(); });
+    }
+    document.querySelectorAll(".share-col-item").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await api("/api/groups/" + groupId + "/share", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ collectionId: btn.dataset.colId })
+          });
+          showToast("Collection shared!");
+          shareClose();
+          renderGroupDetail(hash);
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    });
+  } catch (err) {
+    app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
+      <h2>Group not found</h2>
+      <p class="muted">${esc(err.message)}</p>
+      <a href="#/groups" class="btn btn-primary" style="margin-top:12px">Back to groups</a>
     </div>`);
   }
 }
