@@ -257,6 +257,8 @@ function publicUser(u) {
   if (u.level) obj.level = u.level;
   if (u.matricNumber) obj.matricNumber = u.matricNumber;
   if (u.studentType) obj.studentType = u.studentType;
+  if (u.avatarUrl) obj.avatarUrl = u.avatarUrl;
+  if (u.bio) obj.bio = u.bio;
   return obj;
 }
 
@@ -2075,6 +2077,57 @@ routes.push({
 });
 
 routes.push({
+  method: "POST", path: "/api/profile/avatar",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (req.headers["content-type"] !== "application/octet-stream") {
+      return send(res, 400, { error: "Upload the image as binary" });
+    }
+    const buf = await readBody(req, 2 * 1024 * 1024);
+    if (buf.length < 8) return send(res, 400, { error: "File too small" });
+    let ext = "";
+    if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) ext = "jpg";
+    else if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) ext = "png";
+    else if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) ext = "webp";
+    else return send(res, 400, { error: "Only JPG, PNG, or WebP images are allowed" });
+    if (user.avatarStoredName) {
+      try { fs.unlinkSync(path.join(UPLOAD_DIR, user.avatarStoredName)); } catch {}
+    }
+    const storedName = "av-" + user.id + "-" + Date.now() + "." + ext;
+    fs.writeFileSync(path.join(UPLOAD_DIR, storedName), buf);
+    if (supabaseConfigured()) supaPut("avatars/" + storedName, buf).catch(() => {});
+    user.avatarStoredName = storedName;
+    user.avatarUrl = "/api/profile/avatar/" + user.id;
+    saveDb();
+    ok(res, { avatarUrl: user.avatarUrl });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/profile/avatar/:id",
+  handler: (req, res, params) => {
+    const target = db.users.find((u) => u.id === params.id);
+    if (!target || !target.avatarStoredName) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    const filePath = path.join(UPLOAD_DIR, target.avatarStoredName);
+    if (!fs.existsSync(filePath)) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    const ext = path.extname(target.avatarStoredName).slice(1).toLowerCase();
+    const mime = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" }[ext] || "application/octet-stream";
+    const buf = fs.readFileSync(filePath);
+    res.writeHead(200, { "Content-Type": mime, "Cache-Control": "public, max-age=86400" });
+    res.end(buf);
+  }
+});
+
+routes.push({
   method: "POST", path: "/api/auth/notif-prefs",
   handler: async (req, res) => {
     const user = getAuthUser(req);
@@ -2105,12 +2158,21 @@ routes.push({
     const totalDownloads = uploads.reduce((s, f) => s + (f.downloads || 0), 0);
     const totalLikes = uploads.reduce((s, f) => s + (f.likedBy || []).length, 0);
     const isFollowing = user.following && user.following.includes(target.id);
+    const enrolledCourses = (target.enrolledCourses || []).map((cid) => {
+      const c = db.courses.find((x) => x.id === cid);
+      return c ? { id: c.id, name: c.name, code: c.code } : null;
+    }).filter(Boolean);
     send(res, 200, {
       profile: {
         id: target.id,
         username: target.username,
         role: target.role,
         bio: target.bio || "",
+        avatarUrl: target.avatarUrl || "",
+        school: target.school || "",
+        faculty: target.faculty || "",
+        department: target.department || "",
+        level: target.level || "",
         joinedAt: target.joinedAt || target.createdAt || null,
         followerCount: (target.followers || []).length,
         followingCount: (target.following || []).length,
@@ -2119,6 +2181,7 @@ routes.push({
         totalViews,
         totalDownloads,
         totalLikes,
+        enrolledCourses,
         recentUploads: uploads.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)).slice(0, 5).map((f) => fileInfo(f, user)),
         activity: (target.activity || []).slice(0, 20)
       }

@@ -114,7 +114,10 @@ const ICONS = {
   tag: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
   heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
   trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
-  folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'
+  folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  mapPin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  building: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22V12h6v10"/><path d="M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01"/>'
 };
 
 function icon(name, cls) {
@@ -3352,21 +3355,49 @@ async function renderProfile(hash) {
   if (!state.user) return (location.hash = "#/login");
   const userId = hash.split("/profile/")[1];
   try {
-    const d = await api("/api/profile/" + userId);
+    const [d, schoolsResp] = await Promise.all([
+      api("/api/profile/" + userId),
+      api("/api/schools").catch(() => ({ schools: [] }))
+    ]);
     const p = d.profile;
     const isSelf = state.user.id === p.id;
+    const schools = schoolsResp.schools || [];
+    const schoolObj = schools.find((s) => s.id === p.school);
+    const schoolName = schoolObj ? schoolObj.name : "";
+    const avatarHtml = p.avatarUrl
+      ? `<img src="${esc(p.avatarUrl)}" alt="${esc(p.username)}" />`
+      : icon("user");
     app.innerHTML = shell(`
       <a href="#/" class="back-link">${icon("chevronLeft")} Back</a>
-      <div class="card" style="text-align:center;padding:32px 22px">
-        <div style="width:72px;height:72px;border-radius:20px;display:grid;place-items:center;margin:0 auto 14px;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-size:2rem">${icon("user")}</div>
-        <h1 style="margin:0;font-size:1.4rem;letter-spacing:-0.02em">${esc(p.username)}</h1>
-        <p class="muted" style="margin:4px 0 0">${p.role === "admin" ? "Admin" : "Student"}${p.joinedAt ? " &middot; Joined " + fmtDate(p.joinedAt) : ""}</p>
-        ${p.bio ? `<p style="margin:10px auto 0;max-width:400px;color:var(--text-secondary)">${esc(p.bio)}</p>` : ""}
-        ${!isSelf ? `<button class="btn ${p.isFollowing ? "btn-outline" : "btn-primary"} btn-sm" id="follow-btn" style="margin-top:14px" data-uid="${p.id}">${p.isFollowing ? "Following" : "Follow"}</button>` : ""}
-        <div class="profile-social-row" style="margin-top:14px;display:flex;gap:20px;justify-content:center">
-          <span class="muted small clickable" data-show-followers="${p.id}" style="cursor:pointer"><strong>${p.followerCount}</strong> followers</span>
-          <span class="muted small clickable" data-show-following="${p.id}" style="cursor:pointer"><strong>${p.followingCount}</strong> following</span>
+      <div class="card profile-header">
+        <div class="profile-avatar-wrap" ${isSelf ? 'id="avatar-wrap"' : ""}>
+          <div class="profile-avatar" id="profile-avatar">${avatarHtml}</div>
+          ${isSelf ? `<div class="profile-avatar-overlay" id="avatar-overlay">${icon("camera")}</div><input type="file" id="avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none" />` : ""}
         </div>
+        <h1 class="profile-name">${esc(p.username)}</h1>
+        <p class="muted profile-role">${p.role === "admin" ? "Admin" : "Student"}${p.joinedAt ? " &middot; Joined " + fmtDate(p.joinedAt) : ""}</p>
+        ${p.bio ? `<p class="profile-bio">${esc(p.bio)}</p>` : ""}
+        ${!isSelf ? `<button class="btn ${p.isFollowing ? "btn-outline" : "btn-primary"} btn-sm profile-edit-btn" id="follow-btn" data-uid="${p.id}">${p.isFollowing ? "Following" : "Follow"}</button>` : ""}
+        ${isSelf ? `<button class="btn btn-outline btn-sm profile-edit-btn" id="edit-profile-btn">${icon("edit")} Edit profile</button>` : ""}
+        <div class="profile-social-row">
+          <span class="muted small clickable" data-show-followers="${p.id}"><strong>${p.followerCount}</strong> followers</span>
+          <span class="muted small clickable" data-show-following="${p.id}"><strong>${p.followingCount}</strong> following</span>
+        </div>
+        ${(schoolName || p.faculty || p.department || p.level) ? `
+        <div class="profile-info">
+          ${schoolName ? `<span class="profile-info-item">${icon("grad")}${esc(schoolName)}</span>` : ""}
+          ${p.faculty ? `<span class="profile-info-item">${icon("building")}${esc(p.faculty)}</span>` : ""}
+          ${p.department ? `<span class="profile-info-item">${icon("book")}${esc(p.department)}</span>` : ""}
+          ${p.level ? `<span class="profile-info-item">${icon("grad")}Level ${esc(p.level)}</span>` : ""}
+        </div>` : ""}
+        ${isSelf ? `
+        <div class="profile-edit-panel" id="edit-panel">
+          <textarea id="bio-input" rows="3" maxlength="500" placeholder="Tell the community about yourself...">${esc(p.bio || "")}</textarea>
+          <div class="profile-edit-actions">
+            <button class="btn btn-ghost btn-sm" id="edit-cancel">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="edit-save">Save</button>
+          </div>
+        </div>` : ""}
         <div class="stat-grid" style="margin-top:20px">
           <div class="stat-card"><div class="stat-num">${p.uploadCount}</div><div class="stat-lab">Uploads</div></div>
           <div class="stat-card"><div class="stat-num">${fmtCount(p.totalViews)}</div><div class="stat-lab">Views</div></div>
@@ -3374,16 +3405,28 @@ async function renderProfile(hash) {
           <div class="stat-card"><div class="stat-num">${fmtCount(p.totalLikes)}</div><div class="stat-lab">Likes</div></div>
         </div>
       </div>
+      ${p.enrolledCourses && p.enrolledCourses.length ? `
+        <section class="home-section profile-courses-section">
+          <h2 class="section-title">${icon("book")} Enrolled Courses</h2>
+          <div class="profile-courses-grid">
+            ${p.enrolledCourses.map((c) => `
+              <a href="#/course/${c.id}" class="profile-course-card">
+                <span class="profile-course-code">${esc(c.code)}</span>
+                <span class="profile-course-name">${esc(c.name)}</span>
+              </a>
+            `).join("")}
+          </div>
+        </section>` : ""}
       ${p.recentUploads.length ? `
         <section class="home-section">
-          <h2 class="section-title">Recent uploads</h2>
+          <h2 class="section-title">${icon("upload")} Recent uploads</h2>
           <div class="file-list">
             ${p.recentUploads.map((f) => fileRow(f, { showCourse: true, showCounts: true })).join("")}
           </div>
         </section>` : ""}
       ${p.activity && p.activity.length ? `
         <section class="home-section">
-          <h2 class="section-title">Activity</h2>
+          <h2 class="section-title">${icon("clock")} Activity</h2>
           <div class="activity-timeline">
             ${p.activity.map((a) => {
               const iconMap = { upload: "upload", comment: "chat", like: "heart" };
@@ -3420,6 +3463,69 @@ async function renderProfile(hash) {
           alert(err.message);
         }
       });
+    }
+
+    if (isSelf) {
+      const editBtn = document.getElementById("edit-profile-btn");
+      const editPanel = document.getElementById("edit-panel");
+      if (editBtn && editPanel) {
+        editBtn.addEventListener("click", () => {
+          editPanel.classList.toggle("open");
+          if (editPanel.classList.contains("open")) {
+            document.getElementById("bio-input").focus();
+          }
+        });
+        document.getElementById("edit-cancel").addEventListener("click", () => {
+          editPanel.classList.remove("open");
+          document.getElementById("bio-input").value = p.bio || "";
+        });
+        document.getElementById("edit-save").addEventListener("click", async () => {
+          const bio = document.getElementById("bio-input").value.trim();
+          try {
+            const res = await api("/api/profile/bio", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ bio })
+            });
+            state.user.bio = res.bio;
+            localStorage.setItem("auth", JSON.stringify(state));
+            showToast("Profile updated");
+            renderProfile(hash);
+          } catch (err) {
+            alert(err.message);
+          }
+        });
+      }
+
+      const avatarOverlay = document.getElementById("avatar-overlay");
+      const avatarInput = document.getElementById("avatar-input");
+      if (avatarOverlay && avatarInput) {
+        avatarOverlay.addEventListener("click", () => avatarInput.click());
+        avatarInput.addEventListener("change", async () => {
+          const file = avatarInput.files[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) {
+            showToast("Image must be under 2 MB", true);
+            return;
+          }
+          const done = btnLoading(document.getElementById("profile-avatar"), "Uploading");
+          try {
+            const buf = await file.arrayBuffer();
+            const res = await api("/api/profile/avatar", {
+              method: "POST",
+              headers: { "Content-Type": "application/octet-stream" },
+              body: buf
+            });
+            state.user.avatarUrl = res.avatarUrl;
+            localStorage.setItem("auth", JSON.stringify(state));
+            showToast("Avatar updated");
+            renderProfile(hash);
+          } catch (err) {
+            showToast(err.message, true);
+            done();
+          }
+        });
+      }
     }
 
     document.querySelectorAll("[data-show-followers]").forEach((el) => {
