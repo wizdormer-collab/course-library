@@ -1139,12 +1139,14 @@ async function onboardStep3() {
     <button class="onboard-back-btn" id="onboard-back">${icon("chevronLeft")} Back</button>
     <h1>Where do you study?</h1>
     <p class="muted">Select your university to personalize your Course Library.</p>
-    <div class="onboard-search-wrap">
-      <input id="ob-school-search" type="text" placeholder="Search your university..." class="onboard-search" />
+    <label>University
+      <select id="ob-school"><option value="">Select your university</option></select>
+    </label>
+    <div id="ob-uni-selected" style="display:none">
+      <p class="muted small" id="ob-uni-name"></p>
     </div>
-    <div class="onboard-school-list" id="ob-schools">
-      <div class="onboard-loading">Loading universities...</div>
-    </div>
+    <p class="error" id="ob-error"></p>
+    <button class="btn btn-primary btn-block btn-lg" id="ob-next">Continue</button>
     <p class="muted small onboard-cant-find" id="ob-cant-find">Can't find your university? <button class="link-btn" id="ob-request-uni">Request your university</button></p>
     <div id="ob-request-form" style="display:none">
       <label>University name <input id="ob-req-name" placeholder="e.g. University of Lagos" /></label>
@@ -1159,28 +1161,22 @@ async function onboardStep3() {
     const d = await api("/api/schools");
     schoolsData = d.schools || [];
   } catch {}
-  const listEl = document.getElementById("ob-schools");
+  const schoolSel = document.getElementById("ob-school");
   const savedUni = state.onboardData.university || "";
-  function renderSchools(filter) {
-    const q = (filter || "").toLowerCase();
-    const filtered = q ? schoolsData.filter((s) => s.name.toLowerCase().includes(q)) : schoolsData;
-    if (!filtered.length) {
-      listEl.innerHTML = `<div class="onboard-empty">No universities found</div>`;
-      return;
-    }
-    listEl.innerHTML = filtered.map((s) =>
-      `<button class="onboard-school-item${s.id === savedUni ? " selected" : ""}" data-id="${s.id}">${s.name}</button>`
-    ).join("");
-    listEl.querySelectorAll(".onboard-school-item").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        listEl.querySelectorAll(".onboard-school-item").forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        onboardNext({ university: btn.dataset.id, universityName: btn.textContent });
-      });
-    });
-  }
-  renderSchools("");
-  document.getElementById("ob-school-search").addEventListener("input", (e) => renderSchools(e.target.value));
+  schoolsData.forEach((s) => {
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = s.name;
+    if (s.id === savedUni) opt.selected = true;
+    schoolSel.appendChild(opt);
+  });
+  document.getElementById("ob-next").addEventListener("click", () => {
+    const errEl = document.getElementById("ob-error");
+    errEl.textContent = "";
+    if (!schoolSel.value) return (errEl.textContent = "Please select your university");
+    const school = schoolsData.find((s) => s.id === schoolSel.value);
+    onboardNext({ university: schoolSel.value, universityName: school ? school.name : "" });
+  });
   document.getElementById("ob-request-uni").addEventListener("click", () => {
     document.getElementById("ob-request-form").style.display = "block";
     document.getElementById("ob-cant-find").style.display = "none";
