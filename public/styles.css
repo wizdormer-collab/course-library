@@ -2646,7 +2646,10 @@ body.auth-page main {
   display: none;
 }
 .onboard-page .auth-brand .auth-logo {
-  display: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  font-size: 1.3rem;
 }
 .onboard-page .auth-secure {
   display: none;
