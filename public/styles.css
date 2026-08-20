@@ -2349,11 +2349,6 @@ body.auth-page main {
   padding: 2px 2px 14px;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
-  margin-left: -20px;
-  margin-right: -20px;
-  padding-left: 20px;
-  padding-right: 20px;
-  width: calc(100% + 40px);
 }
 
 .ycard {
