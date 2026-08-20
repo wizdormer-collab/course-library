@@ -2006,6 +2006,14 @@ body.auth-page main {
     margin-top: 0;
   }
 
+  .onboard-page .auth-card {
+    padding: 12px;
+  }
+
+  .onboard-page .auth-card h1 {
+    font-size: 1.05rem;
+  }
+
   /* toast sits above the pill tab bar */
   .toast {
     top: auto;
@@ -2619,6 +2627,86 @@ body.auth-page main {
 }
 .onboard-welcome {
   text-align: center;
+}
+
+/* compact onboarding — no-scroll layout */
+.onboard-page .auth-wrap {
+  padding-top: 8px;
+  padding-bottom: 4px;
+  gap: 6px;
+  min-height: auto;
+  height: 100%;
+  justify-content: flex-start;
+}
+.onboard-page .auth-brand {
+  gap: 4px;
+  margin-bottom: 0;
+}
+.onboard-page .auth-brand .auth-tag {
+  display: none;
+}
+.onboard-page .auth-brand .auth-logo {
+  display: none;
+}
+.onboard-page .auth-secure {
+  display: none;
+}
+.onboard-page .auth-card {
+  padding: 14px;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.onboard-page .auth-card h1 {
+  font-size: 1.15rem;
+  margin-bottom: 0;
+}
+.onboard-page .auth-card label {
+  gap: 3px;
+  font-size: 0.82rem;
+}
+.onboard-page .auth-card label input,
+.onboard-page .auth-card label select {
+  padding: 9px 10px;
+  font-size: 0.88rem;
+}
+.onboard-page .auth-card .muted {
+  font-size: 0.8rem;
+  margin: 0;
+}
+.onboard-page .auth-card .muted.small {
+  font-size: 0.75rem;
+}
+.onboard-page .auth-card .btn-lg {
+  padding: 11px;
+  font-size: 0.9rem;
+  margin-top: auto;
+}
+.onboard-page .auth-card .onboard-progress {
+  margin-bottom: 0;
+}
+.onboard-page .auth-card .onboard-back-btn {
+  margin-bottom: 0;
+  padding: 2px 0;
+}
+.onboard-page .auth-card .onboard-school-list,
+.onboard-page .auth-card .onboard-course-list {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+.onboard-page .auth-card .opt-fields {
+  display: none;
+}
+.onboard-page .auth-card .auth-switch {
+  margin-top: 4px;
+  font-size: 0.8rem;
+}
+.onboard-page .auth-card .onboard-course-actions {
+  margin-bottom: 4px;
 }
 .onboard-welcome-brand {
   display: flex;
