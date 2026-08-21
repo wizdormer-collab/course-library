@@ -878,7 +878,6 @@ async function renderNav() {
         ? [
             { path: "/", label: "Home", icon: "home" },
             { path: "/courses", label: "Courses", icon: "book" },
-            { path: "/notifications", label: "Alerts", icon: "bell", badge: state.unreadCount },
             { path: "/saved", label: "Saved", icon: "star" },
             { path: "/settings", label: "Profile", icon: "user" }
           ]
