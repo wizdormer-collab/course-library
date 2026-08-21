@@ -1,4 +1,4 @@
-const CACHE_NAME = "courselib-v18";
+const CACHE_NAME = "courselib-v20";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -7,6 +7,8 @@ const STATIC_ASSETS = [
   "/manifest.json",
   "/favicon.svg",
   "/icon-192.svg",
+  "/icon-192.png",
+  "/icon-512.png",
   "/schools.json"
 ];
 
