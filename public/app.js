@@ -121,7 +121,8 @@ const ICONS = {
   folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
   camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
   mapPin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
-  building: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22V12h6v10"/><path d="M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01"/>'
+  building: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22V12h6v10"/><path d="M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01"/>',
+  bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'
 };
 
 function icon(name, cls) {
@@ -2250,7 +2251,7 @@ async function renderHome() {
         ${qaTile("#/courses", "t-all", "book", "All Materials")}
         ${qaTile("#/tag/notes", "t-notes", "edit", "Notes")}
         ${qaTile("#/tag/past-question", "t-past", "archive", "Past Questions")}
-        ${qaTile("#/tag/textbook", "t-textbook", "book", "Textbooks")}
+        ${qaTile("#/tag/textbook", "t-textbook", "bookOpen", "Textbooks")}
       </div>
     </section>
 
