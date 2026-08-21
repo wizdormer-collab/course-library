@@ -299,6 +299,7 @@ function publicUser(u) {
   if (u.studentType) obj.studentType = u.studentType;
   if (u.avatarUrl) obj.avatarUrl = u.avatarUrl;
   if (u.bio) obj.bio = u.bio;
+  if (u.enrolledCourses) obj.enrolledCourses = u.enrolledCourses;
   return obj;
 }
 
