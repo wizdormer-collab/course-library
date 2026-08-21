@@ -14,7 +14,19 @@ const DATA_FILE = path.join(DATA_DIR, "data.json");
 const BACKUP_FILE = path.join(DATA_DIR, "data.json.bak");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 const PUBLIC_DIR = path.join(__dirname, "public");
-const SECRET = process.env.SECRET || crypto.randomBytes(32).toString("hex");
+const SECRET_FILE = path.join(DATA_DIR, ".secret");
+let SECRET = process.env.SECRET || "";
+if (!SECRET) {
+  try {
+    if (fs.existsSync(SECRET_FILE)) {
+      SECRET = fs.readFileSync(SECRET_FILE, "utf8").trim();
+    }
+  } catch {}
+}
+if (!SECRET) {
+  SECRET = crypto.randomBytes(32).toString("hex");
+  try { fs.writeFileSync(SECRET_FILE, SECRET); } catch {}
+}
 const PORT = process.env.PORT || 3000;
 const MAX_UPLOAD = 25 * 1024 * 1024;
 const ADMIN_INVITE_CODE = process.env.ADMIN_INVITE_CODE || "admin2026";
@@ -26,7 +38,7 @@ const EMAIL_ENABLED = smtpConfigured();
 const VERIFY_TTL = 15 * 60 * 1000;
 
 function genVerifyCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(crypto.randomInt(100000, 999999));
 }
 
 async function deliverVerifyCode(user, code) {
@@ -2603,7 +2615,7 @@ const MIME = {
 function serveStatic(req, res, pathname) {
   let rel = pathname === "/" ? "index.html" : pathname.slice(1);
   let fp = path.join(PUBLIC_DIR, rel);
-  if (!fp.startsWith(PUBLIC_DIR)) return send(res, 403, { error: "Forbidden" });
+  if (!fp.startsWith(PUBLIC_DIR + path.sep) && fp !== PUBLIC_DIR) return send(res, 403, { error: "Forbidden" });
   if (!fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
     if (!path.extname(rel)) {
       fp = path.join(PUBLIC_DIR, "index.html");

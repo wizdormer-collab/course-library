@@ -4,34 +4,34 @@
       "id": "u1",
       "username": "admin",
       "email": "admin@course-library.edu.ng",
-      "hash": "0fe39ba246088dcfe91228f4e2f86615:7bac3a365995bbec4f911d84fd3fef048f100ef35ba8ea573379a74f2881a8c5",
+      "hash": "51c394b025297094c27693ab00b319b4:1d6a46a5628398baeb225adcf8a905d599eb543c3b2698a7659e6ee9bf76e8fb",
       "role": "admin",
       "notifications": [],
       "verified": true,
       "securityQuestion": "What city were you born in?",
-      "securityAnswerHash": "c736aee7fcf2c12a594487ec49add3bd:3c377da2cf45c9f74cb177935728532bc22233dddbf681d69db31bda2a7b8016"
+      "securityAnswerHash": "8f0f2309bc3f07ac406971bff1ad8b48:0b1e9f0e3ccd665b440fc5d455836d9e6674b4dc18e642f5fccc80a94d7a3c19"
     },
     {
       "id": "u2",
       "username": "student1",
       "email": "student1@university.edu.ng",
-      "hash": "796e307deba0881cd73b487180896229:93b250062b1725308f17a1b2c386796e8b6f85a6a9a9e50e75f7b955541e9e43",
+      "hash": "1445939a71577d89b6d8e2257ba47dcc:7d968190b16c60bfa61f0d021e8d50b0e290f673d445437cdca7a8f6a986291b",
       "role": "student",
       "notifications": [],
       "verified": true,
       "securityQuestion": "What city were you born in?",
-      "securityAnswerHash": "b3b21d379ef1419fbe45274299ceb83c:fe7a0b976abb481f8fbba0449200be5b5df8cfa94ef825809bb2522396ff139f"
+      "securityAnswerHash": "8f0f2309bc3f07ac406971bff1ad8b48:0b1e9f0e3ccd665b440fc5d455836d9e6674b4dc18e642f5fccc80a94d7a3c19"
     },
     {
       "id": "u3",
       "username": "lecturer",
       "email": "lecturer@university.edu.ng",
-      "hash": "796e307deba0881cd73b487180896229:93b250062b1725308f17a1b2c386796e8b6f85a6a9a9e50e75f7b955541e9e43",
+      "hash": "6ea276ebf2a2426497d51ae9e8f51aa0:e4ae11292638727738c6eb57c4cdfa24e84c280aaf7e3d05d02d78b115026d7e",
       "role": "lecturer",
       "notifications": [],
       "verified": true,
       "securityQuestion": "What is your favorite course?",
-      "securityAnswerHash": "b3b21d379ef1419fbe45274299ceb83c:fe7a0b976abb481f8fbba0449200be5b5df8cfa94ef825809bb2522396ff139f"
+      "securityAnswerHash": "12d112c0ce5bb017166709278cc22f04:ee6576073280c7ec000f160c47eebb6fffc45581ace67aa3dfc64c55b21e1a75"
     }
   ],
   "courses": [
