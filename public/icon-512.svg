@@ -2,16 +2,40 @@
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4f46e5"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
+      <stop offset="50%" stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
     </linearGradient>
+    <radialGradient id="shine" cx="35%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.12)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
   </defs>
-  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
-  <g transform="translate(256,232)" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M-110,-95 L0,-120 L110,-95 L110,95 L0,120 L-110,95 Z" fill="rgba(255,255,255,0.15)"/>
-    <path d="M-110,-95 L0,-65 L110,-95"/>
-    <path d="M0,-120 L0,120"/>
-    <path d="M-55,-80 L-55,105"/>
-    <path d="M55,-80 L55,105"/>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="96" fill="url(#shine)"/>
+  <g transform="translate(256,240)">
+    <!-- Graduation cap - mortarboard top (diamond) -->
+    <polygon points="0,-75 120,-25 0,5 -120,-25" fill="#fff" opacity="0.95"/>
+    <polygon points="0,-75 120,-25 0,-15 -120,-25" fill="#e0d4ff" opacity="0.5"/>
+    <!-- Cap base band -->
+    <rect x="-50" y="-22" width="100" height="18" rx="3" fill="rgba(255,255,255,0.85)"/>
+    <!-- Tassel string -->
+    <line x1="0" y1="-5" x2="0" y2="10" stroke="rgba(255,255,255,0.7)" stroke-width="2.5"/>
+    <!-- Tassel hanging right -->
+    <path d="M0,-5 Q30,5 35,30" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="35" cy="33" r="5" fill="rgba(255,255,255,0.8)"/>
+    <!-- Open book - left page -->
+    <path d="M-8,20 Q-12,15 -65,25 Q-70,27 -70,35 L-70,80 Q-70,78 -65,76 Q-12,68 -8,60 Z" fill="rgba(255,255,255,0.9)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    <!-- Open book - right page -->
+    <path d="M8,20 Q12,15 65,25 Q70,27 70,35 L70,80 Q70,78 65,76 Q12,68 8,60 Z" fill="rgba(255,255,255,0.9)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    <!-- Book spine -->
+    <line x1="0" y1="18" x2="0" y2="62" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+    <!-- Page lines left -->
+    <line x1="-25" y1="38" x2="-55" y2="42" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
+    <line x1="-22" y1="48" x2="-50" y2="51" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
+    <line x1="-19" y1="58" x2="-45" y2="60" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
+    <!-- Page lines right -->
+    <line x1="25" y1="38" x2="55" y2="42" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
+    <line x1="22" y1="48" x2="50" y2="51" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
+    <line x1="19" y1="58" x2="45" y2="60" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
   </g>
-  <text x="256" y="415" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="72" font-weight="700">CL</text>
 </svg>

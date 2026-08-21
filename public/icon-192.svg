@@ -2,16 +2,40 @@
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4f46e5"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
+      <stop offset="50%" stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
     </linearGradient>
+    <radialGradient id="shine" cx="35%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.12)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
   </defs>
-  <rect width="192" height="192" rx="32" fill="url(#bg)"/>
-  <g transform="translate(96,88)" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M-40,-35 L0,-45 L40,-35 L40,35 L0,45 L-40,35 Z" fill="rgba(255,255,255,0.15)"/>
-    <path d="M-40,-35 L0,-25 L40,-35"/>
-    <path d="M0,-45 L0,45"/>
-    <path d="M-20,-30 L-20,40"/>
-    <path d="M20,-30 L20,40"/>
+  <rect width="192" height="192" rx="36" fill="url(#bg)"/>
+  <rect width="192" height="192" rx="36" fill="url(#shine)"/>
+  <g transform="translate(96,90)">
+    <!-- Graduation cap - mortarboard top (diamond) -->
+    <polygon points="0,-28 45,-9 0,2 -45,-9" fill="#fff" opacity="0.95"/>
+    <polygon points="0,-28 45,-9 0,-6 -45,-9" fill="#e0d4ff" opacity="0.5"/>
+    <!-- Cap base band -->
+    <rect x="-19" y="-8" width="38" height="7" rx="1" fill="rgba(255,255,255,0.85)"/>
+    <!-- Tassel string -->
+    <line x1="0" y1="-2" x2="0" y2="4" stroke="rgba(255,255,255,0.7)" stroke-width="1.2"/>
+    <!-- Tassel hanging right -->
+    <path d="M0,-2 Q11,2 13,11" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="13" cy="12.5" r="2" fill="rgba(255,255,255,0.8)"/>
+    <!-- Open book - left page -->
+    <path d="M-3,8 Q-5,6 -24,10 Q-26,11 -26,13 L-26,30 Q-26,29 -24,28.5 Q-5,26 -3,23 Z" fill="rgba(255,255,255,0.9)" stroke="rgba(255,255,255,0.4)" stroke-width="0.6"/>
+    <!-- Open book - right page -->
+    <path d="M3,8 Q5,6 24,10 Q26,11 26,13 L26,30 Q26,29 24,28.5 Q5,26 3,23 Z" fill="rgba(255,255,255,0.9)" stroke="rgba(255,255,255,0.4)" stroke-width="0.6"/>
+    <!-- Book spine -->
+    <line x1="0" y1="7" x2="0" y2="24" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+    <!-- Page lines left -->
+    <line x1="-9" y1="14" x2="-21" y2="16" stroke="rgba(200,190,230,0.4)" stroke-width="0.8"/>
+    <line x1="-8" y1="18" x2="-19" y2="19.5" stroke="rgba(200,190,230,0.4)" stroke-width="0.8"/>
+    <line x1="-7" y1="22" x2="-17" y2="23" stroke="rgba(200,190,230,0.4)" stroke-width="0.8"/>
+    <!-- Page lines right -->
+    <line x1="9" y1="14" x2="21" y2="16" stroke="rgba(200,190,230,0.4)" stroke-width="0.8"/>
+    <line x1="8" y1="18" x2="19" y2="19.5" stroke="rgba(200,190,230,0.4)" stroke-width="0.8"/>
+    <line x1="7" y1="22" x2="17" y2="23" stroke="rgba(200,190,230,0.4)" stroke-width="0.8"/>
   </g>
-  <text x="96" y="155" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="28" font-weight="700">CL</text>
 </svg>
