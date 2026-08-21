@@ -2429,7 +2429,7 @@ async function renderCourses(hash) {
     <div class="page-head">
       <div>
         <h1>My Courses</h1>
-        <p class="muted">${enrolled.length} enrolled course${enrolled.length !== 1 ? "s" : ""}</p>
+        <p class="muted">${state.user.level ? esc(state.user.level) + " Level" + (enrolled.length ? " · " : "") : ""}${enrolled.length} enrolled course${enrolled.length !== 1 ? "s" : ""}</p>
       </div>
       ${isAdmin ? '<button class="btn btn-primary" id="new-course-btn">+ New course</button>' : ""}
     </div>
@@ -2972,15 +2972,10 @@ async function renderCourseDetail(hash) {
       ${files.length ? `
         <div class="category-tabs" id="cat-tabs">
           <button class="cat-tab active" data-cat="">All (${files.length})</button>
-          ${(() => {
-            const cats = {};
-            files.forEach((f) => {
-              const tags = (f.tags || []);
-              tags.forEach((t) => { cats[t] = (cats[t] || 0) + 1; });
-              if (!tags.length) cats["untagged"] = (cats["untagged"] || 0) + 1;
-            });
-            return Object.entries(cats).slice(0, 6).map(([t, c]) => `<button class="cat-tab" data-cat="${esc(t)}">${esc(t)} (${c})</button>`).join("");
-          })()}
+          <button class="cat-tab" data-cat="notes">Lecture Notes (${files.filter((f) => (f.tags || []).includes("notes")).length})</button>
+          <button class="cat-tab" data-cat="past-question">Past Questions (${files.filter((f) => (f.tags || []).includes("past-question")).length})</button>
+          <button class="cat-tab" data-cat="textbook">Textbooks (${files.filter((f) => (f.tags || []).includes("textbook")).length})</button>
+          <button class="cat-tab" data-cat="other">Other (${files.filter((f) => { const tags = f.tags || []; return tags.length && !tags.includes("notes") && !tags.includes("past-question") && !tags.includes("textbook"); }).length})</button>
         </div>
         <div class="sort-bar">
           <label class="sort-label">Sort by</label>
@@ -3058,8 +3053,14 @@ async function renderCourseDetail(hash) {
       rows.forEach((row) => {
         if (!cat) { row.style.display = ""; return; }
         const tags = row.querySelector(".file-tags");
-        const tagText = tags ? tags.textContent.toLowerCase() : "";
-        row.style.display = tagText.includes(cat.toLowerCase()) ? "" : "none";
+        const tagTexts = tags ? tags.textContent.toLowerCase() : "";
+        if (cat === "other") {
+          const hasKnown = tagTexts.includes("notes") || tagTexts.includes("past question") || tagTexts.includes("textbook");
+          row.style.display = !hasKnown && tagTexts ? "" : "none";
+        } else {
+          const catLabel = cat === "notes" ? "notes" : cat === "past-question" ? "past question" : cat === "textbook" ? "textbook" : cat;
+          row.style.display = tagTexts.includes(catLabel) ? "" : "none";
+        }
       });
     });
   }
