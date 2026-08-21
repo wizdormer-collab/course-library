@@ -909,4 +909,7 @@ try {
 
 const out = path.join(__dirname, "test-results.txt");
 fs.writeFileSync(out, results.join("\n"));
+const failCount = results.filter((r) => r.startsWith("FAIL")).length;
+if (failCount > 0) console.log("FAILED " + failCount + " test(s)");
 console.log("done");
+process.exitCode = failCount > 0 ? 1 : 0;

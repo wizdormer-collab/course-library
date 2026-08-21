@@ -129,12 +129,20 @@ async function loadDbFromSupabase() {
 
 let _dirty = false;
 let _saveTimer = null;
+let _writing = false;
 
 function _writeDb() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
-  try { fs.copyFileSync(DATA_FILE, BACKUP_FILE); } catch {}
-  if (supabaseConfigured()) supaPut("db.json", JSON.stringify(db)).catch(() => {});
-  _dirty = false;
+  if (_writing) { _dirty = true; return; }
+  _writing = true;
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
+    try { fs.copyFileSync(DATA_FILE, BACKUP_FILE); } catch {}
+    if (supabaseConfigured()) supaPut("db.json", JSON.stringify(db)).catch(() => {});
+    _dirty = false;
+  } finally {
+    _writing = false;
+    if (_dirty) { _dirty = false; _writeDb(); }
+  }
 }
 
 function saveDb() {
@@ -453,6 +461,9 @@ function rateLimiter(max, windowMs) {
 }
 const loginLimiter = rateLimiter(10, 60 * 1000);
 const registerLimiter = rateLimiter(10, 60 * 1000);
+const forgotLimiter = rateLimiter(5, 60 * 1000);
+const searchLimiter = rateLimiter(30, 60 * 1000);
+const uploadLimiter = rateLimiter(10, 60 * 1000);
 
 async function handleApi(req, res, pathname) {
   const m = matchRoute(req.method, pathname);
@@ -649,6 +660,8 @@ routes.push({
 routes.push({
   method: "POST", path: "/api/auth/forgot/start",
   handler: async (req, res) => {
+    const ip = req.socket.remoteAddress || "unknown";
+    if (!forgotLimiter(ip)) return send(res, 429, { error: "Too many attempts. Try again in a minute." });
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
     const id = String(body.email || body.username || "").trim().toLowerCase();
     const user = db.users.find(
@@ -1169,6 +1182,8 @@ routes.push({
   handler: async (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
+    const ip = req.socket.remoteAddress || "unknown";
+    if (!uploadLimiter(ip)) return send(res, 429, { error: "Too many uploads. Try again in a minute." });
     const name = decodeURIComponent(req.headers["x-file-name"] || "");
     const courseId = req.headers["x-course-id"] || "";
     const originalName = decodeURIComponent(req.headers["x-original-name"] || "");
@@ -1730,6 +1745,8 @@ routes.push({
   handler: (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
+    const ip = req.socket.remoteAddress || "unknown";
+    if (!searchLimiter(ip)) return send(res, 429, { error: "Too many requests. Try again in a minute." });
     const url = new URL(req.url, "http://localhost");
     const q = String(url.searchParams.get("q") || "").toLowerCase().trim();
     const contentOnly = url.searchParams.get("content") === "1";
@@ -2645,6 +2662,7 @@ const server = http.createServer((req, res) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src 'self' blob:; connect-src 'self'");
   const start = Date.now();
   res.on("finish", () => {
