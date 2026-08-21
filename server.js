@@ -75,6 +75,7 @@ if (!db.groups) db.groups = [];
 if (!db.materialViews) db.materialViews = [];
 if (!db.recentlyViewed) db.recentlyViewed = [];
 if (!db.universityRequests) db.universityRequests = [];
+if (!db.loginLogs) db.loginLogs = [];
 
 function seedDb() {
   const SEED_FILE = path.join(__dirname, "seed-data.json");
@@ -138,6 +139,20 @@ function flushDb() {
 process.on("exit", flushDb);
 process.on("SIGINT", () => { flushDb(); process.exit(0); });
 process.on("SIGTERM", () => { flushDb(); process.exit(0); });
+
+function recordLogin(user, ip, method) {
+  db.loginLogs.push({
+    id: "ll" + Date.now() + Math.random().toString(36).slice(2, 6),
+    userId: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role || "student",
+    method: method || "login",
+    ip: ip || "unknown",
+    at: new Date().toISOString()
+  });
+  saveDb();
+}
 
 if (supabaseConfigured()) {
   await ensureBucket();
@@ -533,6 +548,7 @@ routes.push({
     if (userCourses.length) user.enrolledCourses = userCourses;
     db.users.push(user);
     saveDb();
+    recordLogin(user, ip, "register");
     send(res, 201, {
       message: "Account created successfully.",
       token: signToken(user),
@@ -556,6 +572,7 @@ routes.push({
     if (!user || !verifyPassword(body.password || "", user.hash)) {
       return send(res, 401, { error: "Invalid email or password" });
     }
+    recordLogin(user, ip, "login");
     send(res, 200, { token: signToken(user), user: { ...publicUser(user), lastViewed: user.lastViewed || {} } });
   }
 });
@@ -582,6 +599,7 @@ routes.push({
     user.verified = true;
     delete user.verification;
     saveDb();
+    recordLogin(user, req.socket.remoteAddress || "unknown", "verify");
     send(res, 200, { token: signToken(user), user: { ...publicUser(user), lastViewed: user.lastViewed || {} } });
   }
 });
@@ -887,6 +905,16 @@ routes.push({
     });
     saveDb();
     send(res, 200, { message: "Request submitted successfully." });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/login-logs",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user || user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    const logs = (db.loginLogs || []).slice().reverse();
+    send(res, 200, { logs });
   }
 });
 

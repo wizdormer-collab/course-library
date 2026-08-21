@@ -3512,6 +3512,26 @@ async function renderAdmin() {
     app.appendChild(reqSection.firstElementChild);
   }
 
+  let loginLogs = [];
+  try { loginLogs = (await api("/api/login-logs")).logs || []; } catch {}
+
+  if (loginLogs.length) {
+    const logSection = document.createElement("div");
+    logSection.innerHTML = `
+      <h2 class="section-title">Login Activity (${loginLogs.length})</h2>
+      <div class="file-list">
+        ${loginLogs.slice(0, 50).map((l) => `
+          <div class="file-row">
+            <span class="file-icon">${l.method === "register" ? icon("edit") : l.method === "verify" ? icon("shield") : icon("user")}</span>
+            <div class="file-info">
+              <div class="file-name">${esc(l.username)}</div>
+              <span class="muted">${esc(l.email)} &middot; ${esc(l.method)} &middot; IP: ${esc(l.ip)} &middot; ${fmtDate(l.at)}</span>
+            </div>
+          </div>`).join("")}
+      </div>`;
+    app.appendChild(logSection.firstElementChild);
+  }
+
   bindRowActions();
 
   document.querySelectorAll("[data-approve]").forEach((btn) =>
