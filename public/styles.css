@@ -421,6 +421,10 @@ main {
   box-shadow: var(--shadow-sm);
 }
 
+.ann-card.hidden {
+  display: none;
+}
+
 .ann-card .ann-head {
   display: flex;
   align-items: center;
@@ -955,6 +959,7 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  width: 100%;
 }
 
 .empty-state .empty-icon {
@@ -1680,6 +1685,15 @@ body.auth-page main {
 .hidden {
   display: none !important;
 }
+
+.mt-12 { margin-top: 12px; }
+.mt-8 { margin-top: 8px; }
+.mt-20 { margin-top: 20px; }
+.mb-12 { margin-bottom: 12px; }
+.p-16 { padding: 16px; }
+.p-20 { padding: 20px; }
+.text-center { text-align: center; }
+.empty-pad { padding: 40px 20px; text-align: center; }
 
 .skip-link {
   position: absolute;
@@ -4002,7 +4016,7 @@ body.auth-page main {
 
 .offline-bar {
   position: fixed;
-  bottom: 60px;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   background: var(--danger);
@@ -4019,7 +4033,7 @@ body.auth-page main {
 
 .install-bar {
   position: fixed;
-  bottom: 60px;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   background: var(--card);
@@ -4115,6 +4129,10 @@ body.auth-page main {
 .flashcard-text {
   font-size: 0.95rem;
   line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 }
 
 .flashcard-nav {
@@ -4154,10 +4172,15 @@ body.auth-page main {
   padding: 0 0 8px;
   margin-bottom: 12px;
   -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
 }
+
+.semester-tabs::-webkit-scrollbar { display: none; }
 
 .sem-tab {
   flex-shrink: 0;
+  scroll-snap-align: start;
   padding: 6px 16px;
   border-radius: 20px;
   border: 1px solid var(--border);
@@ -4184,10 +4207,15 @@ body.auth-page main {
   padding: 0 0 8px;
   margin-bottom: 8px;
   -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
 }
+
+.category-tabs::-webkit-scrollbar { display: none; }
 
 .cat-tab {
   flex-shrink: 0;
+  scroll-snap-align: start;
   padding: 5px 12px;
   border-radius: 16px;
   border: 1px solid var(--border);
@@ -4221,6 +4249,13 @@ body.auth-page main {
   border: none;
 }
 
+@media (max-height: 500px) {
+  .pdf-frame {
+    height: calc(100dvh - 120px);
+    min-height: 200px;
+  }
+}
+
 .viewer-header {
   display: flex;
   justify-content: space-between;
@@ -4249,14 +4284,14 @@ body.auth-page main {
 
 .notif-badge {
   position: absolute;
-  top: -4px;
-  right: -8px;
+  top: -5px;
+  right: -6px;
   min-width: 16px;
   height: 16px;
   border-radius: 8px;
-  background: #ef4444;
+  background: var(--danger, #ef4444);
   color: #fff;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 700;
   display: flex;
   align-items: center;

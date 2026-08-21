@@ -42,7 +42,7 @@ function applyThemeSchedule() {
   }
 }
 
-setInterval(applyThemeSchedule, 60000);
+if (state.themeSchedule && state.themeSchedule.enabled) setInterval(applyThemeSchedule, 60000);
 
 function token() {
   return localStorage.getItem("token");
@@ -954,10 +954,10 @@ async function render() {
     loadUserData();
   } catch (err) {
     console.error("render error:", err);
-    app.innerHTML = `<div style="padding:40px 20px;text-align:center">
+    app.innerHTML = `<div class="empty-pad">
       <h2>Something went wrong</h2>
       <p style="color:var(--muted)">${esc(err.message)}</p>
-      <button class="btn btn-primary" onclick="location.reload()" style="margin-top:12px">Retry</button>
+      <button class="btn btn-primary" onclick="location.reload()" class="mt-12">Retry</button>
     </div>`;
     window.scrollTo({ top: 0 });
   }
@@ -2107,7 +2107,7 @@ async function renderHome() {
       <select id="filter-sem"><option value="">All semesters</option></select>
     </div>
     <div id="search-results"></div>
-    <div class="skeleton" style="margin-top:20px"><div class="skel" style="height:80px;border-radius:18px"></div><div class="skel" style="height:120px;border-radius:18px"></div></div>`);
+    <div class="skeleton" class="mt-20"><div class="skel" style="height:80px;border-radius:18px"></div><div class="skel" style="height:120px;border-radius:18px"></div></div>`);
 
   bindSearch();
   bindFilterToggle();
@@ -2258,7 +2258,7 @@ async function renderHome() {
     ${announcements.length || isAdmin || state.user.role === "lecturer" ? `
     <section class="home-section">
       <h2 class="section-title">${icon("bell")} Announcements</h2>
-      ${isAdmin || state.user.role === "lecturer" ? `<div class="ann-compose card" style="margin-bottom:12px">
+      ${isAdmin || state.user.role === "lecturer" ? `<div class="ann-compose card" class="mb-12">
         <textarea id="ann-input" class="ann-textarea" rows="2" placeholder="Post an announcement..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;resize:none;font:inherit;background:var(--card-2);color:var(--text);margin-bottom:8px"></textarea>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2274,7 +2274,7 @@ async function renderHome() {
           <button class="btn btn-primary btn-sm" id="ann-post-btn">Post</button>
         </div>
       </div>` : ""}
-      <div class="ann-list">
+      <div class="ann-list" id="ann-list">
         ${announcements.length
           ? announcements.slice(0, 5).map((a) => `
           <div class="ann-card">
@@ -2285,7 +2285,7 @@ async function renderHome() {
             <div class="ann-text">${esc(a.text)}</div>
             ${a.targetType && a.targetType !== "all" ? `<span class="badge badge-outline" style="margin-top:6px">${esc(a.targetType)}: ${esc(a.targetId || "")}</span>` : ""}
             ${isAdmin ? `<button class="link-btn" style="margin-top:6px;font-size:0.8rem" data-del-ann="${a.id}">Delete</button>` : ""}
-          </div>`).join("")
+          </div>`).join("") + (announcements.length > 5 ? `<button class="btn btn-outline btn-sm" id="ann-show-all" style="margin-top:8px;width:100%">View all (${announcements.length})</button>` : "")
           : emptyState("bell", "No announcements yet", "Announcements from admins will appear here.", "")}
       </div>
     </section>` : ""}
@@ -2356,6 +2356,21 @@ async function renderHome() {
       } catch (err) { alert(err.message); }
     }));
 
+  const annShowAll = document.getElementById("ann-show-all");
+  if (annShowAll) annShowAll.addEventListener("click", () => {
+    const list = document.getElementById("ann-list");
+    if (!list) return;
+    const hidden = list.querySelectorAll(".ann-card.hidden");
+    if (hidden.length) {
+      hidden.forEach((el) => el.classList.remove("hidden"));
+      annShowAll.textContent = "Show less";
+    } else {
+      const cards = list.querySelectorAll(".ann-card");
+      cards.forEach((el, i) => { if (i >= 5) el.classList.add("hidden"); });
+      annShowAll.textContent = `View all (${cards.length})`;
+    }
+  });
+
   const annPostBtn = document.getElementById("ann-post-btn");
   const annTarget = document.getElementById("ann-target");
   const annCourseSelect = document.getElementById("ann-course-select");
@@ -2406,10 +2421,10 @@ async function renderHome() {
   });
   } catch (err) {
     console.error("renderHome error:", err);
-    app.innerHTML = `<div style="padding:40px 20px;text-align:center">
+    app.innerHTML = `<div class="empty-pad">
       <h2>Something went wrong</h2>
       <p style="color:var(--muted)">${esc(err.message)}</p>
-      <button class="btn btn-primary" onclick="location.reload()" style="margin-top:12px">Retry</button>
+      <button class="btn btn-primary" onclick="location.reload()" class="mt-12">Retry</button>
     </div>`;
   }
 }
@@ -2470,7 +2485,7 @@ async function renderCourses(hash) {
                   <span class="muted small">${files.pct}%</span>
                 </div>
                 <div class="progress-bar"><div class="progress-fill" style="width:${files.pct}%"></div></div>
-              </div>` : `<p class="muted small" style="margin-top:8px">No materials yet</p>`}
+              </div>` : `<p class="muted small" class="mt-8">No materials yet</p>`}
               <span class="card-link">Open materials &rarr;</span>
             </a>`;
           }).join("")
@@ -2492,7 +2507,7 @@ async function renderCourses(hash) {
               ${c.category ? `<span class="tag">${esc(c.category)}</span>` : ""}
               ${c.semester ? `<span class="tag tag-outline">${esc(c.semester)}</span>` : ""}
             </div>
-            <p class="muted small" style="margin-top:8px">${c.fileCount || 0} materials</p>
+            <p class="muted small" class="mt-8">${c.fileCount || 0} materials</p>
             <span class="card-link">View &rarr;</span>
           </a>`;
         }).join("") || '<p class="muted" style="grid-column:1/-1;text-align:center;padding:16px">You\'re enrolled in all available courses!</p>'}
@@ -3309,10 +3324,10 @@ async function renderMaterialViewer(hash) {
       } catch (err) { alert(err.message); }
     });
   } catch (err) {
-    app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
+    app.innerHTML = shell(`<div class="empty-pad">
       <h2>Material not found</h2>
       <p class="muted">${esc(err.message)}</p>
-      <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
+      <a href="#/" class="btn btn-primary" class="mt-12">Go home</a>
     </div>`);
   }
 }
@@ -3692,7 +3707,7 @@ async function renderProfile(hash) {
             <button class="btn btn-primary btn-sm" id="edit-save">Save</button>
           </div>
         </div>` : ""}
-        <div class="stat-grid" style="margin-top:20px">
+        <div class="stat-grid" class="mt-20">
           <div class="stat-card"><div class="stat-num">${p.uploadCount}</div><div class="stat-lab">Uploads</div></div>
           <div class="stat-card"><div class="stat-num">${fmtCount(p.totalViews)}</div><div class="stat-lab">Views</div></div>
           <div class="stat-card"><div class="stat-num">${fmtCount(p.totalDownloads)}</div><div class="stat-lab">Downloads</div></div>
@@ -3835,10 +3850,10 @@ async function renderProfile(hash) {
       });
     });
   } catch (err) {
-    app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
+    app.innerHTML = shell(`<div class="empty-pad">
       <h2>Profile not found</h2>
       <p class="muted">${esc(err.message)}</p>
-      <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
+      <a href="#/" class="btn btn-primary" class="mt-12">Go home</a>
     </div>`);
   }
 }
@@ -3898,10 +3913,10 @@ async function renderCollectionDetail(hash) {
       } catch (err) { alert(err.message); }
     });
   } catch (err) {
-    app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
+    app.innerHTML = shell(`<div class="empty-pad">
       <h2>Collection not found</h2>
       <p class="muted">${esc(err.message)}</p>
-      <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
+      <a href="#/" class="btn btn-primary" class="mt-12">Go home</a>
     </div>`);
   }
 }
@@ -4123,10 +4138,10 @@ async function renderGroupDetail(hash) {
       });
     });
   } catch (err) {
-    app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
+    app.innerHTML = shell(`<div class="empty-pad">
       <h2>Group not found</h2>
       <p class="muted">${esc(err.message)}</p>
-      <a href="#/groups" class="btn btn-primary" style="margin-top:12px">Back to groups</a>
+      <a href="#/groups" class="btn btn-primary" class="mt-12">Back to groups</a>
     </div>`);
   }
 }
