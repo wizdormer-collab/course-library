@@ -72,6 +72,9 @@ if (fs.existsSync(DATA_FILE)) {
 
 if (!db.announcements) db.announcements = [];
 if (!db.groups) db.groups = [];
+if (!db.materialViews) db.materialViews = [];
+if (!db.recentlyViewed) db.recentlyViewed = [];
+if (!db.universityRequests) db.universityRequests = [];
 
 function seedDb() {
   const SEED_FILE = path.join(__dirname, "seed-data.json");
@@ -377,6 +380,9 @@ function fileInfo(f, user) {
     info.avgRating = 0;
     info.ratingCount = 0;
     if (user) info.myRating = 0;
+  }
+  if (user && user.readProgress && user.readProgress[f.id]) {
+    info.readProgress = user.readProgress[f.id];
   }
   return info;
 }
@@ -857,6 +863,15 @@ routes.push({
 });
 
 routes.push({
+  method: "GET", path: "/api/university-requests",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user || user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    send(res, 200, { requests: db.universityRequests || [] });
+  }
+});
+
+routes.push({
   method: "POST", path: "/api/university-requests",
   handler: (req, res) => {
     const body = readBody(req);
@@ -870,7 +885,7 @@ routes.push({
       email,
       requestedAt: new Date().toISOString()
     });
-    saveDB();
+    saveDb();
     send(res, 200, { message: "Request submitted successfully." });
   }
 });
@@ -880,8 +895,21 @@ routes.push({
 routes.push({
   method: "GET", path: "/api/courses",
   handler: (req, res) => {
-    if (!getAuthUser(req)) return send(res, 401, { error: "Not authenticated" });
-    send(res, 200, { courses: db.courses });
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const enrolledIds = user.enrolledCourses || [];
+    const enriched = db.courses.map((c) => {
+      const files = db.files.filter((f) => f.courseId === c.id && (f.approved || f.uploadedBy === user.id || user.role === "admin"));
+      const viewed = files.filter((f) => (f.viewedBy || []).includes(user.id)).length;
+      return {
+        ...c,
+        enrolled: enrolledIds.includes(c.id),
+        fileCount: files.length,
+        viewedCount: viewed,
+        progress: files.length ? Math.round((viewed / files.length) * 100) : 0
+      };
+    });
+    send(res, 200, { courses: enriched });
   }
 });
 
@@ -942,6 +970,27 @@ routes.push({
     db.files = db.files.filter((f) => f.courseId !== params.id);
     saveDb();
     ok(res);
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/courses/:id/enroll",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const course = db.courses.find((c) => c.id === params.id);
+    if (!course) return send(res, 404, { error: "Course not found" });
+    if (!user.enrolledCourses) user.enrolledCourses = [];
+    const idx = user.enrolledCourses.indexOf(params.id);
+    if (idx === -1) {
+      user.enrolledCourses.push(params.id);
+      saveDb();
+      send(res, 200, { enrolled: true });
+    } else {
+      user.enrolledCourses.splice(idx, 1);
+      saveDb();
+      send(res, 200, { enrolled: false });
+    }
   }
 });
 
@@ -1123,10 +1172,14 @@ routes.push({
     saveDb();
     if (file.approved) {
       for (const u of db.users) {
-        const savedCourse = (u.id !== user.id) && db.files.some(
+        if (u.id === user.id) continue;
+        const enrolled = (u.enrolledCourses || []).includes(courseId);
+        const savedCourse = db.files.some(
           (x) => x.courseId === courseId && (x.savedBy || []).includes(u.id)
         );
-        if (savedCourse) notify(u.id, `New material "${file.name}" added to ${courseLabel(courseId)}`, "upload");
+        if (enrolled || savedCourse) {
+          notify(u.id, `New material "${file.name}" added to ${courseLabel(courseId)}`, "upload", "/course/" + courseId);
+        }
       }
     } else {
       for (const u of db.users) {
@@ -1170,6 +1223,43 @@ function servePdf(req, res, params, mode) {
   if (mode === "inline") trackActivity(ctx.f, "view");
   if (!ctx.user.lastViewed) ctx.user.lastViewed = {};
   ctx.user.lastViewed[ctx.f.id] = new Date().toISOString();
+  if (mode === "inline") {
+    const existing = db.materialViews.find((v) => v.userId === ctx.user.id && v.fileId === ctx.f.id);
+    if (existing) {
+      existing.lastViewed = new Date().toISOString();
+    } else {
+      db.materialViews.push({
+        userId: ctx.user.id,
+        fileId: ctx.f.id,
+        courseId: ctx.f.courseId,
+        fileName: ctx.f.name,
+        courseLabel: courseLabel(ctx.f.courseId),
+        firstViewed: new Date().toISOString(),
+        lastViewed: new Date().toISOString()
+      });
+    }
+    const rv = db.recentlyViewed.find((r) => r.userId === ctx.user.id && r.fileId === ctx.f.id);
+    if (rv) {
+      rv.viewedAt = new Date().toISOString();
+    } else {
+      db.recentlyViewed.unshift({
+        userId: ctx.user.id,
+        fileId: ctx.f.id,
+        courseId: ctx.f.courseId,
+        fileName: ctx.f.name,
+        courseLabel: courseLabel(ctx.f.courseId),
+        viewedAt: new Date().toISOString()
+      });
+    }
+    const userViews = db.recentlyViewed.filter((r) => r.userId === ctx.user.id);
+    if (userViews.length > 50) {
+      const toRemove = userViews.sort((a, b) => new Date(a.viewedAt) - new Date(b.viewedAt)).slice(0, userViews.length - 50);
+      for (const r of toRemove) {
+        const idx = db.recentlyViewed.indexOf(r);
+        if (idx !== -1) db.recentlyViewed.splice(idx, 1);
+      }
+    }
+  }
   saveDb();
   const disposition =
     mode === "download"
@@ -1417,12 +1507,13 @@ routes.push({
         if (!f.approved) {
           f.approved = true;
           count++;
-          notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`, "approval");
+          notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`, "approval", "/course/" + f.courseId);
           for (const u of db.users) {
+            if (u.id === f.uploadedBy) continue;
+            const enrolled = (u.enrolledCourses || []).includes(f.courseId);
             const savedCourse =
-              u.id !== f.uploadedBy &&
               db.files.some((x) => x.courseId === f.courseId && (x.savedBy || []).includes(u.id));
-            if (savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`, "upload");
+            if (enrolled || savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`, "upload", "/course/" + f.courseId);
           }
         }
       } else if (action === "reject") {
@@ -1487,12 +1578,13 @@ routes.push({
     if (!f) return send(res, 404, { error: "File not found" });
     f.approved = true;
     saveDb();
-    notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`, "approval");
+    notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`, "approval", "/course/" + f.courseId);
     for (const u of db.users) {
+      if (u.id === f.uploadedBy) continue;
+      const enrolled = (u.enrolledCourses || []).includes(f.courseId);
       const savedCourse =
-        u.id !== f.uploadedBy &&
         db.files.some((x) => x.courseId === f.courseId && (x.savedBy || []).includes(u.id));
-      if (savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`, "upload");
+      if (enrolled || savedCourse) notify(u.id, `New material "${f.name}" added to ${courseLabel(f.courseId)}`, "upload", "/course/" + f.courseId);
     }
     send(res, 200, { file: fileInfo(f, user) });
   }
@@ -1550,11 +1642,11 @@ routes.push({
     trackUserActivity(user, "comment", f.name);
     saveDb();
     if (f.uploadedBy !== user.id) {
-      notify(f.uploadedBy, `${user.username} commented on your file "${f.name}"`, "comment");
+      notify(f.uploadedBy, `${user.username} commented on your file "${f.name}"`, "comment", "/course/" + f.courseId);
     }
     for (const mu of mentionedUserIds) {
       if (mu.id !== f.uploadedBy) {
-        notify(mu.id, `${user.username} mentioned you in a comment on "${f.name}"`, "mention");
+        notify(mu.id, `${user.username} mentioned you in a comment on "${f.name}"`, "mention", "/course/" + f.courseId);
       }
     }
     send(res, 201, { comment: c });
@@ -1601,14 +1693,29 @@ routes.push({
     const url = new URL(req.url, "http://localhost");
     const q = String(url.searchParams.get("q") || "").toLowerCase().trim();
     const contentOnly = url.searchParams.get("content") === "1";
-    if (!q) return send(res, 200, { files: [] });
-    const tokens = q.split(/\s+/).filter(Boolean);
+    const filterCourse = String(url.searchParams.get("courseId") || "").trim();
+    const filterType = String(url.searchParams.get("type") || "").trim();
+    const filterSemester = String(url.searchParams.get("semester") || "").trim();
+    const filterCategory = String(url.searchParams.get("category") || "").trim();
+    if (!q && !filterCourse && !filterType && !filterSemester && !filterCategory) return send(res, 200, { files: [] });
+    const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
     const matches = db.files.filter((f) => {
       if (!canSeeFile(f, user)) return false;
       const course = db.courses.find((c) => c.id === f.courseId);
+      if (filterCourse && f.courseId !== filterCourse) return false;
+      if (filterSemester && (!course || course.semester !== filterSemester)) return false;
+      if (filterCategory && (!course || course.category !== filterCategory)) return false;
+      if (filterType) {
+        const tags = (f.tags || []).map((t) => t.toLowerCase());
+        const fname = (f.name || "").toLowerCase();
+        const typeMatch = tags.includes(filterType.toLowerCase()) || fname.includes(filterType.toLowerCase());
+        if (!typeMatch) return false;
+      }
+      if (!tokens.length) return true;
       const hay = [
         f.name, f.originalName, f.text || "",
-        course ? course.name : "", course ? course.code : ""
+        course ? course.name : "", course ? course.code : "",
+        ...(f.tags || [])
       ].join(" ").toLowerCase();
       return tokens.every((t) => hay.includes(t));
     });
@@ -1756,6 +1863,15 @@ routes.push({
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const visible = db.announcements.filter((a) => {
+      if (a.targetType && a.targetType !== "all") {
+        if (a.targetType === "course") {
+          const enrolled = (user.enrolledCourses || []).includes(a.targetId);
+          return enrolled;
+        }
+        if (a.targetType === "faculty") return (user.faculty || "") === a.targetId;
+        if (a.targetType === "department") return (user.department || "") === a.targetId;
+        if (a.targetType === "university") return (user.school || "") === a.targetId;
+      }
       if (!a.courseId) return true;
       const course = db.courses.find((c) => c.id === a.courseId);
       return !!course;
@@ -1769,16 +1885,30 @@ routes.push({
   handler: async (req, res) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    if (user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    if (user.role !== "admin" && user.role !== "lecturer") return send(res, 403, { error: "Admins and lecturers only" });
     const body = JSON.parse((await readBody(req, 1024 * 4)).toString() || "{}");
     const text = String(body.text || "").trim();
     if (!text) return send(res, 400, { error: "Announcement text is required" });
+    const targetType = String(body.targetType || "all").trim();
+    const targetId = String(body.targetId || "").trim() || null;
+    if (user.role === "lecturer" && targetType !== "all" && targetType !== "course") {
+      return send(res, 403, { error: "Lecturers can only target their own courses" });
+    }
+    if (user.role === "lecturer" && targetType === "course" && targetId) {
+      const course = db.courses.find((c) => c.id === targetId);
+      if (!course || course.createdBy !== user.id) {
+        return send(res, 403, { error: "You can only target courses you created" });
+      }
+    }
     const a = {
       id: "ann" + Date.now(),
       text,
       courseId: body.courseId || null,
+      targetType: targetType === "all" ? "all" : targetType,
+      targetId: targetType === "course" ? targetId : (targetType === "faculty" ? (user.faculty || targetId) : (targetType === "department" ? (user.department || targetId) : (targetType === "university" ? (user.school || targetId) : null))),
       authorId: user.id,
       authorName: user.username,
+      authorRole: user.role,
       createdAt: new Date().toISOString()
     };
     db.announcements.unshift(a);
@@ -1797,6 +1927,97 @@ routes.push({
     db.announcements = db.announcements.filter((a) => a.id !== params.id);
     saveDb();
     ok(res);
+  }
+});
+
+/* ---------- recently viewed / material views ---------- */
+
+routes.push({
+  method: "POST", path: "/api/material-views",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    const fileId = String(body.fileId || "").trim();
+    const courseId = String(body.courseId || "").trim();
+    if (!fileId) return send(res, 400, { error: "fileId is required" });
+    const f = db.files.find((x) => x.id === fileId);
+    if (!f) return send(res, 404, { error: "File not found" });
+    if (!f.approved && f.uploadedBy !== user.id && user.role !== "admin") {
+      return send(res, 403, { error: "Not approved yet" });
+    }
+    const existing = db.materialViews.find((v) => v.userId === user.id && v.fileId === fileId);
+    if (existing) {
+      existing.lastViewed = new Date().toISOString();
+    } else {
+      db.materialViews.push({
+        userId: user.id,
+        fileId,
+        courseId: courseId || f.courseId,
+        fileName: f.name,
+        courseLabel: courseLabel(courseId || f.courseId),
+        firstViewed: new Date().toISOString(),
+        lastViewed: new Date().toISOString()
+      });
+    }
+    const rv = db.recentlyViewed.find((r) => r.userId === user.id && r.fileId === fileId);
+    if (rv) {
+      rv.viewedAt = new Date().toISOString();
+    } else {
+      db.recentlyViewed.unshift({
+        userId: user.id,
+        fileId,
+        courseId: courseId || f.courseId,
+        fileName: f.name,
+        courseLabel: courseLabel(courseId || f.courseId),
+        viewedAt: new Date().toISOString()
+      });
+    }
+    const userViews = db.recentlyViewed.filter((r) => r.userId === user.id);
+    if (userViews.length > 50) {
+      const toRemove = userViews.sort((a, b) => new Date(a.viewedAt) - new Date(b.viewedAt)).slice(0, userViews.length - 50);
+      for (const r of toRemove) {
+        const idx = db.recentlyViewed.indexOf(r);
+        if (idx !== -1) db.recentlyViewed.splice(idx, 1);
+      }
+    }
+    saveDb();
+    ok(res);
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/recently-viewed",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const recent = db.recentlyViewed
+      .filter((r) => r.userId === user.id)
+      .sort((a, b) => new Date(b.viewedAt) - new Date(a.viewedAt))
+      .slice(0, 30);
+    send(res, 200, { recentlyViewed: recent });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/material-views",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const views = db.materialViews.filter((v) => v.userId === user.id);
+    send(res, 200, { materialViews: views });
+  }
+});
+
+/* ---------- notifications extended ---------- */
+
+routes.push({
+  method: "GET", path: "/api/notifications/unread-count",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const unread = (user.notifications || []).filter((n) => !n.read).length;
+    send(res, 200, { unread });
   }
 });
 
@@ -2203,7 +2424,7 @@ routes.push({
     user.following.push(target.id);
     target.followers.push(user.id);
     saveDb();
-    notify(target.id, `${user.username} started following you`, "follow");
+    notify(target.id, `${user.username} started following you`, "follow", "/profile/" + user.id);
     ok(res, { following: true, followerCount: target.followers.length });
   }
 });

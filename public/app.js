@@ -6,7 +6,11 @@ const state = {
   toast: "",
   courses: [],
   theme: localStorage.getItem("theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
-  themeSchedule: null
+  themeSchedule: null,
+  recentlyViewed: [],
+  materialViews: [],
+  unreadCount: 0,
+  readProgress: {}
 };
 
 function applyTheme() {
@@ -207,7 +211,7 @@ function fileRow(f, opts = {}) {
       ${opts.showCheckboxes ? `<label class="file-check"><input type="checkbox" data-bulk-check="${f.id}" /></label>` : ""}
       <span class="file-icon">${icon("pdf")}</span>
       <div class="file-info">
-        <button class="file-name" data-preview="${f.id}">${esc(f.name)}</button>
+        <a href="#/material/${f.id}" class="file-name">${esc(f.name)}</a>
         <span class="muted">
           ${opts.showCourse ? esc(f.courseLabel) + " &middot; " : ""}by ${esc(f.uploadedByName)} &middot;
           ${fmtSize(f.size)} &middot; ${fmtDate(f.uploadedAt)}
@@ -874,6 +878,7 @@ async function renderNav() {
         ? [
             { path: "/", label: "Home", icon: "home" },
             { path: "/courses", label: "Courses", icon: "book" },
+            { path: "/notifications", label: "Alerts", icon: "bell", badge: state.unreadCount },
             { path: "/saved", label: "Saved", icon: "star" },
             { path: "/settings", label: "Profile", icon: "user" }
           ]
@@ -886,7 +891,7 @@ async function renderNav() {
           const seg = cur.split("?")[0].split("/").filter(Boolean)[0];
           const itSeg = it.path.split("/").filter(Boolean)[0];
           const active = seg === itSeg || (cur.split("?")[0] === "/" && it.path === "/");
-          return `<a href="#${it.path}" class="bn-item${active ? " active" : ""}" data-path="${it.path}"><span class="bn-icon">${icon(it.icon)}</span><span>${it.label}</span></a>`;
+          return `<a href="#${it.path}" class="bn-item${active ? " active" : ""}" data-path="${it.path}"><span class="bn-icon">${icon(it.icon)}${it.badge ? '<span class="notif-badge">' + it.badge + '</span>' : ''}</span><span>${it.label}</span></a>`;
         })
         .join("");
     }
@@ -905,6 +910,22 @@ function shell(inner) {
   return inner + (state.toast
     ? `<div class="toast" role="status" aria-live="polite">${esc(state.toast)}</div>`
     : `<div aria-live="polite" class="sr-only" id="toast-region"></div>`);
+}
+
+async function loadUserData() {
+  if (!state.user) return;
+  try {
+    const [rv, mv, uc, rp] = await Promise.allSettled([
+      api("/api/recently-viewed"),
+      api("/api/material-views"),
+      api("/api/notifications/unread-count"),
+      api("/api/files/progress")
+    ]);
+    if (rv.status === "fulfilled") state.recentlyViewed = rv.value.recentlyViewed || [];
+    if (mv.status === "fulfilled") state.materialViews = mv.value.materialViews || [];
+    if (uc.status === "fulfilled") state.unreadCount = uc.value.unread || 0;
+    if (rp.status === "fulfilled") state.readProgress = rp.value.progress || {};
+  } catch {}
 }
 
 async function render() {
@@ -926,9 +947,11 @@ async function render() {
     else if (hash === "/notifications") { await renderNotifications(); }
     else if (hash.startsWith("/courses")) { await renderCourses(hash); }
     else if (hash.startsWith("/course/")) { await renderCourseDetail(hash); }
+    else if (hash.startsWith("/material/")) { await renderMaterialViewer(hash); }
     else if (hash.startsWith("/tag/")) { await renderTagFiles(hash); }
     else { await renderHome(); }
     window.scrollTo({ top: 0 });
+    loadUserData();
   } catch (err) {
     console.error("render error:", err);
     app.innerHTML = `<div style="padding:40px 20px;text-align:center">
@@ -2111,7 +2134,9 @@ async function renderHome() {
 
   state.progressMap = {};
   state.courseMeta = {};
-  await Promise.allSettled(state.courses.slice(0, 12).map(async (c) => {
+  const enrolledIds = state.user.enrolledCourses || [];
+  const enrolledCourses = state.courses.filter((c) => enrolledIds.includes(c.id));
+  await Promise.allSettled(enrolledCourses.slice(0, 12).map(async (c) => {
     const pr = await api("/api/courses/" + c.id + "/progress").catch(() => null);
     const fl = await api("/api/files?courseId=" + encodeURIComponent(c.id)).catch(() => null);
     const files = (fl && fl.files) || [];
@@ -2129,11 +2154,14 @@ async function renderHome() {
     };
   }));
 
-  const materialsTotal = state.courses.reduce((s, c) => s + (state.progressMap[c.id]?.total || 0), 0);
+  const materialsTotal = enrolledCourses.reduce((s, c) => s + (state.progressMap[c.id]?.total || 0), 0);
 
-  let cont = state.courses[0] || null;
-  for (const c of state.courses) {
-    if ((state.progressMap[c.id]?.viewed || 0) > (state.progressMap[cont.id]?.viewed || 0)) cont = c;
+  let cont = null;
+  if (state.recentlyViewed.length) {
+    const lastRV = state.recentlyViewed[0];
+    cont = enrolledCourses.find((c) => c.id === lastRV.courseId) || enrolledCourses[0] || null;
+  } else if (enrolledCourses.length) {
+    cont = enrolledCourses[0];
   }
 
   const cats = [...new Set(state.courses.map((c) => c.category).filter(Boolean))];
@@ -2157,7 +2185,7 @@ async function renderHome() {
     <div id="search-results"></div>
 
     <div class="stats-card">
-      <div class="stat-item"><span class="stat-ico ico-book">${icon("book")}</span><span class="stat-num">${state.courses.length}</span><span class="stat-lab">Courses</span></div>
+      <div class="stat-item"><span class="stat-ico ico-book">${icon("book")}</span><span class="stat-num">${enrolledCourses.length}</span><span class="stat-lab">Enrolled</span></div>
       <div class="stat-item"><span class="stat-ico ico-files">${icon("pdf")}</span><span class="stat-num">${materialsTotal}</span><span class="stat-lab">Materials</span></div>
       <div class="stat-item"><span class="stat-ico ico-saved">${icon("star")}</span><span class="stat-num">${saved.length}</span><span class="stat-lab">Saved</span></div>
       <div class="stat-item"><span class="stat-ico ico-recent">${icon("clock")}</span><span class="stat-num">${feed.length}</span><span class="stat-lab">Recent</span></div>
@@ -2170,6 +2198,21 @@ async function renderHome() {
       </div>
       ${continueCardHTML(cont, state.progressMap[cont ? cont.id : ""])}
     </section>
+
+    ${state.recentlyViewed.length ? `
+    <section class="home-section">
+      <h2 class="section-title">${icon("clock")} Recently viewed</h2>
+      <div class="recently-viewed-list">
+        ${state.recentlyViewed.slice(0, 5).map((r) => `
+          <a href="#/material/${r.fileId}" class="recently-viewed-item">
+            <span class="rv-icon">${icon("pdf")}</span>
+            <div class="rv-info">
+              <span class="rv-name">${esc(r.fileName)}</span>
+              <span class="muted small">${esc(r.courseLabel)} &middot; ${fmtDate(r.viewedAt)}</span>
+            </div>
+          </a>`).join("")}
+      </div>
+    </section>` : ""}
 
     ${followingFeed.length || followingActivity.length ? `
     <section class="home-section">
@@ -2196,9 +2239,9 @@ async function renderHome() {
         </div>
       </div>
       <div class="course-scroll" id="course-scroll">
-        ${state.courses.length
-          ? state.courses.map((c) => ycardHTML(c, state.courseMeta[c.id], state.progressMap[c.id])).join("")
-          : emptyState("book", "No courses yet", "Create a course to get started.", isAdmin ? '<button class="btn btn-primary btn-sm" id="new-course-btn-empty">+ New course</button>' : "")}
+        ${enrolledCourses.length
+          ? enrolledCourses.map((c) => ycardHTML(c, state.courseMeta[c.id], state.progressMap[c.id])).join("")
+          : emptyState("book", "No courses yet", "Head to All Materials to enroll in your first course.", isAdmin ? '<button class="btn btn-primary btn-sm" id="new-course-btn-empty">+ New course</button>' : "")}
       </div>
     </section>
 
@@ -2212,24 +2255,35 @@ async function renderHome() {
       </div>
     </section>
 
-    ${announcements.length || isAdmin ? `
+    ${announcements.length || isAdmin || state.user.role === "lecturer" ? `
     <section class="home-section">
       <h2 class="section-title">${icon("bell")} Announcements</h2>
-      ${isAdmin ? `<div class="ann-compose card" style="margin-bottom:12px">
-        <textarea id="ann-input" class="ann-textarea" rows="2" placeholder="Post an announcement to all students..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;resize:none;font:inherit;background:var(--card-2);color:var(--text);margin-bottom:8px"></textarea>
-        <div style="display:flex;justify-content:flex-end;gap:8px">
+      ${isAdmin || state.user.role === "lecturer" ? `<div class="ann-compose card" style="margin-bottom:12px">
+        <textarea id="ann-input" class="ann-textarea" rows="2" placeholder="Post an announcement..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;resize:none;font:inherit;background:var(--card-2);color:var(--text);margin-bottom:8px"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <select id="ann-target" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:0.8rem;background:var(--card-2);color:var(--text)">
+              <option value="all">All students</option>
+              ${state.user.role === "admin" ? '<option value="university">My university</option><option value="faculty">My faculty</option><option value="department">My department</option>' : ""}
+              <option value="course">Specific course</option>
+            </select>
+            <select id="ann-course-select" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:0.8rem;display:none;background:var(--card-2);color:var(--text)">
+              ${(state.user.role === "admin" ? state.courses : state.courses.filter((c) => c.createdBy === state.user.id)).map((c) => `<option value="${c.id}">${esc(c.code)} - ${esc(c.name)}</option>`).join("")}
+            </select>
+          </div>
           <button class="btn btn-primary btn-sm" id="ann-post-btn">Post</button>
         </div>
       </div>` : ""}
       <div class="ann-list">
         ${announcements.length
-          ? announcements.slice(0, 3).map((a) => `
+          ? announcements.slice(0, 5).map((a) => `
           <div class="ann-card">
             <div class="ann-head">
-              <span class="ann-author">${esc(a.authorName)}</span>
+              <span class="ann-author">${esc(a.authorName)}${a.authorRole === "lecturer" ? ' <span class="badge">lecturer</span>' : ""}</span>
               <span class="ann-date">${fmtDate(a.createdAt)}</span>
             </div>
             <div class="ann-text">${esc(a.text)}</div>
+            ${a.targetType && a.targetType !== "all" ? `<span class="badge badge-outline" style="margin-top:6px">${esc(a.targetType)}: ${esc(a.targetId || "")}</span>` : ""}
             ${isAdmin ? `<button class="link-btn" style="margin-top:6px;font-size:0.8rem" data-del-ann="${a.id}">Delete</button>` : ""}
           </div>`).join("")
           : emptyState("bell", "No announcements yet", "Announcements from admins will appear here.", "")}
@@ -2303,12 +2357,21 @@ async function renderHome() {
     }));
 
   const annPostBtn = document.getElementById("ann-post-btn");
+  const annTarget = document.getElementById("ann-target");
+  const annCourseSelect = document.getElementById("ann-course-select");
+  if (annTarget) {
+    annTarget.addEventListener("change", () => {
+      if (annCourseSelect) annCourseSelect.style.display = annTarget.value === "course" ? "" : "none";
+    });
+  }
   if (annPostBtn) annPostBtn.addEventListener("click", async () => {
     const input = document.getElementById("ann-input");
     const text = input.value.trim();
     if (!text) return;
+    const targetType = annTarget ? annTarget.value : "all";
+    const targetId = targetType === "course" && annCourseSelect ? annCourseSelect.value : null;
     try {
-      await api("/api/announcements", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      await api("/api/announcements", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, targetType, targetId }) });
       showToast("Announcement posted");
       renderHome();
     } catch (err) { alert(err.message); }
@@ -2355,15 +2418,18 @@ async function renderCourses(hash) {
   if (!state.user) return (location.hash = "#/login");
   await loadCourses();
   const q = new URLSearchParams((hash.split("?")[1] || "")).get("q") || "";
-  const cats = [...new Set(state.courses.map((c) => c.category).filter(Boolean))];
-  const sems = [...new Set(state.courses.map((c) => c.semester).filter(Boolean))];
+  const semParam = new URLSearchParams((hash.split("?")[1] || "")).get("sem") || "";
+  const enrolledIds = state.user.enrolledCourses || [];
+  const enrolled = state.courses.filter((c) => enrolledIds.includes(c.id));
+  const sems = [...new Set(enrolled.map((c) => c.semester).filter(Boolean))];
+  const filtered = semParam ? enrolled.filter((c) => c.semester === semParam) : enrolled;
   const isAdmin = state.user.role === "admin";
 
   app.innerHTML = shell(`
     <div class="page-head">
       <div>
-        <h1>Courses</h1>
-        <p class="muted">Every course and every material in one place.</p>
+        <h1>My Courses</h1>
+        <p class="muted">${enrolled.length} enrolled course${enrolled.length !== 1 ? "s" : ""}</p>
       </div>
       ${isAdmin ? '<button class="btn btn-primary" id="new-course-btn">+ New course</button>' : ""}
     </div>
@@ -2374,17 +2440,64 @@ async function renderCourses(hash) {
       <button class="icon-btn search-filter" id="filter-toggle" aria-label="Filters">${icon("settings")}</button>
     </div>
     <div class="filters filters-panel hidden" id="filters-panel">
-      <select id="filter-cat"><option value="">All categories</option>${cats.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
-      <select id="filter-sem"><option value="">All semesters</option>${sems.map((s) => `<option>${esc(s)}</option>`).join("")}</select>
+      <select id="filter-cat"><option value="">All categories</option>${[...new Set(enrolled.map((c) => c.category).filter(Boolean))].map((c) => `<option>${esc(c)}</option>`).join("")}</select>
+      <select id="filter-sem"><option value="">All semesters</option>${sems.map((s) => `<option ${s === semParam ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>
     </div>
     <div id="search-results"></div>
 
-    <h2 class="section-title">All courses</h2>
+    ${sems.length > 1 ? `
+    <div class="semester-tabs">
+      <button class="sem-tab ${!semParam ? "active" : ""}" data-sem="">All</button>
+      ${sems.map((s) => `<button class="sem-tab ${s === semParam ? "active" : ""}" data-sem="${esc(s)}">${esc(s)}</button>`).join("")}
+    </div>` : ""}
+
     <div class="grid" id="course-grid">
-      ${state.courses.length
-        ? state.courses.map((c) => courseCard(c)).join("")
-        : emptyState("book", "No courses yet", "Create a course to start organizing materials.", isAdmin ? '<button class="btn btn-primary" id="new-course-btn-empty">+ New course</button>' : "")}
+      ${filtered.length
+        ? filtered.map((c) => {
+            const files = (state.progressMap && state.progressMap[c.id]) || { viewed: 0, total: c.fileCount || 0, pct: c.progress || 0 };
+            return `<a href="#/course/${c.id}" class="card course-card">
+              <div class="course-code">${esc(c.code)}</div>
+              <h3>${esc(c.name)}</h3>
+              <p class="muted">${esc(c.description || "No description")}</p>
+              <div class="course-meta">
+                ${c.category ? `<span class="tag">${esc(c.category)}</span>` : ""}
+                ${c.semester ? `<span class="tag tag-outline">${esc(c.semester)}</span>` : ""}
+              </div>
+              ${files.total > 0 ? `
+              <div class="progress-card" style="margin:10px 0 0">
+                <div class="progress-row">
+                  <span class="muted small">${files.viewed}/${files.total} materials</span>
+                  <span class="muted small">${files.pct}%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" style="width:${files.pct}%"></div></div>
+              </div>` : `<p class="muted small" style="margin-top:8px">No materials yet</p>`}
+              <span class="card-link">Open materials &rarr;</span>
+            </a>`;
+          }).join("")
+        : emptyState("book", enrolled.length ? "No courses match this filter" : "No courses enrolled yet", enrolled.length ? "Try a different semester or category." : "Complete onboarding to select your courses.")}
     </div>
+
+    <section class="home-section" style="margin-top:16px">
+      <div class="section-head">
+        <h2 class="section-title">Browse all courses</h2>
+      </div>
+      <div class="grid" id="all-course-grid">
+        ${state.courses.filter((c) => !enrolledIds.includes(c.id)).map((c) => {
+          const meta = state.courseMeta[c.id] || {};
+          return `<a href="#/course/${c.id}" class="card course-card">
+            <div class="course-code">${esc(c.code)}</div>
+            <h3>${esc(c.name)}</h3>
+            <p class="muted">${esc(c.description || "No description")}</p>
+            <div class="course-meta">
+              ${c.category ? `<span class="tag">${esc(c.category)}</span>` : ""}
+              ${c.semester ? `<span class="tag tag-outline">${esc(c.semester)}</span>` : ""}
+            </div>
+            <p class="muted small" style="margin-top:8px">${c.fileCount || 0} materials</p>
+            <span class="card-link">View &rarr;</span>
+          </a>`;
+        }).join("") || '<p class="muted" style="grid-column:1/-1;text-align:center;padding:16px">You\'re enrolled in all available courses!</p>'}
+      </div>
+    </section>
 
     ${courseModalHTML()}
     ${editCourseModalHTML()}
@@ -2392,7 +2505,6 @@ async function renderCourses(hash) {
     ${tagFileModalHTML()}`);
 
   bindSearch();
-  bindFilters("course-grid");
   bindFilterToggle();
   bindRowActions({ showCourse: true, counts: true });
   bindCourseMenus();
@@ -2400,6 +2512,14 @@ async function renderCourses(hash) {
   bindEditCourseModal();
   bindRenameFileModal();
   bindTagFileModal();
+
+  document.querySelectorAll(".sem-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const sem = btn.dataset.sem;
+      const base = "#/courses";
+      location.hash = sem ? base + "?sem=" + encodeURIComponent(sem) : base;
+    });
+  });
 
   const newBtn = document.getElementById("new-course-btn");
   if (newBtn) newBtn.addEventListener("click", () => showModal("course-modal"));
@@ -2466,8 +2586,15 @@ function bindSearch() {
         return;
       }
       box.innerHTML = '<p class="muted">Searching...</p>';
+      const filterCat = document.getElementById("filter-cat");
+      const filterSem = document.getElementById("filter-sem");
+      const catVal = filterCat ? filterCat.value : "";
+      const semVal = filterSem ? filterSem.value : "";
       try {
-        const d = await api("/api/search?q=" + encodeURIComponent(q));
+        let url = "/api/search?q=" + encodeURIComponent(q);
+        if (catVal) url += "&category=" + encodeURIComponent(catVal);
+        if (semVal) url += "&semester=" + encodeURIComponent(semVal);
+        const d = await api(url);
         if (d.files.length) {
           const rows = d.files.map((f) => {
             const base = fileRow(f, { showCourse: true, counts: true });
@@ -2808,7 +2935,7 @@ async function renderCourseDetail(hash) {
   const baseHash = "#/course/" + id + "?sort=" + sortParam + "&order=" + orderParam;
 
   app.innerHTML = shell(`
-    <a href="#/" class="back-link">${icon("chevronLeft")} All courses</a>
+    <a href="#/courses" class="back-link">${icon("chevronLeft")} My Courses</a>
     ${course ? `
       <div class="page-head">
         <div>
@@ -2819,6 +2946,10 @@ async function renderCourseDetail(hash) {
           </p>
         </div>
         <div class="head-actions">
+          ${(() => {
+            const isEnrolled = (state.user.enrolledCourses || []).includes(id);
+            return `<button class="btn ${isEnrolled ? 'btn-outline' : 'btn-primary'} btn-sm" id="enroll-toggle-btn">${isEnrolled ? icon("minus") + ' Unenroll' : icon("plus") + ' Enroll'}</button>`;
+          })()}
           <button class="btn btn-outline" data-download-zip="${id}" data-name="${esc(course.code || "course")}.zip">${icon("archive")} Download all (ZIP)</button>
           <button class="btn btn-primary" id="upload-btn">${icon("plus")} Upload PDF</button>
         </div>
@@ -2833,7 +2964,24 @@ async function renderCourseDetail(hash) {
           <div class="progress-bar"><div class="progress-fill" style="width:${progress.pct}%"></div></div>
         </div>` : ""}
 
+      <div class="search-bar" style="margin:12px 0">
+        <span class="search-icon">${icon("search")}</span>
+        <input id="course-search-input" type="search" placeholder="Search ${esc(course.code)} materials..." autocomplete="off" />
+      </div>
+
       ${files.length ? `
+        <div class="category-tabs" id="cat-tabs">
+          <button class="cat-tab active" data-cat="">All (${files.length})</button>
+          ${(() => {
+            const cats = {};
+            files.forEach((f) => {
+              const tags = (f.tags || []);
+              tags.forEach((t) => { cats[t] = (cats[t] || 0) + 1; });
+              if (!tags.length) cats["untagged"] = (cats["untagged"] || 0) + 1;
+            });
+            return Object.entries(cats).slice(0, 6).map(([t, c]) => `<button class="cat-tab" data-cat="${esc(t)}">${esc(t)} (${c})</button>`).join("");
+          })()}
+        </div>
         <div class="sort-bar">
           <label class="sort-label">Sort by</label>
           <select id="file-sort" class="sort-select">
@@ -2846,7 +2994,7 @@ async function renderCourseDetail(hash) {
           <button class="icon-btn" id="sort-order-btn" title="Toggle order">${icon(orderParam === "asc" ? "chevronRight" : "chevronLeft")}</button>
         </div>
         ${bulkActionBarHTML()}
-        <div class="file-list">${rows}</div>
+        <div class="file-list" id="course-file-list">${rows}</div>
         ${paginationNav(pagination, baseHash)}` : emptyState("pdf", "No materials uploaded yet", "Be the first to add a resource!", '<button class="btn btn-primary btn-sm" id="upload-btn-empty">+ Upload PDF</button>')}
 
       ${renameFileModalHTML()}
@@ -2898,7 +3046,54 @@ async function renderCourseDetail(hash) {
     location.hash = hashBase + "?sort=" + sortParam + "&order=" + (orderParam === "asc" ? "desc" : "asc");
   });
 
+  const catTabs = document.getElementById("cat-tabs");
+  if (catTabs) {
+    catTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest(".cat-tab");
+      if (!btn) return;
+      catTabs.querySelectorAll(".cat-tab").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const cat = btn.dataset.cat;
+      const rows = document.querySelectorAll("#course-file-list .file-row");
+      rows.forEach((row) => {
+        if (!cat) { row.style.display = ""; return; }
+        const tags = row.querySelector(".file-tags");
+        const tagText = tags ? tags.textContent.toLowerCase() : "";
+        row.style.display = tagText.includes(cat.toLowerCase()) ? "" : "none";
+      });
+    });
+  }
+
+  const courseSearch = document.getElementById("course-search-input");
+  if (courseSearch) {
+    courseSearch.addEventListener("input", () => {
+      const q = courseSearch.value.toLowerCase().trim();
+      const rows = document.querySelectorAll("#course-file-list .file-row");
+      rows.forEach((row) => {
+        if (!q) { row.style.display = ""; return; }
+        const name = row.querySelector(".file-name");
+        const nameText = name ? name.textContent.toLowerCase() : "";
+        row.style.display = nameText.includes(q) ? "" : "none";
+      });
+    });
+  }
+
   document.getElementById("upload-btn").addEventListener("click", () => showModal("upload-modal"));
+
+  const enrollBtn = document.getElementById("enroll-toggle-btn");
+  if (enrollBtn) enrollBtn.addEventListener("click", async () => {
+    const isEnrolled = (state.user.enrolledCourses || []).includes(id);
+    try {
+      await api("/api/courses/" + id + "/enroll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      if (!state.user.enrolledCourses) state.user.enrolledCourses = [];
+      if (isEnrolled) {
+        state.user.enrolledCourses = state.user.enrolledCourses.filter((cid) => cid !== id);
+      } else {
+        state.user.enrolledCourses.push(id);
+      }
+      renderCourseDetail(hash);
+    } catch (err) { alert(err.message); }
+  });
   const uploadEmpty = document.getElementById("upload-btn-empty");
   if (uploadEmpty) uploadEmpty.addEventListener("click", () => showModal("upload-modal"));
   document.getElementById("up-cancel").addEventListener("click", () =>
@@ -3027,15 +3222,98 @@ async function renderSaved() {
   try {
     files = (await api("/api/files/saved")).files;
   } catch {}
+  const byCourse = {};
+  files.forEach((f) => {
+    const key = f.courseLabel || "Uncategorized";
+    if (!byCourse[key]) byCourse[key] = [];
+    byCourse[key].push(f);
+  });
   app.innerHTML = shell(`
     <div class="page-head">
       <div>
         <h1>Saved for later</h1>
-        <p class="muted">Your bookmarked materials, ready when you are.</p>
+        <p class="muted">${files.length} bookmarked material${files.length !== 1 ? "s" : ""}, ready when you are.</p>
       </div>
     </div>
-    ${listSection("Saved files", files.map((f) => fileRow(f, { showCourse: true, counts: true })).join(""), "Nothing saved yet. Tap the star on any file to bookmark it.")}`);
-  bindRowActions({ showCourse: true, counts: true });
+    ${files.length ? Object.entries(byCourse).map(([course, courseFiles]) => `
+      <section class="home-section">
+        <h2 class="section-title">${esc(course)}</h2>
+        <div class="file-list">${courseFiles.map((f) => fileRow(f, { showCourse: false, counts: true })).join("")}</div>
+      </section>`).join("") : emptyState("star", "No saved materials yet", "Tap the star on any file to bookmark it.")}`);
+  bindRowActions({ showCourse: false, counts: true });
+}
+
+/* ---------- material viewer ---------- */
+
+async function renderMaterialViewer(hash) {
+  if (!state.user) return (location.hash = "#/login");
+  const fileId = hash.split("/material/")[1];
+  if (!fileId) return (location.hash = "#/");
+  try {
+    const fileData = await api("/api/files/" + encodeURIComponent(fileId));
+    const f = fileData.file;
+    const course = state.courses.find((c) => c.id === f.courseId) || {};
+    const rp = state.readProgress[f.id];
+    const bookmarkData = await api("/api/files/" + encodeURIComponent(fileId) + "/bookmarks");
+    const bookmarks = bookmarkData.bookmarks || [];
+
+    app.innerHTML = shell(`
+      <a href="#/course/${f.courseId}" class="back-link">${icon("chevronLeft")} Back to ${esc(course.code || "course")}</a>
+      <div class="viewer-header">
+        <div class="viewer-info">
+          <h1 class="viewer-title">${esc(f.name)}</h1>
+          <p class="muted">${esc(f.courseLabel)} &middot; by ${esc(f.uploadedByName)} &middot; ${fmtSize(f.size)}</p>
+        </div>
+        <div class="viewer-actions">
+          <button class="icon-btn heart ${f.liked ? "on" : ""}" data-like="${f.id}" title="Like">${icon("heart")} <span class="like-count">${f.likes || 0}</span></button>
+          <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save">${icon("star")}</button>
+          <a href="/api/files/${f.id}/download" class="btn btn-outline btn-sm">${icon("download")} Download</a>
+        </div>
+      </div>
+      ${rp ? `<div class="progress-card"><div class="progress-row"><span class="muted small">Reading progress</span><span class="muted small">${rp.pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${rp.pct}%"></div></div></div>` : ""}
+      <div class="material-viewer">
+        <iframe src="/api/files/${f.id}/inline" class="pdf-frame" title="${esc(f.name)}"></iframe>
+      </div>
+      ${bookmarks.length ? `
+      <div class="card" style="padding:16px;margin-top:12px">
+        <h3>Bookmarks</h3>
+        <div class="bookmark-list">
+          ${bookmarks.map((b) => `<div class="bookmark-item"><span class="muted small">p.${b.page}</span> <span>${esc(b.text)}</span></div>`).join("")}
+        </div>
+      </div>` : ""}
+      <div class="card" style="padding:16px;margin-top:12px">
+        <h3>Add bookmark</h3>
+        <form id="bookmark-form" class="stack">
+          <label>Note <input id="bm-text" placeholder="e.g. Important formula on this page" maxlength="500" /></label>
+          <label>Page <input id="bm-page" type="number" min="1" value="1" style="width:80px" /></label>
+          <button class="btn btn-primary btn-sm" type="submit">Save bookmark</button>
+        </form>
+      </div>`);
+
+    bindRowActions({});
+    const bf = document.getElementById("bookmark-form");
+    if (bf) bf.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = document.getElementById("bm-text").value.trim();
+      const page = parseInt(document.getElementById("bm-page").value) || 1;
+      if (!text) return;
+      try {
+        await api("/api/files/" + f.id + "/bookmarks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, page })
+        });
+        showToast("Bookmark saved");
+        renderMaterialViewer(hash);
+      } catch (err) { alert(err.message); }
+    });
+  } catch (err) {
+    app.innerHTML = shell(`<div style="padding:40px 20px;text-align:center">
+      <h2>Material not found</h2>
+      <p class="muted">${esc(err.message)}</p>
+      <a href="#/" class="btn btn-primary" style="margin-top:12px">Go home</a>
+    </div>`);
+  }
 }
 
 /* ---------- tag files ---------- */
@@ -3212,6 +3490,26 @@ async function renderAdmin() {
           </div>
         </div>`).join("")}
     </div>`);
+
+  let uniRequests = [];
+  try { uniRequests = (await api("/api/university-requests")).requests || []; } catch {}
+
+  if (uniRequests.length) {
+    const reqSection = document.createElement("div");
+    reqSection.innerHTML = `
+      <h2 class="section-title">University Requests (${uniRequests.length})</h2>
+      <div class="file-list">
+        ${uniRequests.map((r) => `
+          <div class="file-row">
+            <span class="file-icon">${icon("book")}</span>
+            <div class="file-info">
+              <div class="file-name">${esc(r.name)}</div>
+              <span class="muted">${esc(r.email || "No email")} &middot; ${fmtDate(r.requestedAt)}</span>
+            </div>
+          </div>`).join("")}
+      </div>`;
+    app.appendChild(reqSection.firstElementChild);
+  }
 
   bindRowActions();
 
@@ -3617,7 +3915,9 @@ async function renderNotifications() {
   if (markAllBtn) markAllBtn.addEventListener("click", async () => {
     try {
       await api("/api/notifications/read", { method: "POST" });
+      state.unreadCount = 0;
       renderNotifications();
+      renderNav();
     } catch {}
   });
 
@@ -3626,6 +3926,7 @@ async function renderNotifications() {
       const link = el.dataset.link;
       const nid = el.dataset.nid;
       if (nid) try { await api("/api/notifications/" + nid + "/read", { method: "POST" }); } catch {}
+      state.unreadCount = Math.max(0, state.unreadCount - 1);
       if (link) location.hash = "#" + link;
     });
   });

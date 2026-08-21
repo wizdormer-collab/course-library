@@ -4144,3 +4144,222 @@ body.auth-page main {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- semester tabs ---------- */
+
+.semester-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 0 8px;
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sem-tab {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sem-tab.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ---------- category tabs ---------- */
+
+.category-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 0 8px;
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cat-tab {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cat-tab.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ---------- material viewer ---------- */
+
+.material-viewer {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.pdf-frame {
+  width: 100%;
+  height: calc(100vh - 200px);
+  min-height: 400px;
+  border: none;
+}
+
+.viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.viewer-title {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.viewer-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* ---------- notification badge ---------- */
+
+.bn-icon {
+  position: relative;
+}
+
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* ---------- recently viewed ---------- */
+
+.recently-viewed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.recently-viewed-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+}
+
+.recently-viewed-item:last-child {
+  border-bottom: none;
+}
+
+.rv-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--card-2);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.rv-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rv-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- badge outline ---------- */
+
+.badge-outline {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ---------- file-name link ---------- */
+
+.file-name {
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.file-name:hover {
+  color: var(--primary);
+}
+
+/* ---------- bookmark list ---------- */
+
+.bookmark-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bookmark-item {
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--card-2);
+  font-size: 0.9rem;
+}
+
+/* ---------- student badge ---------- */
+
+.badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: #fff;
+  margin-left: 4px;
+  vertical-align: middle;
+}
