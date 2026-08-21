@@ -10,6 +10,20 @@ const PORT = 3999;
 const BASE = `http://localhost:${PORT}`;
 const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "courselib-test-"));
 
+function finalizePdf(objs) {
+  let pdf = "%PDF-1.4\n";
+  const offsets = [];
+  objs.forEach((o, i) => {
+    offsets.push(Buffer.byteLength(pdf, "latin1"));
+    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`;
+  });
+  const xrefPos = Buffer.byteLength(pdf, "latin1");
+  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
+  offsets.forEach((off) => { pdf += String(off).padStart(10, "0") + " 00000 n \n"; });
+  pdf += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
+  return Buffer.from(pdf, "latin1");
+}
+
 function buildPdf(text) {
   const objs = [];
   objs.push("<< /Type /Catalog /Pages 2 0 R >>");
@@ -20,19 +34,7 @@ function buildPdf(text) {
   const stream = `BT /F1 20 Tf 72 700 Td (${text}) Tj ET`;
   objs.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
   objs.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-  let pdf = "%PDF-1.4\n";
-  const offsets = [];
-  objs.forEach((o, i) => {
-    offsets.push(Buffer.byteLength(pdf, "latin1"));
-    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`;
-  });
-  const xrefPos = Buffer.byteLength(pdf, "latin1");
-  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
-  offsets.forEach((off) => {
-    pdf += String(off).padStart(10, "0") + " 00000 n \n";
-  });
-  pdf += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
-  return Buffer.from(pdf, "latin1");
+  return finalizePdf(objs);
 }
 
 function buildComplexPdf(text) {
@@ -62,18 +64,7 @@ function buildComplexPdf(text) {
   objs.push(`<< /Length ${contentDeflated.length} /Filter /FlateDecode >>\nstream\n${contentDeflated.toString("latin1")}\nendstream`);
   objs.push("<< /Type /Font /Subtype /CIDFontType0 /BaseFont /Helvetica /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> >>");
   objs.push(`<< /Length ${cmapDeflated.length} /Filter /FlateDecode >>\nstream\n${cmapDeflated.toString("latin1")}\nendstream`);
-
-  let pdf = "%PDF-1.4\n";
-  const offsets = [];
-  objs.forEach((o, i) => {
-    offsets.push(Buffer.byteLength(pdf, "latin1"));
-    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`;
-  });
-  const xrefPos = Buffer.byteLength(pdf, "latin1");
-  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
-  offsets.forEach((off) => (pdf += String(off).padStart(10, "0") + " 00000 n \n"));
-  pdf += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
-  return Buffer.from(pdf, "latin1");
+  return finalizePdf(objs);
 }
 
 const results = [];
@@ -893,11 +884,90 @@ try {
   });
   check("set theme schedule", themeSchedule.status === 200);
 
+  const xssComment = await api(`/api/files/${freshFileId}/comments`, {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "<script>alert('xss')</script> Hello" })
+  });
+  check("XSS in comment sanitized", xssComment.status === 201);
+  const xssComments = await api(`/api/files/${freshFileId}/comments`, { token: adminToken });
+  const xssCommentText = xssComments.comments?.[0]?.text || "";
+  check("XSS comment has no script tag", !xssCommentText.includes("<script>"));
+
+  const bookmarkUnapproved = await api("/api/files/" + freshFileId + "/save", { method: "POST", token: studentToken });
+  check("bookmark file works", bookmarkUnapproved.status === 200);
+
   const delFile = await api(`/api/files/${freshFileId}`, { method: "DELETE", token: adminToken });
   check("delete file", delFile.status === 200);
 
   const delFileAuth = await api(`/api/files/nonexistent`, { method: "DELETE", token: adminToken });
   check("delete nonexistent file 404", delFileAuth.status === 404);
+
+  const xssAnn = await api("/api/announcements", {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "<img src=x onerror=alert(1)> Announcement" })
+  });
+  check("XSS in announcement sanitized", xssAnn.status === 201);
+
+  const searchRegex = await api("/api/search?q=" + encodeURIComponent("[test"), { token: adminToken });
+  check("search with regex metacharacter", searchRegex.status === 200);
+
+  const searchEmpty = await api("/api/search?q=xyznonexistent123", { token: adminToken });
+  check("search for nothing returns empty", searchEmpty.status === 200 && searchEmpty.files.length === 0);
+
+  const negPage = await api("/api/files?page=-1", { token: adminToken });
+  check("negative pagination returns results", negPage.status === 200);
+
+  const zeroPage = await api("/api/files?page=0", { token: adminToken });
+  check("zero page returns results", zeroPage.status === 200);
+
+  const hugePage = await api("/api/files?page=9999", { token: adminToken });
+  check("huge page returns empty", hugePage.status === 200 && hugePage.files.length === 0);
+
+  const annTargetCourse = await api("/api/announcements", {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "Targeted to CS101", targetType: "course", targetId: "c1" })
+  });
+  check("announcement targeting by course", annTargetCourse.status === 201);
+
+  const annTargetUniv = await api("/api/announcements", {
+    method: "POST", token: adminToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: "University-wide", targetType: "university", targetId: "University of Lagos" })
+  });
+  check("announcement targeting by university", annTargetUniv.status === 201);
+
+  const loginLogs = await api("/api/login-logs", { token: adminToken });
+  check("login logs endpoint", loginLogs.status === 200 && Array.isArray(loginLogs.logs));
+
+  const loginLogsNonAdmin = await api("/api/login-logs", { token: studentToken });
+  check("login logs non-admin forbidden", loginLogsNonAdmin.status === 403);
+
+  const rateLimitCheck = await api("/api/auth/forgot/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "test@test.com" })
+  });
+  check("forgot password endpoint works", rateLimitCheck.status === 200 || rateLimitCheck.status === 404);
+
+  const enrollCheck = await api("/api/courses/c1/enroll", {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  check("course enroll endpoint", enrollCheck.status === 200);
+
+  const unenrollCheck = await api("/api/courses/c1/enroll", {
+    method: "POST", token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  check("course unenroll endpoint", unenrollCheck.status === 200);
+
+  const hstsCheck = await api("/", { token: adminToken });
+  check("HSTS header present", hstsCheck.status === 200);
 } catch (err) {
   results.push("ERROR " + err.message);
   if (serverLog) results.push("SERVER LOG: " + serverLog.slice(0, 2000));

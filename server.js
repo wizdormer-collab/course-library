@@ -37,6 +37,8 @@ const ALLOWED_EMAIL_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS || "")
 const EMAIL_ENABLED = smtpConfigured();
 const VERIFY_TTL = 15 * 60 * 1000;
 
+function stripTags(s) { return String(s).replace(/<[^>]*>/g, ""); }
+
 function genVerifyCode() {
   return String(crypto.randomInt(100000, 999999));
 }
@@ -1683,7 +1685,7 @@ routes.push({
     const f = db.files.find((x) => x.id === params.id);
     if (!f || !canSeeFile(f, user)) return send(res, 404, { error: "File not found" });
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
-    const text = String(body.text || "").trim().slice(0, 2000);
+    const text = stripTags(String(body.text || "").trim().slice(0, 2000));
     if (!text) return send(res, 400, { error: "Comment cannot be empty" });
     if (!f.comments) f.comments = [];
     const mentionUsernames = [...new Set((text.match(/@(\w+)/g) || []).map((m) => m.slice(1).toLowerCase()))];
@@ -1944,7 +1946,7 @@ routes.push({
     if (!user) return send(res, 401, { error: "Not authenticated" });
     if (user.role !== "admin" && user.role !== "lecturer") return send(res, 403, { error: "Admins and lecturers only" });
     const body = JSON.parse((await readBody(req, 1024 * 4)).toString() || "{}");
-    const text = String(body.text || "").trim();
+    const text = stripTags(String(body.text || "").trim().slice(0, 2000));
     if (!text) return send(res, 400, { error: "Announcement text is required" });
     const targetType = String(body.targetType || "all").trim();
     const targetId = String(body.targetId || "").trim() || null;

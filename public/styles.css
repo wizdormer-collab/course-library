@@ -97,46 +97,48 @@ body::before {
   right: 0;
   z-index: 40;
   background: var(--nav-bg);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .navbar-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 14px 0;
-  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 0;
+  flex-wrap: nowrap;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   font-weight: 800;
-  font-size: 1.32rem;
+  font-size: 1.25rem;
   letter-spacing: -0.02em;
   text-decoration: none;
   color: var(--text);
 }
 
 .brand-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   display: grid;
   place-items: center;
   color: #fff;
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   background: linear-gradient(135deg, var(--primary), var(--primary-2));
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45);
+  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.35);
+  flex: none;
 }
 
 .brand-icon .ic {
-  width: 1.5em;
-  height: 1.5em;
+  width: 1.4em;
+  height: 1.4em;
 }
 
 .brand-name {
@@ -149,18 +151,19 @@ body::before {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex-wrap: nowrap;
 }
 
 .nav-link {
   text-decoration: none;
   color: var(--muted);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   padding: 6px 10px;
-  border-radius: 9px;
+  border-radius: 8px;
   transition: color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -169,8 +172,11 @@ body::before {
 }
 
 .nav-user {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   color: var(--muted);
+  white-space: nowrap;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
 }
 
 .nav-user small {
@@ -179,7 +185,7 @@ body::before {
 }
 
 main {
-  padding: 66px 20px 100px;
+  padding: 56px 20px 100px;
 }
 
 /* ---------- hero ---------- */
@@ -1237,15 +1243,15 @@ main {
 
 .notif-dot {
   position: absolute;
-  top: -7px;
-  right: -7px;
+  top: 2px;
+  right: 2px;
   background: var(--danger);
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   border-radius: 999px;
-  padding: 1px 5px;
-  min-width: 17px;
+  padding: 0px 4px;
+  min-width: 15px;
   text-align: center;
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
 }
@@ -1774,17 +1780,24 @@ body.auth-page main {
   /* top bar stays one row: brand + icon buttons, text links hidden */
   .navbar-inner {
     flex-direction: row;
-    padding: 10px 0;
+    padding: 8px 0;
     gap: 8px;
   }
 
   .brand {
-    font-size: 1.18rem;
+    font-size: 1.1rem;
     flex: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .brand-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 1rem;
   }
 
   .nav-links .nav-link,
@@ -1799,10 +1812,10 @@ body.auth-page main {
   }
 
   .icon-btn {
-    min-width: 40px;
-    min-height: 40px;
-    padding: 8px 11px;
-    font-size: 1.05rem;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 1rem;
   }
 
   .container {
@@ -2483,7 +2496,7 @@ body.auth-page main {
 .qa-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   overflow: hidden;
 }
@@ -2491,19 +2504,19 @@ body.auth-page main {
 .qa-tile {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 18px;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
   border: 1px solid var(--border);
   text-decoration: none;
   color: var(--text);
   font-weight: 650;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   background: var(--card);
   box-shadow: var(--shadow-sm);
   transition: transform 0.16s ease, box-shadow 0.16s ease;
   min-width: 0;
-  min-height: 62px;
+  min-height: 52px;
   overflow: hidden;
 }
 
@@ -2513,18 +2526,18 @@ body.auth-page main {
 }
 
 .qa-ico {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   flex: none;
-  border-radius: 12px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .qa-ico .ic {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .qa-arrow {
@@ -2534,8 +2547,8 @@ body.auth-page main {
 }
 
 .qa-arrow .ic {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .t-all .qa-ico { background: rgba(79, 70, 229, 0.15); color: var(--primary); }
@@ -2965,13 +2978,22 @@ body.auth-page main {
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   color: var(--text);
   text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.notif-link:hover {
+  background: var(--card-2);
 }
 
 .notif-link .ic {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 /* notifications page */
@@ -3195,12 +3217,12 @@ body.auth-page main {
   }
 
   .qa-grid {
-    gap: 10px;
+    gap: 6px;
   }
 
   .qa-tile {
-    padding: 13px 14px;
-    font-size: 0.9rem;
+    padding: 10px 12px;
+    font-size: 0.85rem;
   }
 
   .col-grid {
@@ -4095,6 +4117,7 @@ body.auth-page main {
 .flashcard-front, .flashcard-back {
   position: absolute;
   inset: 0;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   display: flex;
   flex-direction: column;
@@ -4291,7 +4314,7 @@ body.auth-page main {
   border-radius: 8px;
   background: var(--danger, #ef4444);
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 700;
   display: flex;
   align-items: center;
