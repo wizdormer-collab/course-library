@@ -10,13 +10,18 @@ const state = {
   recentlyViewed: [],
   materialViews: [],
   unreadCount: 0,
-  readProgress: {}
+  readProgress: {},
+  isOnline: navigator.onLine,
+  reminders: []
 };
 
 function applyTheme() {
   document.documentElement.dataset.theme = state.theme;
 }
 applyTheme();
+
+window.addEventListener("online", () => { state.isOnline = true; render(); showToast("You're back online"); });
+window.addEventListener("offline", () => { state.isOnline = false; render(); showToast("You're offline — browsing only", true); });
 
 function applyThemeSchedule() {
   const sched = state.themeSchedule;
@@ -60,6 +65,10 @@ function clearAuth() {
 }
 
 async function api(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  if (!navigator.onLine && method !== "GET") {
+    throw new Error("You're offline. Write actions are disabled until you reconnect.");
+  }
   const headers = { ...(options.headers || {}) };
   const t = token();
   if (t) headers["Authorization"] = "Bearer " + t;
@@ -122,7 +131,8 @@ const ICONS = {
   camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
   mapPin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
   building: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22V12h6v10"/><path d="M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01"/>',
-  bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'
+  bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>'
 };
 
 function icon(name, cls) {
@@ -170,6 +180,23 @@ function triggerDownload(blob, filename) {
   }, 4000);
 }
 
+async function shareFile(fileId) {
+  const url = location.origin + "/#/material/" + fileId;
+  if (navigator.share) {
+    try { await navigator.share({ title: "Course Library Material", url }); return; } catch {}
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("Link copied to clipboard!");
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); ta.remove();
+    showToast("Link copied to clipboard!");
+  }
+}
+
 async function downloadPath(path, filename) {
   try {
     const blob = await fetchBlob(path);
@@ -188,6 +215,37 @@ function showToast(msg) {
     state.toast = "";
     render();
   }, 4000);
+}
+
+function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function fireBrowserNotification(title, body) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification(title, { body, icon: "/icon-192.png", tag: "courselib" }); } catch {}
+  }
+}
+
+let reminderInterval = null;
+function startReminderChecker() {
+  if (reminderInterval) return;
+  function check() {
+    if (!state.user) return;
+    const now = new Date();
+    const hhmm = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+    const day = now.getDay();
+    (state.reminders || []).forEach(r => {
+      if (r.enabled && r.time === hhmm && (r.days || []).includes(day)) {
+        fireBrowserNotification("Study Reminder", r.text);
+        showToast("Reminder: " + r.text);
+      }
+    });
+  }
+  check();
+  reminderInterval = setInterval(check, 30000);
 }
 
 function btnLoading(btn, label) {
@@ -236,6 +294,7 @@ function fileRow(f, opts = {}) {
         </div>
         <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save for later" aria-label="Save for later">${icon("star")}</button>
         <button class="icon-btn" data-collect="${f.id}" title="Add to collection" aria-label="Add to collection">${icon("folder")}</button>
+        <button class="icon-btn" data-share="${f.id}" title="Share link" aria-label="Share link">${icon("share") || icon("chevronRight")}</button>
         ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-edit-tags="${f.id}" data-etags="${esc(JSON.stringify(f.tags || []))}" title="Edit tags" aria-label="Edit tags">${icon("tag")}</button>` : ""}
         ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-rename="${f.id}" data-rname="${esc(f.name)}" title="Rename" aria-label="Rename">${icon("edit")}</button>` : ""}
         ${isAdmin || (state.user && f.uploadedBy === state.user.id) ? `<button class="icon-btn" data-new-version="${f.id}" title="Upload new version" aria-label="Upload new version">${icon("clock")}</button>` : ""}
@@ -440,6 +499,8 @@ async function bindRowActions({ showCourse = false, counts = false } = {}) {
     }));
   document.querySelectorAll("[data-collect]").forEach((btn) =>
     btn.addEventListener("click", () => openCollectPicker(btn.dataset.collect)));
+  document.querySelectorAll("[data-share]").forEach((btn) =>
+    btn.addEventListener("click", () => shareFile(btn.dataset.share)));
   document.querySelectorAll("[data-new-version]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const fid = btn.dataset.newVersion;
@@ -907,7 +968,8 @@ async function renderNav() {
 }
 
 function shell(inner) {
-  return inner + (state.toast
+  const offlineBanner = !navigator.onLine ? '<div class="offline-banner" role="alert">You are offline — viewing cached content only</div>' : "";
+  return offlineBanner + inner + (state.toast
     ? `<div class="toast" role="status" aria-live="polite">${esc(state.toast)}</div>`
     : `<div aria-live="polite" class="sr-only" id="toast-region"></div>`);
 }
@@ -1028,6 +1090,9 @@ function renderLogin() {
         })
       });
       storeAuth(d);
+      try { const rd = await api("/api/auth/reminders"); state.reminders = rd.reminders || []; } catch { state.reminders = []; }
+      startReminderChecker();
+      requestNotificationPermission();
       location.hash = "#/";
     } catch (err) {
       errEl.textContent = err.message;
@@ -1831,6 +1896,21 @@ async function renderSettings() {
         </form>
       </div>
       <div class="card">
+        <h3>Study reminders</h3>
+        <p class="muted small">Set daily study reminders. You'll get a browser notification at the chosen time.</p>
+        <div id="reminders-list" class="stack"></div>
+        <form id="reminder-form" class="stack" style="margin-top:8px">
+          <label>Reminder text <input id="rem-text" placeholder="e.g. Review MAT101 notes" maxlength="200" /></label>
+          <label>Time <input type="time" id="rem-time" value="09:00" /></label>
+          <label>Days
+            <div class="day-chips" id="rem-days">
+              ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d, i) => `<button type="button" class="chip day-chip ${[1,2,3,4,5].includes(i) ? "on" : ""}" data-day="${i}">${d}</button>`).join("")}
+            </div>
+          </label>
+          <button class="btn btn-primary" type="submit">Add reminder</button>
+        </form>
+      </div>
+      <div class="card">
         <h3>Notification preferences</h3>
         <p class="muted small">Choose which notifications you want to receive.</p>
         <form id="notif-prefs-form" class="stack">
@@ -1928,6 +2008,47 @@ async function renderSettings() {
     } catch (err) {
       alert(err.message);
     }
+  });
+
+  // Reminders
+  async function loadReminders() {
+    try {
+      const d = await api("/api/auth/reminders");
+      state.reminders = d.reminders || [];
+      const list = document.getElementById("reminders-list");
+      if (!list) return;
+      if (!state.reminders.length) { list.innerHTML = '<p class="muted small">No reminders set.</p>'; return; }
+      list.innerHTML = state.reminders.map(r => {
+        const days = ["S","M","T","W","T","F","S"];
+        const dayStr = (r.days || []).map(d => days[d]).join(" ");
+        return `<div class="reminder-item"><span class="reminder-text">${esc(r.text)} — <strong>${r.time}</strong> ${dayStr}</span><button class="btn btn-sm btn-outline" data-del-rem="${r.id}">Remove</button></div>`;
+      }).join("");
+      list.querySelectorAll("[data-del-rem]").forEach(btn => btn.addEventListener("click", async () => {
+        await api("/api/auth/reminders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id: btn.dataset.delRem }) });
+        loadReminders();
+      }));
+    } catch {}
+  }
+  loadReminders();
+
+  // Day chip toggles
+  document.querySelectorAll("#rem-days .day-chip").forEach(btn => {
+    btn.addEventListener("click", () => btn.classList.toggle("on"));
+  });
+
+  document.getElementById("reminder-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = document.getElementById("rem-text").value.trim();
+    const time = document.getElementById("rem-time").value;
+    const days = [...document.querySelectorAll("#rem-days .day-chip.on")].map(b => parseInt(b.dataset.day));
+    if (!text) return;
+    try {
+      await api("/api/auth/reminders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, time, days }) });
+      document.getElementById("rem-text").value = "";
+      loadReminders();
+      showToast("Reminder added");
+      requestNotificationPermission();
+    } catch (err) { alert(err.message); }
   });
 
   document.getElementById("notif-prefs-form").addEventListener("submit", async (e) => {
@@ -2032,6 +2153,8 @@ function continueCardHTML(c, prog) {
 function ycardHTML(c, meta, prog) {
   const m = meta || { materials: 0, pdfs: 0, lastUpdated: "" };
   const p = prog || { viewed: 0, total: 0, pct: 0 };
+  const avgR = c.avgRating || 0;
+  const rCount = c.ratingCount || 0;
   return `
     <div class="ycard">
       <div class="ycard-top">
@@ -2041,6 +2164,10 @@ function ycardHTML(c, meta, prog) {
       <div class="ycard-icon">${icon("grad")}</div>
       <h3>${esc(c.name)}</h3>
       <p class="muted small">${m.materials} materials &middot; ${m.pdfs} PDFs</p>
+      <div class="course-rating-row" data-course-rate="${c.id}">
+        ${[1,2,3,4,5].map(n => `<button class="star ${(c.myRating || 0) >= n ? "on" : ""}" data-star="${n}" title="${n} star${n > 1 ? "s" : ""}">&#9733;</button>`).join("")}
+        ${rCount ? `<span class="rating-info">${avgR} (${rCount})</span>` : ""}
+      </div>
       <div class="progress-row">
         <span class="muted small">${p.viewed}/${p.total} viewed</span>
         <span class="muted small">${p.pct}%</span>
@@ -2084,6 +2211,33 @@ function bindCourseMenus() {
       }
     });
   }
+  document.querySelectorAll("[data-course-rate]").forEach((wrap) => {
+    wrap.addEventListener("click", async (e) => {
+      const star = e.target.closest("[data-star]");
+      if (!star || !state.user) return;
+      const cid = wrap.dataset.courseRate;
+      const score = parseInt(star.dataset.star);
+      try {
+        const current = star.classList.contains("on") && wrap.querySelectorAll(".star.on").length === score;
+        if (current) {
+          await api("/api/courses/" + cid + "/rating", { method: "DELETE" });
+        } else {
+          await api("/api/courses/" + cid + "/rating", { method: "POST", body: { score } });
+        }
+        const stars = wrap.querySelectorAll(".star");
+        stars.forEach((s, i) => s.classList.toggle("on", !current && i < score));
+        let infoEl = wrap.querySelector(".rating-info");
+        if (current) {
+          if (infoEl) infoEl.remove();
+        } else {
+          if (!infoEl) { infoEl = document.createElement("span"); infoEl.className = "rating-info"; wrap.appendChild(infoEl); }
+          infoEl.textContent = "Rated!";
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  });
 }
 
 async function renderHome() {
@@ -3283,6 +3437,7 @@ async function renderMaterialViewer(hash) {
         <div class="viewer-actions">
           <button class="icon-btn heart ${f.liked ? "on" : ""}" data-like="${f.id}" title="Like">${icon("heart")} <span class="like-count">${f.likes || 0}</span></button>
           <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save">${icon("star")}</button>
+          <button class="icon-btn" data-share="${f.id}" title="Share link">${icon("share")}</button>
           <a href="/api/files/${f.id}/download" class="btn btn-outline btn-sm">${icon("download")} Download</a>
         </div>
       </div>
@@ -3304,6 +3459,10 @@ async function renderMaterialViewer(hash) {
           <label>Page <input id="bm-page" type="number" min="1" value="1" style="width:80px" /></label>
           <button class="btn btn-primary btn-sm" type="submit">Save bookmark</button>
         </form>
+      </div>
+      <div class="card" style="padding:16px;margin-top:12px">
+        <h3 style="cursor:pointer" id="toggle-history">Version history ${icon("chevronDown")}</h3>
+        <div id="history-list" class="hidden stack" style="margin-top:8px"></div>
       </div>`);
 
     bindRowActions({});
@@ -3323,6 +3482,22 @@ async function renderMaterialViewer(hash) {
         renderMaterialViewer(hash);
       } catch (err) { alert(err.message); }
     });
+    const histToggle = document.getElementById("toggle-history");
+    const histList = document.getElementById("history-list");
+    if (histToggle && histList) {
+      histToggle.addEventListener("click", async () => {
+        if (!histList.classList.contains("hidden")) { histList.classList.add("hidden"); return; }
+        try {
+          const d = await api("/api/files/" + f.id + "/history");
+          const hist = (d.history || []).reverse();
+          if (!hist.length) { histList.innerHTML = '<p class="muted small">No history yet.</p>'; }
+          else {
+            histList.innerHTML = hist.map(h => `<div class="reminder-item"><span class="reminder-text"><strong>${esc(h.action)}</strong> by ${esc(h.userName)} ${h.detail ? " — " + esc(h.detail) : ""}</span><span class="muted small">${new Date(h.at).toLocaleDateString()}</span></div>`).join("");
+          }
+          histList.classList.remove("hidden");
+        } catch { histList.innerHTML = '<p class="muted small">Failed to load history.</p>'; histList.classList.remove("hidden"); }
+      });
+    }
   } catch (err) {
     app.innerHTML = shell(`<div class="empty-pad">
       <h2>Material not found</h2>
@@ -4157,10 +4332,16 @@ async function renderGroupDetail(hash) {
       state.notifPrefs = me.user.notifPrefs || null;
     } catch {}
     try {
+      const rd = await api("/api/auth/reminders");
+      state.reminders = rd.reminders || [];
+    } catch { state.reminders = []; }
+    try {
       state.readProgress = (await api("/api/files/progress")).progress || {};
     } catch { state.readProgress = {}; }
+    try { await api("/api/auth/weekly-progress"); } catch {}
   }
   applyThemeSchedule();
+  startReminderChecker();
   render();
 })();
 

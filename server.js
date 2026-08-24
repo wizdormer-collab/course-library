@@ -383,6 +383,12 @@ function courseLabel(id) {
   return c ? c.code + " - " + c.name : id;
 }
 
+function trackFileHistory(file, action, userId, detail) {
+  if (!file.history) file.history = [];
+  file.history.push({ action, userId, detail: detail || "", at: new Date().toISOString() });
+  if (file.history.length > 100) file.history.length = 100;
+}
+
 function fileInfo(f, user) {
   const info = {
     id: f.id,
@@ -750,6 +756,40 @@ routes.push({
 });
 
 routes.push({
+  method: "POST", path: "/api/auth/reminders",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 2048)).toString() || "{}");
+    if (!user.reminders) user.reminders = [];
+    if (body.action === "delete") {
+      user.reminders = user.reminders.filter((r) => r.id !== body.id);
+    } else {
+      const reminder = {
+        id: "rem" + Date.now() + Math.random().toString(16).slice(2, 5),
+        text: String(body.text || "").trim().slice(0, 200),
+        time: String(body.time || "09:00"),
+        days: Array.isArray(body.days) ? body.days : [1, 2, 3, 4, 5],
+        enabled: body.enabled !== false
+      };
+      if (!reminder.text) return send(res, 400, { error: "Reminder text required" });
+      user.reminders.push(reminder);
+    }
+    saveDb();
+    send(res, 200, { ok: true, reminders: user.reminders });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/auth/reminders",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    send(res, 200, { reminders: user.reminders || [] });
+  }
+});
+
+routes.push({
   method: "POST", path: "/api/auth/security-question",
   handler: async (req, res) => {
     const user = getAuthUser(req);
@@ -957,12 +997,18 @@ routes.push({
     const enriched = db.courses.map((c) => {
       const files = db.files.filter((f) => f.courseId === c.id && (f.approved || f.uploadedBy === user.id || user.role === "admin"));
       const viewed = files.filter((f) => (f.viewedBy || []).includes(user.id)).length;
+      const ratings = c.ratings || [];
+      const avgRating = ratings.length ? Math.round((ratings.reduce((s, r) => s + r.score, 0) / ratings.length) * 10) / 10 : 0;
+      const myRating = ratings.find((r) => r.userId === user.id)?.score || 0;
       return {
         ...c,
         enrolled: enrolledIds.includes(c.id),
         fileCount: files.length,
         viewedCount: viewed,
-        progress: files.length ? Math.round((viewed / files.length) * 100) : 0
+        progress: files.length ? Math.round((viewed / files.length) * 100) : 0,
+        avgRating,
+        ratingCount: ratings.length,
+        myRating
       };
     });
     send(res, 200, { courses: enriched });
@@ -1061,6 +1107,40 @@ routes.push({
     const viewed = files.filter((f) => (f.viewedBy || []).includes(user.id)).length;
     const total = files.length;
     send(res, 200, { total, viewed, pct: total ? Math.round((viewed / total) * 100) : 0 });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/courses/:id/rating",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const c = db.courses.find((x) => x.id === params.id);
+    if (!c) return send(res, 404, { error: "Course not found" });
+    const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
+    const score = Math.min(5, Math.max(1, parseInt(body.score) || 0));
+    if (!score) return send(res, 400, { error: "Score 1-5 required" });
+    if (!c.ratings) c.ratings = [];
+    const existing = c.ratings.find((r) => r.userId === user.id);
+    if (existing) existing.score = score;
+    else c.ratings.push({ userId: user.id, score });
+    const avg = c.ratings.reduce((s, r) => s + r.score, 0) / c.ratings.length;
+    saveDb();
+    ok(res, { avgRating: Math.round(avg * 10) / 10, ratingCount: c.ratings.length, myRating: score });
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/courses/:id/rating",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const c = db.courses.find((x) => x.id === params.id);
+    if (!c) return send(res, 404, { error: "Course not found" });
+    if (c.ratings) c.ratings = c.ratings.filter((r) => r.userId !== user.id);
+    const avg = c.ratings && c.ratings.length ? c.ratings.reduce((s, r) => s + r.score, 0) / c.ratings.length : 0;
+    saveDb();
+    ok(res, { avgRating: Math.round(avg * 10) / 10, ratingCount: (c.ratings || []).length, myRating: 0 });
   }
 });
 
@@ -1226,6 +1306,7 @@ routes.push({
       text
     };
     db.files.push(file);
+    trackFileHistory(file, "upload", user.id, file.name);
     trackUserActivity(user, "upload", file.name);
     saveDb();
     if (file.approved) {
@@ -1635,6 +1716,7 @@ routes.push({
     const f = db.files.find((x) => x.id === params.id);
     if (!f) return send(res, 404, { error: "File not found" });
     f.approved = true;
+    trackFileHistory(f, "approved", user.id);
     saveDb();
     notify(f.uploadedBy, `Your file "${f.name}" was approved and is now visible to everyone.`, "approval", "/course/" + f.courseId);
     for (const u of db.users) {
@@ -1658,10 +1740,22 @@ routes.push({
     if (idx === -1) return send(res, 404, { error: "File not found" });
     const [f] = db.files.splice(idx, 1);
     if (!f.approved) notify(f.uploadedBy, `Your file "${f.name}" was rejected by an admin.`, "approval");
+    trackFileHistory(f, "deleted", user.id);
     fs.rm(path.join(UPLOAD_DIR, f.storedName), { force: true }, () => {});
     if (supabaseConfigured()) supaDelete("uploads/" + f.storedName).catch(() => {});
     saveDb();
     ok(res);
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/files/:id/history",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const f = db.files.find((x) => x.id === params.id);
+    if (!f) return send(res, 404, { error: "File not found" });
+    send(res, 200, { history: (f.history || []).map(h => ({ ...h, userName: db.users.find(u => u.id === h.userId)?.username || "Unknown" })) });
   }
 });
 
@@ -2078,6 +2172,40 @@ routes.push({
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const unread = (user.notifications || []).filter((n) => !n.read).length;
     send(res, 200, { unread });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/auth/weekly-progress",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const now = Date.now();
+    const WEEK = 7 * 24 * 60 * 60 * 1000;
+    if (user.lastWeeklyReport && now - user.lastWeeklyReport < WEEK) {
+      return send(res, 200, { generated: false });
+    }
+    const enrolledIds = user.enrolledCourses || [];
+    const enrolled = db.courses.filter((c) => enrolledIds.includes(c.id));
+    const allFiles = db.files.filter((f) => enrolledIds.includes(f.courseId) && (f.approved || f.uploadedBy === user.id || user.role === "admin"));
+    const viewed = allFiles.filter((f) => (f.viewedBy || []).includes(user.id));
+    const newThisWeek = allFiles.filter((f) => now - new Date(f.uploadedAt).getTime() < WEEK);
+    const total = allFiles.length;
+    const pct = total ? Math.round((viewed.length / total) * 100) : 0;
+    const unviewed = total - viewed.length;
+    const summary = `Weekly Progress: ${pct}% complete across ${enrolled.length} courses (${viewed.length}/${total} materials viewed). ${newThisWeek.length} new uploads this week. ${unviewed ? unviewed + " materials remaining." : "All caught up!"}`;
+    if (!user.notifications) user.notifications = [];
+    user.notifications.unshift({
+      id: "wp" + Date.now(),
+      type: "system",
+      text: summary,
+      read: false,
+      createdAt: new Date().toISOString()
+    });
+    if (user.notifications.length > 50) user.notifications.length = 50;
+    user.lastWeeklyReport = now;
+    saveDb();
+    send(res, 200, { generated: true, summary, total, viewed: viewed.length, newThisWeek: newThisWeek.length });
   }
 });
 

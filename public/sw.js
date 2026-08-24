@@ -1,4 +1,4 @@
-const CACHE_NAME = "courselib-v20";
+const CACHE_NAME = "courselib-v21";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -10,6 +10,14 @@ const STATIC_ASSETS = [
   "/icon-192.png",
   "/icon-512.png",
   "/schools.json"
+];
+
+const CACHEABLE_API = [
+  "/api/courses",
+  "/api/me",
+  "/api/files/progress",
+  "/api/auth/reminders",
+  "/api/notifications"
 ];
 
 self.addEventListener("install", (event) => {
@@ -30,7 +38,22 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith("/api/")) {
+    if (event.request.method !== "GET") return;
+    const canCache = CACHEABLE_API.some((p) => url.pathname === p || url.pathname.startsWith(p + "/"));
+    if (!canCache) return;
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) =>
+        fetch(event.request).then((response) => {
+          if (response && response.status === 200) {
+            cache.put(event.request, response.clone());
+          }
+          return response;
+        }).catch(() => cache.match(event.request))
+      )
+    );
+    return;
+  }
   event.respondWith(
     fetch(event.request).then((response) => {
       if (response && response.status === 200) {

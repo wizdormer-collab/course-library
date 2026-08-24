@@ -1638,6 +1638,48 @@ body.auth-page main {
   margin-top: 0;
 }
 
+.reminder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.reminder-text {
+  font-size: 0.85rem;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.day-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.day-chip {
+  width: 34px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.day-chip.on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 .stack {
   display: flex;
   flex-direction: column;
@@ -2044,7 +2086,19 @@ body.auth-page main {
   }
 
   /* toast sits above the pill tab bar */
-  .toast {
+.offline-banner {
+  background: var(--danger);
+  color: #fff;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.toast {
     top: auto;
     bottom: calc(82px + env(safe-area-inset-bottom));
     right: 12px;
@@ -3543,6 +3597,38 @@ body.auth-page main {
 
 .star-rating .star:hover {
   color: #f59e0b;
+}
+
+.course-rating-row {
+  display: inline-flex;
+  gap: 1px;
+  align-items: center;
+  margin: 4px 0;
+}
+
+.course-rating-row .star {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--border);
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.course-rating-row .star.on {
+  color: #f59e0b;
+}
+
+.course-rating-row .star:hover {
+  color: #f59e0b;
+}
+
+.course-rating-row .rating-info {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-left: 4px;
 }
 
 .inline-label {
