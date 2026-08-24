@@ -5,7 +5,7 @@ const state = {
   user: null,
   toast: "",
   courses: [],
-  theme: localStorage.getItem("theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
+  theme: localStorage.getItem("theme") || "light",
   themeSchedule: null,
   recentlyViewed: [],
   materialViews: [],
@@ -4862,14 +4862,6 @@ document.addEventListener("keydown", (e) => {
     document.querySelectorAll(".modal-overlay:not(.hidden)").forEach((m) => m.classList.add("hidden"));
     const pdfOverlay = document.getElementById("pdf-overlay");
     if (pdfOverlay) pdfOverlay.remove();
-  }
-});
-
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
-  if (!localStorage.getItem("theme")) {
-    state.theme = e.matches ? "dark" : "light";
-    applyTheme();
-    renderNav();
   }
 });
 
