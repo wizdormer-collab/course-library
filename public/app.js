@@ -1063,6 +1063,7 @@ async function render() {
     else if (hash.startsWith("/certificate/")) { await renderCertificate(hash); }
     else if (hash.startsWith("/tag/")) { await renderTagFiles(hash); }
     else if (hash === "/notes") { await renderNotes(); }
+    else if (hash === "/past-questions") { await renderPastQuestions(); }
     else { await renderHome(); }
     window.scrollTo({ top: 0 });
     loadUserData();
@@ -2648,7 +2649,7 @@ async function renderHome() {
       <div class="qa-grid">
         ${qaTile("#/courses", "t-all", "book", "All Materials")}
         ${qaTile("#/notes", "t-notes", "edit", "Notes")}
-        ${qaTile("#/tag/past-question", "t-past", "archive", "Past Questions")}
+        ${qaTile("#/past-questions", "t-past", "archive", "Past Questions")}
         ${qaTile("#/tag/textbook", "t-textbook", "bookOpen", "Textbooks")}
       </div>
     </section>
@@ -3964,6 +3965,276 @@ async function renderCertificate(hash) {
       <a href="#/" class="btn btn-primary mt-12">Go home</a>
     </div>`);
   }
+}
+
+
+
+/* ---------- past questions ---------- */
+
+async function renderPastQuestions() {
+  if (!state.user) return (location.hash = "#/login");
+  let files = [];
+  try { const d = await api("/api/files?tag=past-question&limit=200"); files = d.files || []; } catch {}
+  const courses = state.courses || [];
+
+  function getCourseLabel(courseId) {
+    const c = courses.find(x => x.id === courseId);
+    return c ? c.code + " - " + c.name : "General";
+  }
+
+  function groupByCourse(list) {
+    const groups = {};
+    list.forEach(f => {
+      const cid = f.courseId || "_ungrouped";
+      if (!groups[cid]) groups[cid] = { label: getCourseLabel(cid), files: [] };
+      groups[cid].files.push(f);
+    });
+    const sorted = Object.entries(groups).sort((a, b) => {
+      if (a[0] === "_ungrouped") return 1;
+      if (b[0] === "_ungrouped") return -1;
+      return a[1].label.localeCompare(b[1].label);
+    });
+    return sorted;
+  }
+
+  let searchQ = "";
+  let sortBy = "date";
+
+  function render() {
+    let filtered = files;
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      filtered = files.filter(f => {
+        const cName = getCourseLabel(f.courseId).toLowerCase();
+        return cName.includes(q) || f.name.toLowerCase().includes(q);
+      });
+    }
+    if (sortBy === "downloads") filtered.sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
+    else if (sortBy === "views") filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+    else filtered.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+
+    const groups = groupByCourse(filtered);
+    const listEl = document.getElementById("pq-list");
+    const countEl = document.getElementById("pq-count");
+    if (countEl) countEl.textContent = filtered.length + " past question" + (filtered.length !== 1 ? "s" : "");
+    if (!listEl) return;
+
+    if (!files.length) {
+      listEl.innerHTML = emptyState("archive", "No past questions yet", "Be the first to upload past questions for your courses.",
+        state.user.role !== "student" ? '<button class="btn btn-primary" id="pq-upload-btn">' + icon("plus") + " Upload past questions</button>" : "");
+      const upBtn = document.getElementById("pq-upload-btn");
+      if (upBtn) upBtn.addEventListener("click", () => openPQUpload());
+      return;
+    }
+    if (!filtered.length) {
+      listEl.innerHTML = emptyState("search", "No results", "No past questions match your search.");
+      return;
+    }
+    let html = "";
+    groups.forEach(([cid, group]) => {
+      html += `<div class="pq-group">
+        <div class="pq-group-head">
+          <span class="pq-group-icon">${icon("book")}</span>
+          <div>
+            <h3 class="pq-group-title">${esc(group.label)}</h3>
+            <span class="muted small">${group.files.length} file${group.files.length !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
+        <div class="pq-group-files">
+          ${group.files.map(f => `<div class="file-row" data-fid="${f.id}">
+            <span class="file-icon">${icon("pdf")}</span>
+            <div class="file-info">
+              <a href="#/material/${f.id}" class="file-name">${esc(f.name)}</a>
+              <span class="muted">
+                by ${esc(f.uploadedByName)} � ${fmtSize(f.size)} � ${fmtDate(f.uploadedAt)}
+                ${!f.approved ? '<span class="badge badge-pending">pending</span>' : ""}
+              </span>
+              <span class="muted">
+                <span class="stat" title="Views">${icon("eye")} ${fmtCount(f.views || 0)}</span>
+                <span class="stat" title="Downloads">${icon("download")} ${fmtCount(f.downloads || 0)}</span>
+              </span>
+            </div>
+            <div class="file-actions">
+              <button class="icon-btn heart ${f.liked ? "on" : ""}" data-like="${f.id}" title="Like">${icon("heart")} <span class="like-count">${f.likes || 0}</span></button>
+              <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save">${icon("star")}</button>
+              <button class="btn btn-outline btn-sm" data-download="${f.id}" data-name="${esc(f.originalName || f.name)}">${icon("download")} Download</button>
+            </div>
+          </div>`).join("")}
+        </div>
+      </div>`;
+    });
+    listEl.innerHTML = html;
+    bindRowActions({});
+  }
+
+  function openPQUpload() {
+    const enrolled = (state.user.enrolledCourses || []).map(cid => courses.find(c => c.id === cid)).filter(Boolean);
+    if (!enrolled.length) { showToast("Enroll in a course first to upload past questions", true); return; }
+    const modal = document.getElementById("pq-upload-modal");
+    const courseSel = document.getElementById("pq-upload-course");
+    if (courseSel) {
+      courseSel.innerHTML = enrolled.map(c => `<option value="${c.id}">${esc(c.code)} - ${esc(c.name)}</option>`).join("");
+    }
+    if (modal) modal.classList.remove("hidden");
+  }
+
+  app.innerHTML = shell(`
+    <a href="#/" class="back-link">${icon("chevronLeft")} Home</a>
+    <div class="page-head">
+      <div>
+        <h1>${icon("archive")} Past Questions</h1>
+        <p class="muted" id="pq-count">${files.length} past question${files.length !== 1 ? "s" : ""}</p>
+      </div>
+      ${state.user.role !== "student" ? '<button class="btn btn-primary btn-sm" id="pq-upload-btn">' + icon("plus") + " Upload</button>" : ""}
+    </div>
+    <div class="pq-toolbar">
+      <input type="text" id="pq-search" placeholder="Search by course or file name..." class="pq-search" />
+      <select id="pq-sort" class="pq-sort">
+        <option value="date">Newest</option>
+        <option value="downloads">Most downloaded</option>
+        <option value="views">Most viewed</option>
+      </select>
+    </div>
+    <div id="pq-list" class="pq-list"></div>
+
+    <div class="modal-overlay hidden" id="pq-upload-modal">
+      <div class="modal">
+        <h2>Upload Past Question</h2>
+        <form id="pq-upload-form">
+          <div class="drop-zone" id="pq-drop-zone">
+            <span class="drop-icon">${icon("plus")}</span>
+            <p class="drop-text">Drag &amp; drop PDFs here, or click to browse</p>
+            <input type="file" id="pq-up-file" accept="application/pdf" class="drop-input" multiple />
+          </div>
+          <div class="drop-preview hidden" id="pq-drop-preview">
+            <span class="file-icon">${icon("pdf")}</span>
+            <span class="drop-fname" id="pq-drop-fname"></span>
+            <button type="button" class="icon-btn" id="pq-drop-clear">${icon("close")}</button>
+          </div>
+          <div class="multi-upload-list hidden" id="pq-multi-list"></div>
+          <div class="upload-progress hidden" id="pq-upload-progress">
+            <div class="progress-bar"><div class="progress-fill" id="pq-upload-pbar" style="width:0%"></div></div>
+            <span class="muted small" id="pq-upload-ptxt">0%</span>
+          </div>
+          <label style="margin:8px 0">Course
+            <select id="pq-upload-course" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)"></select>
+          </label>
+          <p class="error" id="pq-upload-error"></p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" id="pq-up-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="pq-up-submit">Upload</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `);
+
+  render();
+  document.getElementById("pq-search")?.addEventListener("input", (e) => { searchQ = e.target.value; render(); });
+  document.getElementById("pq-sort")?.addEventListener("change", (e) => { sortBy = e.target.value; render(); });
+  document.getElementById("pq-upload-btn")?.addEventListener("click", () => openPQUpload());
+
+  const pqModal = document.getElementById("pq-upload-modal");
+  document.getElementById("pq-up-cancel")?.addEventListener("click", () => pqModal.classList.add("hidden"));
+  pqModal?.addEventListener("click", (e) => { if (e.target === pqModal) pqModal.classList.add("hidden"); });
+
+  const pqDrop = document.getElementById("pq-drop-zone");
+  const pqFileInput = document.getElementById("pq-up-file");
+  const pqPreview = document.getElementById("pq-drop-preview");
+  const pqFname = document.getElementById("pq-drop-fname");
+
+  if (pqDrop && pqFileInput) {
+    pqDrop.addEventListener("click", () => pqFileInput.click());
+    pqDrop.addEventListener("dragover", (e) => { e.preventDefault(); pqDrop.classList.add("dragover"); });
+    pqDrop.addEventListener("dragleave", () => pqDrop.classList.remove("dragover"));
+    pqDrop.addEventListener("drop", (e) => {
+      e.preventDefault(); pqDrop.classList.remove("dragover");
+      const dt = e.dataTransfer;
+      if (dt.files.length) { pqFileInput.files = dt.files; showPQPreview(dt.files[0]); }
+    });
+    pqFileInput.addEventListener("change", () => { if (pqFileInput.files.length) showPQPreview(pqFileInput.files[0]); });
+  }
+  function showPQPreview(f) {
+    if (pqPreview && pqFname) {
+      pqPreview.classList.remove("hidden");
+      pqFname.textContent = f.name + (pqFileInput.files.length > 1 ? " (+" + (pqFileInput.files.length - 1) + " more)" : "");
+      pqDrop.classList.add("hidden");
+    }
+  }
+  document.getElementById("pq-drop-clear")?.addEventListener("click", () => {
+    pqFileInput.value = "";
+    if (pqPreview) pqPreview.classList.add("hidden");
+    if (pqDrop) pqDrop.classList.remove("hidden");
+  });
+
+  document.getElementById("pq-upload-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pdfFiles = [...pqFileInput.files].filter(f => f.type.includes("pdf") || /\.pdf$/i.test(f.name));
+    if (!pdfFiles.length) return (document.getElementById("pq-upload-error").textContent = "Choose at least one PDF file");
+    const courseId = document.getElementById("pq-upload-course").value;
+    if (!courseId) return (document.getElementById("pq-upload-error").textContent = "Select a course");
+    const progress = document.getElementById("pq-upload-progress");
+    const pbar = document.getElementById("pq-upload-pbar");
+    const ptxt = document.getElementById("pq-upload-ptxt");
+    const submitBtn = document.getElementById("pq-up-submit");
+    const multiList = document.getElementById("pq-multi-list");
+    submitBtn.disabled = true;
+    progress.classList.remove("hidden");
+    if (pdfFiles.length > 1 && multiList) {
+      multiList.classList.remove("hidden");
+      multiList.innerHTML = pdfFiles.map((f, i) => `<div class="multi-upload-item" data-mui="${i}"><span>${esc(f.name)}</span><span class="muted small multi-status">Waiting...</span></div>`).join("");
+    }
+    let successCount = 0;
+    let failCount = 0;
+    for (let i = 0; i < pdfFiles.length; i++) {
+      const f = pdfFiles[i];
+      const statusEl = multiList ? multiList.querySelector(`[data-mui="${i}"] .multi-status`) : null;
+      if (statusEl) statusEl.textContent = "Uploading...";
+      pbar.style.width = Math.round(((i) / pdfFiles.length) * 100) + "%";
+      ptxt.textContent = (i + 1) + "/" + pdfFiles.length;
+      try {
+        const buf = await f.arrayBuffer();
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.addEventListener("progress", (ev) => {
+            if (ev.lengthComputable) {
+              const totalPct = Math.round(((i + ev.loaded / ev.total) / pdfFiles.length) * 100);
+              pbar.style.width = totalPct + "%";
+              ptxt.textContent = (i + 1) + "/" + pdfFiles.length + " (" + Math.round((ev.loaded / ev.total) * 100) + "%)";
+            }
+          });
+          xhr.onload = () => {
+            try { const d = JSON.parse(xhr.responseText); if (xhr.status >= 400) reject(new Error(d.error)); else resolve(d); }
+            catch { reject(new Error("Upload failed")); }
+          };
+          xhr.onerror = () => reject(new Error("Network error"));
+          xhr.open("POST", "/api/files");
+          const t = token();
+          if (t) xhr.setRequestHeader("Authorization", "Bearer " + t);
+          xhr.setRequestHeader("Content-Type", "application/octet-stream");
+          xhr.setRequestHeader("X-File-Name", encodeURIComponent(f.name));
+          xhr.setRequestHeader("X-Original-Name", encodeURIComponent(f.name));
+          xhr.setRequestHeader("X-Course-Id", courseId);
+          xhr.setRequestHeader("X-Category", "past-question");
+          xhr.send(buf);
+        });
+        successCount++;
+        if (statusEl) { statusEl.textContent = "Done"; statusEl.style.color = "var(--success)"; }
+      } catch (err) {
+        failCount++;
+        if (statusEl) { statusEl.textContent = "Failed: " + err.message; statusEl.style.color = "var(--danger)"; }
+      }
+    }
+    pbar.style.width = "100%";
+    ptxt.textContent = successCount + " uploaded" + (failCount ? ", " + failCount + " failed" : "");
+    if (successCount > 0) {
+      showToast(successCount + " past question" + (successCount > 1 ? "s" : "") + " uploaded");
+      pqModal.classList.add("hidden");
+      setTimeout(() => renderPastQuestions(), 600);
+    } else {
+      submitBtn.disabled = false;
+    }
+  });
 }
 
 
