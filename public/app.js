@@ -61,6 +61,42 @@ function clearAuth() {
   localStorage.removeItem("user");
   state.user = null;
 }
+function storeCreds(email, password, extra) {
+  const c = { email, password };
+  if (extra) Object.assign(c, extra);
+  localStorage.setItem("savedCreds", JSON.stringify(c));
+}
+function getSavedCreds() {
+  try { return JSON.parse(localStorage.getItem("savedCreds")); } catch { return null; }
+}
+function clearSavedCreds() {
+  localStorage.removeItem("savedCreds");
+}
+async function recoverAccount() {
+  const c = getSavedCreds();
+  if (!c || !c.email || !c.password) return false;
+  try {
+    const body = { email: c.email, username: c.username || c.email.split("@")[0], password: c.password };
+    if (c.school) body.school = c.school;
+    if (c.faculty) body.faculty = c.faculty;
+    if (c.department) body.department = c.department;
+    if (c.level) body.level = c.level;
+    if (c.matricNumber) body.matricNumber = c.matricNumber;
+    if (c.studentType) body.studentType = c.studentType;
+    if (c.selectedCourses) body.selectedCourses = c.selectedCourses;
+    const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) {
+      if (res.status === 409) {
+        const loginRes = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: c.email, password: c.password }) });
+        if (loginRes.ok) { const d = await loginRes.json(); storeAuth(d); return true; }
+      }
+      return false;
+    }
+    const d = await res.json();
+    storeAuth(d);
+    return true;
+  } catch { return false; }
+}
 
 async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
@@ -72,6 +108,12 @@ async function api(path, options = {}) {
   if (t) headers["Authorization"] = "Bearer " + t;
   const res = await fetch(path, { ...options, headers });
   if (res.status === 401 && !path.startsWith("/api/auth/")) {
+    const recovered = await recoverAccount();
+    if (recovered) {
+      headers["Authorization"] = "Bearer " + token();
+      const retry = await fetch(path, { ...options, headers });
+      if (retry.ok) return retry.json();
+    }
     clearAuth();
     location.hash = "#/login";
     throw new Error("Session expired");
@@ -1099,6 +1141,7 @@ function renderLogin() {
         })
       });
       storeAuth(d);
+      storeCreds(document.getElementById("login-email").value, document.getElementById("login-pass").value, { username: d.user?.username });
       try { const rd = await api("/api/auth/reminders"); state.reminders = rd.reminders || []; } catch { state.reminders = []; }
       startReminderChecker();
       requestNotificationPermission();
@@ -1498,6 +1541,7 @@ function onboardStep6() {
         })
       });
       storeAuth(d);
+      storeCreds(data.email, data.password, { username: data.username, school: data.university, faculty: data.faculty, department: data.department, level: data.level, matricNumber: data.matricNumber || "", studentType: data.studentType || "", selectedCourses: coursesToSend });
       state.onboardStep = 1;
       state.onboardData = {};
       showToast(d.message || "Welcome to Course Library!");
@@ -1648,6 +1692,11 @@ async function initStudentRegForm() {
         })
       });
       storeAuth(d);
+      storeCreds(document.getElementById("reg-email").value, pw, {
+        username: document.getElementById("reg-user").value,
+        school: schoolSel.value, faculty: facSel.value, department: deptSel.value,
+        level: levelSel.value, matricNumber: document.getElementById("reg-matric").value, studentType
+      });
       showToast(d.message || "Account created! Welcome.");
       location.hash = "#/";
     } catch (err) {
@@ -1694,6 +1743,7 @@ function initLecturerRegForm() {
         })
       });
       storeAuth(d);
+      storeCreds(document.getElementById("reg-email").value, pw, { username: document.getElementById("reg-user").value });
       showToast(d.message || "Account created! Welcome.");
       location.hash = "#/";
     } catch (err) {
