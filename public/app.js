@@ -1062,6 +1062,7 @@ async function render() {
     else if (hash.startsWith("/flashcards/")) { await renderFlashcards(hash); }
     else if (hash.startsWith("/certificate/")) { await renderCertificate(hash); }
     else if (hash.startsWith("/tag/")) { await renderTagFiles(hash); }
+    else if (hash === "/notes") { await renderNotes(); }
     else { await renderHome(); }
     window.scrollTo({ top: 0 });
     loadUserData();
@@ -2646,7 +2647,7 @@ async function renderHome() {
       <h2 class="section-title">Quick access</h2>
       <div class="qa-grid">
         ${qaTile("#/courses", "t-all", "book", "All Materials")}
-        ${qaTile("#/tag/notes", "t-notes", "edit", "Notes")}
+        ${qaTile("#/notes", "t-notes", "edit", "Notes")}
         ${qaTile("#/tag/past-question", "t-past", "archive", "Past Questions")}
         ${qaTile("#/tag/textbook", "t-textbook", "bookOpen", "Textbooks")}
       </div>
@@ -3963,6 +3964,109 @@ async function renderCertificate(hash) {
       <a href="#/" class="btn btn-primary mt-12">Go home</a>
     </div>`);
   }
+}
+
+
+/* ---------- notes ---------- */
+
+async function renderNotes() {
+  if (!state.user) return (location.hash = "#/login");
+  let notes = [];
+  try { const d = await api("/api/notes"); notes = d.notes || []; } catch {}
+
+  function noteCard(n, idx) {
+    const preview = esc(n.content || "").slice(0, 120).replace(/\n/g, " ");
+    return `<div class="note-card" data-note-idx="${idx}">
+      <div class="note-card-head">
+        <h3 class="note-title">${esc(n.title || "Untitled")}</h3>
+        <span class="note-date">${fmtDate(n.updatedAt)}</span>
+      </div>
+      <p class="note-preview">${preview || '<span class="muted">Empty note</span>'}</p>
+      <div class="note-actions">
+        <button class="btn btn-sm btn-outline" data-edit-note="${n.id}">${icon("edit")} Edit</button>
+        <button class="btn btn-sm btn-outline" data-del-note="${n.id}" style="color:var(--danger)">${icon("trash")} Delete</button>
+      </div>
+    </div>`;
+  }
+
+  function renderList() {
+    const list = document.getElementById("notes-list");
+    if (!list) return;
+    if (!notes.length) {
+      list.innerHTML = '<div class="empty-pad"><p class="muted">No notes yet. Tap "New Note" to start writing!</p></div>';
+      return;
+    }
+    list.innerHTML = notes.map((n, i) => noteCard(n, i)).join("");
+    list.querySelectorAll("[data-edit-note]").forEach(btn => {
+      btn.addEventListener("click", () => openEditor(btn.dataset.editNote));
+    });
+    list.querySelectorAll("[data-del-note]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Delete this note?")) return;
+        try { await api("/api/notes/" + btn.dataset.delNote, { method: "DELETE" }); } catch {}
+        notes = notes.filter(n => n.id !== btn.dataset.delNote);
+        renderList();
+        showToast("Note deleted");
+      });
+    });
+  }
+
+  function openEditor(editId) {
+    const existing = editId ? notes.find(n => n.id === editId) : null;
+    const editor = document.getElementById("note-editor");
+    const titleIn = document.getElementById("note-title-input");
+    const contentIn = document.getElementById("note-content-input");
+    const saveBtn = document.getElementById("note-save-btn");
+    const cancelBtn = document.getElementById("note-cancel-btn");
+    titleIn.value = existing ? existing.title : "";
+    contentIn.value = existing ? existing.content : "";
+    saveBtn.textContent = existing ? "Update note" : "Save note";
+    editor.classList.add("open");
+    titleIn.focus();
+    saveBtn.onclick = async () => {
+      const title = titleIn.value.trim();
+      const content = contentIn.value.trim();
+      if (!title && !content) return showToast("Add a title or some content", true);
+      try {
+        if (existing) {
+          const d = await api("/api/notes/" + existing.id, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) });
+          const idx = notes.findIndex(n => n.id === existing.id);
+          if (idx >= 0) notes[idx] = d.note;
+          showToast("Note updated");
+        } else {
+          const d = await api("/api/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) });
+          notes.unshift(d.note);
+          showToast("Note saved");
+        }
+      } catch (err) { showToast(err.message, true); }
+      editor.classList.remove("open");
+      renderList();
+    };
+    cancelBtn.onclick = () => editor.classList.remove("open");
+  }
+
+  app.innerHTML = shell(`
+    <a href="#/" class="back-link">${icon("chevronLeft")} Home</a>
+    <div class="page-head">
+      <div>
+        <h1>${icon("edit")} My Notes</h1>
+        <p class="muted">${notes.length} note${notes.length !== 1 ? "s" : ""}</p>
+      </div>
+      <button class="btn btn-primary btn-sm" id="new-note-btn">${icon("plus")} New Note</button>
+    </div>
+    <div class="note-editor" id="note-editor">
+      <input id="note-title-input" placeholder="Note title" maxlength="200" class="note-title-input" />
+      <textarea id="note-content-input" rows="8" maxlength="50000" placeholder="Write your note here..." class="note-content-input"></textarea>
+      <div class="note-editor-actions">
+        <button class="btn btn-outline btn-sm" id="note-cancel-btn">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="note-save-btn">Save note</button>
+      </div>
+    </div>
+    <div id="notes-list" class="notes-list"></div>
+  `);
+
+  renderList();
+  document.getElementById("new-note-btn").addEventListener("click", () => openEditor(null));
 }
 
 /* ---------- tag files ---------- */
