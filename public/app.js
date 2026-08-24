@@ -280,6 +280,8 @@ function fileRow(f, opts = {}) {
           ${fmtSize(f.size)} &middot; ${fmtDate(f.uploadedAt)}
           ${f.role === "student" ? '<span class="badge">student upload</span>' : ""}
           ${!f.approved ? '<span class="badge badge-pending">pending</span>' : ""}
+          ${f.category === "past-question" ? '<span class="badge" style="background:rgba(34,197,94,0.16);color:#16a34a">past question</span>' : ""}
+          ${f.category === "textbook" ? '<span class="badge" style="background:rgba(99,102,241,0.16);color:#6366f1">textbook</span>' : ""}
         </span>
         ${tagsHtml}
         ${progressHtml}
@@ -1848,51 +1850,76 @@ async function renderSettings() {
     state.user.hasSecurityQuestion = me.user.hasSecurityQuestion;
     hasQuestion = me.user.hasSecurityQuestion;
   } catch {}
-  app.innerHTML = shell(`
-    <div class="page-head">
-      <div>
-        <h1>Settings</h1>
-        <p class="muted">Logged in as ${esc(state.user.username)} &middot; ${esc(state.user.email || "")}</p>
-      </div>
-    </div>
-    <div class="settings-grid">
+  const u = state.user;
+  const roleLabel = u.role === "admin" ? "Admin" : u.role === "lecturer" ? "Lecturer" : "Student";
+  const avatarHtml = u.avatarUrl
+    ? `<img src="${esc(u.avatarUrl)}" alt="${esc(u.username)}" />`
+    : icon("user");
+  const activeTab = state.profileTab || "overview";
+  const tabs = [
+    { id: "overview", label: "Profile", icon: "user" },
+    { id: "notes", label: "My Notes", icon: "edit" },
+    { id: "display", label: "Display Name", icon: "edit" },
+    { id: "theme", label: "Dark Mode", icon: "moon" },
+    { id: "reminders", label: "Reminders", icon: "bell" },
+    { id: "notifications", label: "Notifications", icon: "bell" },
+    { id: "account", label: "Account", icon: "settings" }
+  ];
+
+  let tabContent = "";
+  if (activeTab === "overview") {
+    tabContent = `
+      <div class="card profile-header">
+        <div class="profile-avatar-wrap" id="avatar-wrap">
+          <div class="profile-avatar" id="profile-avatar">${avatarHtml}</div>
+          <div class="profile-avatar-overlay" id="avatar-overlay">${icon("camera")}</div>
+          <input type="file" id="avatar-input" accept="image/jpeg,image/png,image/webp" style="display:none" />
+        </div>
+        <h1 class="profile-name">${esc(u.username)}</h1>
+        <p class="muted profile-role"><span class="badge-role">${roleLabel}</span>${u.joinedAt ? " &middot; Joined " + fmtDate(u.joinedAt) : ""}</p>
+        ${u.bio ? `<p class="profile-bio">${esc(u.bio)}</p>` : ""}
+        <button class="btn btn-outline btn-sm profile-edit-btn" id="edit-profile-btn">${icon("edit")} Edit bio</button>
+        <div class="profile-edit-panel" id="edit-panel">
+          <textarea id="bio-input" rows="3" maxlength="500" placeholder="Tell the community about yourself...">${esc(u.bio || "")}</textarea>
+          <div class="profile-edit-actions">
+            <button class="btn btn-ghost btn-sm" id="edit-cancel">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="edit-save">Save</button>
+          </div>
+        </div>
+        <div class="stat-grid mt-20">
+          <div class="stat-card"><div class="stat-num">${u.uploadCount || 0}</div><div class="stat-lab">Uploads</div></div>
+          <div class="stat-card"><div class="stat-num">${fmtCount(u.totalViews || 0)}</div><div class="stat-lab">Views</div></div>
+          <div class="stat-card"><div class="stat-num">${fmtCount(u.totalDownloads || 0)}</div><div class="stat-lab">Downloads</div></div>
+          <div class="stat-card"><div class="stat-num">${fmtCount(u.totalLikes || 0)}</div><div class="stat-lab">Likes</div></div>
+        </div>
+      </div>`;
+  } else if (activeTab === "notes") {
+    tabContent = `
       <div class="card">
-        <h3>Display name</h3>
+        <h3>My Notes</h3>
+        <p class="muted small">Personal notepad for your study notes and ideas.</p>
+        <form id="note-form" class="stack" style="margin-bottom:16px">
+          <label>Title <input id="note-title" placeholder="Note title" maxlength="200" /></label>
+          <label>Content <textarea id="note-content" rows="6" maxlength="50000" placeholder="Write your note here..."></textarea></label>
+          <button class="btn btn-primary" type="submit">Save note</button>
+        </form>
+        <div id="notes-list" class="stack"></div>
+      </div>`;
+  } else if (activeTab === "display") {
+    tabContent = `
+      <div class="card">
+        <h3>Display Name</h3>
         <p class="muted small">This is how others see you on the platform.</p>
         <form id="username-form" class="stack">
-          <label>Display name <input id="username-input" value="${esc(state.user.username || "")}" /></label>
+          <label>Display name <input id="username-input" value="${esc(u.username || "")}" /></label>
           <p class="error" id="username-error"></p>
           <button class="btn btn-primary">Update display name</button>
         </form>
-      </div>
+      </div>`;
+  } else if (activeTab === "theme") {
+    tabContent = `
       <div class="card">
-        <h3>Change password</h3>
-        <form id="pw-form" class="stack">
-          <label>Current password <input id="pw-old" type="password" /></label>
-          <label>New password <input id="pw-new" type="password" /></label>
-          <label>Confirm new password <input id="pw-new2" type="password" /></label>
-          <p class="error" id="pw-error"></p>
-          <button class="btn btn-primary">Update password</button>
-        </form>
-      </div>
-      <div class="card">
-        <h3>Recovery question</h3>
-        <p class="muted small">${hasQuestion ? "Set. Used to reset your password if you forget it." : "Not set yet. Add one to enable self-service password reset."}</p>
-        <form id="sq-form" class="stack">
-          <label>Question <input id="sq-q" placeholder="e.g. What city were you born in?" /></label>
-          <label>Answer <input id="sq-a" placeholder="your answer" /></label>
-          <p class="error" id="sq-error"></p>
-          <button class="btn btn-primary">Save recovery question</button>
-        </form>
-      </div>
-      <div class="card">
-        <h3>Account</h3>
-        <p class="muted small">Signed in as ${esc(state.user.username)}${state.user.role === "admin" ? " (admin)" : ""}</p>
-        ${state.user.role === "admin" ? '<p class="muted small"><a href="#/admin" class="view-all">Open admin panel</a></p>' : ""}
-        <button class="btn btn-danger" id="settings-logout">${icon("logout")} Log out</button>
-      </div>
-      <div class="card">
-        <h3>Dark mode schedule</h3>
+        <h3>Dark Mode Schedule</h3>
         <p class="muted small">Automatically switch between light and dark mode at set times.</p>
         <form id="theme-schedule-form" class="stack">
           <label class="inline-label"><input type="checkbox" id="ts-enabled" ${state.themeSchedule?.enabled ? "checked" : ""} /> Enable schedule</label>
@@ -1900,9 +1927,11 @@ async function renderSettings() {
           <label>Light mode starts at <input type="time" id="ts-dark-end" value="${state.themeSchedule?.darkEnd || '07:00'}" /></label>
           <button class="btn btn-primary">Save schedule</button>
         </form>
-      </div>
+      </div>`;
+  } else if (activeTab === "reminders") {
+    tabContent = `
       <div class="card">
-        <h3>Study reminders</h3>
+        <h3>Study Reminders</h3>
         <p class="muted small">Set daily study reminders. You'll get a browser notification at the chosen time.</p>
         <div id="reminders-list" class="stack"></div>
         <form id="reminder-form" class="stack" style="margin-top:8px">
@@ -1915,9 +1944,11 @@ async function renderSettings() {
           </label>
           <button class="btn btn-primary" type="submit">Add reminder</button>
         </form>
-      </div>
+      </div>`;
+  } else if (activeTab === "notifications") {
+    tabContent = `
       <div class="card">
-        <h3>Notification preferences</h3>
+        <h3>Notification Preferences</h3>
         <p class="muted small">Choose which notifications you want to receive.</p>
         <form id="notif-prefs-form" class="stack">
           <label class="inline-label"><input type="checkbox" id="np-upload" ${state.notifPrefs?.upload !== false ? "checked" : ""} /> New uploads in my courses</label>
@@ -1928,166 +1959,325 @@ async function renderSettings() {
           <label class="inline-label"><input type="checkbox" id="np-group" ${state.notifPrefs?.group !== false ? "checked" : ""} /> Study group activity</label>
           <button class="btn btn-primary">Save preferences</button>
         </form>
+      </div>`;
+  } else if (activeTab === "account") {
+    tabContent = `
+      <div class="card">
+        <h3>Change Password</h3>
+        <form id="pw-form" class="stack">
+          <label>Current password <input id="pw-old" type="password" /></label>
+          <label>New password <input id="pw-new" type="password" /></label>
+          <label>Confirm new password <input id="pw-new2" type="password" /></label>
+          <p class="error" id="pw-error"></p>
+          <button class="btn btn-primary">Update password</button>
+        </form>
       </div>
-    </div>`);
-
-  document.getElementById("pw-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const nw = document.getElementById("pw-new").value;
-    if (nw !== document.getElementById("pw-new2").value) {
-      return (document.getElementById("pw-error").textContent = "New passwords do not match");
-    }
-    if (nw.length < 8) {
-      return (document.getElementById("pw-error").textContent = "Password must be at least 8 characters");
-    }
-    if (!/[a-zA-Z]/.test(nw)) {
-      return (document.getElementById("pw-error").textContent = "Password must contain at least one letter");
-    }
-    if (!/[0-9]/.test(nw)) {
-      return (document.getElementById("pw-error").textContent = "Password must contain at least one number");
-    }
-    try {
-      await api("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oldPassword: document.getElementById("pw-old").value, newPassword: nw })
-      });
-      showToast("Password updated");
-      renderSettings();
-    } catch (err) {
-      document.getElementById("pw-error").textContent = err.message;
-    }
-  });
-
-  document.getElementById("username-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      const d = await api("/api/auth/change-username", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: document.getElementById("username-input").value })
-      });
-      state.user.username = d.user.username;
-      localStorage.setItem("auth", JSON.stringify(state));
-      localStorage.setItem("user", JSON.stringify(state.user));
-      showToast("Display name updated");
-      renderNav();
-      renderSettings();
-    } catch (err) {
-      document.getElementById("username-error").textContent = err.message;
-    }
-  });
-
-  document.getElementById("sq-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      await api("/api/auth/security-question", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: document.getElementById("sq-q").value,
-          answer: document.getElementById("sq-a").value
-        })
-      });
-      showToast("Recovery question saved");
-      renderSettings();
-    } catch (err) {
-      document.getElementById("sq-error").textContent = err.message;
-    }
-  });
-
-  document.getElementById("theme-schedule-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      const d = await api("/api/auth/theme-schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          enabled: document.getElementById("ts-enabled").checked,
-          darkStart: document.getElementById("ts-dark-start").value,
-          darkEnd: document.getElementById("ts-dark-end").value
-        })
-      });
-      state.themeSchedule = d.themeSchedule;
-      localStorage.setItem("auth", JSON.stringify(state));
-      localStorage.setItem("user", JSON.stringify(state.user));
-      applyThemeSchedule();
-      showToast("Theme schedule saved");
-    } catch (err) {
-      alert(err.message);
-    }
-  });
-
-  // Reminders
-  async function loadReminders() {
-    try {
-      const d = await api("/api/auth/reminders");
-      state.reminders = d.reminders || [];
-      const list = document.getElementById("reminders-list");
-      if (!list) return;
-      if (!state.reminders.length) { list.innerHTML = '<p class="muted small">No reminders set.</p>'; return; }
-      list.innerHTML = state.reminders.map(r => {
-        const days = ["S","M","T","W","T","F","S"];
-        const dayStr = (r.days || []).map(d => days[d]).join(" ");
-        return `<div class="reminder-item"><span class="reminder-text">${esc(r.text)} — <strong>${r.time}</strong> ${dayStr}</span><button class="btn btn-sm btn-outline" data-del-rem="${r.id}">Remove</button></div>`;
-      }).join("");
-      list.querySelectorAll("[data-del-rem]").forEach(btn => btn.addEventListener("click", async () => {
-        await api("/api/auth/reminders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id: btn.dataset.delRem }) });
-        loadReminders();
-      }));
-    } catch {}
+      <div class="card">
+        <h3>Recovery Question</h3>
+        <p class="muted small">${hasQuestion ? "Set. Used to reset your password if you forget it." : "Not set yet. Add one to enable self-service password reset."}</p>
+        <form id="sq-form" class="stack">
+          <label>Question <input id="sq-q" placeholder="e.g. What city were you born in?" /></label>
+          <label>Answer <input id="sq-a" placeholder="your answer" /></label>
+          <p class="error" id="sq-error"></p>
+          <button class="btn btn-primary">Save recovery question</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Account</h3>
+        <p class="muted small">Signed in as ${esc(u.username)}${u.role === "admin" ? " (admin)" : ""}</p>
+        ${u.role === "admin" ? '<p class="muted small"><a href="#/admin" class="view-all">Open admin panel</a></p>' : ""}
+        <button class="btn btn-danger" id="settings-logout">${icon("logout")} Log out</button>
+      </div>`;
   }
-  loadReminders();
 
-  // Day chip toggles
-  document.querySelectorAll("#rem-days .day-chip").forEach(btn => {
-    btn.addEventListener("click", () => btn.classList.toggle("on"));
+  app.innerHTML = shell(`
+    <div class="page-head">
+      <div>
+        <h1>${esc(u.username)}</h1>
+        <p class="muted">${roleLabel} &middot; ${esc(u.email || "")}</p>
+      </div>
+    </div>
+    <div class="profile-tabs">
+      ${tabs.map(t => `<button class="profile-tab${activeTab === t.id ? " active" : ""}" data-tab="${t.id}">${icon(t.icon)} ${t.label}</button>`).join("")}
+    </div>
+    <div class="profile-tab-content">${tabContent}</div>`);
+
+  // Tab switching
+  document.querySelectorAll(".profile-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.profileTab = btn.dataset.tab;
+      renderSettings();
+    });
   });
 
-  document.getElementById("reminder-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const text = document.getElementById("rem-text").value.trim();
-    const time = document.getElementById("rem-time").value;
-    const days = [...document.querySelectorAll("#rem-days .day-chip.on")].map(b => parseInt(b.dataset.day));
-    if (!text) return;
-    try {
-      await api("/api/auth/reminders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, time, days }) });
-      document.getElementById("rem-text").value = "";
-      loadReminders();
-      showToast("Reminder added");
-      requestNotificationPermission();
-    } catch (err) { alert(err.message); }
-  });
-
-  document.getElementById("notif-prefs-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      const d = await api("/api/auth/notif-prefs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          upload: document.getElementById("np-upload").checked,
-          approval: document.getElementById("np-approval").checked,
-          comment: document.getElementById("np-comment").checked,
-          mention: document.getElementById("np-mention").checked,
-          follow: document.getElementById("np-follow").checked,
-          group: document.getElementById("np-group").checked
-        })
+  // --- Event handlers per tab ---
+  if (activeTab === "overview") {
+    const editBtn = document.getElementById("edit-profile-btn");
+    const editPanel = document.getElementById("edit-panel");
+    const editCancel = document.getElementById("edit-cancel");
+    const editSave = document.getElementById("edit-save");
+    if (editBtn && editPanel) {
+      editBtn.addEventListener("click", () => editPanel.classList.toggle("open"));
+      editCancel?.addEventListener("click", () => editPanel.classList.remove("open"));
+      editSave?.addEventListener("click", async () => {
+        const bio = document.getElementById("bio-input").value.trim();
+        try {
+          const res = await api("/api/profile/bio", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bio })
+          });
+          state.user.bio = res.bio;
+          localStorage.setItem("user", JSON.stringify(state.user));
+          showToast("Profile updated");
+          renderSettings();
+        } catch (err) { alert(err.message); }
       });
-      state.notifPrefs = d.notifPrefs;
-      localStorage.setItem("auth", JSON.stringify(state));
-      localStorage.setItem("user", JSON.stringify(state.user));
-      showToast("Notification preferences saved");
-    } catch (err) {
-      alert(err.message);
     }
-  });
+    const avatarOverlay = document.getElementById("avatar-overlay");
+    const avatarInput = document.getElementById("avatar-input");
+    if (avatarOverlay && avatarInput) {
+      avatarOverlay.addEventListener("click", () => avatarInput.click());
+      avatarInput.addEventListener("change", async () => {
+        const file = avatarInput.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) { showToast("Image must be under 2 MB", true); return; }
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const res = await api("/api/profile/avatar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ avatar: reader.result })
+            });
+            state.user.avatarUrl = res.avatarUrl;
+            localStorage.setItem("user", JSON.stringify(state.user));
+            showToast("Avatar updated");
+            renderSettings();
+          } catch (err) { alert(err.message); }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  }
 
-  const so = document.getElementById("settings-logout");
-  if (so) so.addEventListener("click", () => {
-    clearAuth();
-    location.hash = "#/login";
-  });
+  if (activeTab === "notes") {
+    async function loadNotes() {
+      try {
+        const d = await api("/api/notes");
+        const notes = d.notes || [];
+        const list = document.getElementById("notes-list");
+        if (!list) return;
+        if (!notes.length) { list.innerHTML = '<p class="muted small">No notes yet. Start writing!</p>'; return; }
+        list.innerHTML = notes.map(n => `
+          <div class="reminder-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+            <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+              <strong>${esc(n.title)}</strong>
+              <span class="muted small">${fmtDate(n.updatedAt)}</span>
+            </div>
+            <p class="muted small" style="white-space:pre-wrap;max-height:80px;overflow:hidden;width:100%;margin:0">${esc(n.content).slice(0, 500)}${n.content.length > 500 ? "..." : ""}</p>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm btn-outline" data-edit-note="${n.id}">${icon("edit")} Edit</button>
+              <button class="btn btn-sm btn-outline" data-del-note="${n.id}" style="color:var(--danger)">${icon("trash")} Delete</button>
+            </div>
+          </div>`).join("");
+        list.querySelectorAll("[data-edit-note]").forEach(btn => btn.addEventListener("click", async () => {
+          const note = notes.find(n => n.id === btn.dataset.editNote);
+          if (!note) return;
+          document.getElementById("note-title").value = note.title;
+          document.getElementById("note-content").value = note.content;
+          document.getElementById("note-form").dataset.editId = note.id;
+          document.getElementById("note-form").querySelector("button[type=submit]").textContent = "Update note";
+        }));
+        list.querySelectorAll("[data-del-note]").forEach(btn => btn.addEventListener("click", async () => {
+          if (!confirm("Delete this note?")) return;
+          await api("/api/notes/" + btn.dataset.delNote, { method: "DELETE" });
+          loadNotes();
+          showToast("Note deleted");
+        }));
+      } catch {}
+    }
+    loadNotes();
+    document.getElementById("note-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("note-title").value.trim();
+      const content = document.getElementById("note-content").value.trim();
+      if (!title && !content) return;
+      const editId = e.target.dataset.editId;
+      try {
+        if (editId) {
+          await api("/api/notes/" + editId, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) });
+          delete e.target.dataset.editId;
+          e.target.querySelector("button[type=submit]").textContent = "Save note";
+        } else {
+          await api("/api/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, content }) });
+        }
+        document.getElementById("note-title").value = "";
+        document.getElementById("note-content").value = "";
+        loadNotes();
+        showToast(editId ? "Note updated" : "Note saved");
+      } catch (err) { alert(err.message); }
+    });
+  }
+
+  if (activeTab === "display") {
+    document.getElementById("username-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const d = await api("/api/auth/change-username", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: document.getElementById("username-input").value })
+        });
+        state.user.username = d.user.username;
+        localStorage.setItem("auth", JSON.stringify(state));
+        localStorage.setItem("user", JSON.stringify(state.user));
+        showToast("Display name updated");
+        renderNav();
+        renderSettings();
+      } catch (err) {
+        document.getElementById("username-error").textContent = err.message;
+      }
+    });
+  }
+
+  if (activeTab === "theme") {
+    document.getElementById("theme-schedule-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const d = await api("/api/auth/theme-schedule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            enabled: document.getElementById("ts-enabled").checked,
+            darkStart: document.getElementById("ts-dark-start").value,
+            darkEnd: document.getElementById("ts-dark-end").value
+          })
+        });
+        state.themeSchedule = d.themeSchedule;
+        localStorage.setItem("auth", JSON.stringify(state));
+        localStorage.setItem("user", JSON.stringify(state.user));
+        applyThemeSchedule();
+        showToast("Theme schedule saved");
+      } catch (err) { alert(err.message); }
+    });
+  }
+
+  if (activeTab === "reminders") {
+    async function loadReminders() {
+      try {
+        const d = await api("/api/auth/reminders");
+        state.reminders = d.reminders || [];
+        const list = document.getElementById("reminders-list");
+        if (!list) return;
+        if (!state.reminders.length) { list.innerHTML = '<p class="muted small">No reminders set.</p>'; return; }
+        list.innerHTML = state.reminders.map(r => {
+          const days = ["S","M","T","W","T","F","S"];
+          const dayStr = (r.days || []).map(d => days[d]).join(" ");
+          return `<div class="reminder-item"><span class="reminder-text">${esc(r.text)} — <strong>${r.time}</strong> ${dayStr}</span><button class="btn btn-sm btn-outline" data-del-rem="${r.id}">Remove</button></div>`;
+        }).join("");
+        list.querySelectorAll("[data-del-rem]").forEach(btn => btn.addEventListener("click", async () => {
+          await api("/api/auth/reminders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id: btn.dataset.delRem }) });
+          loadReminders();
+        }));
+      } catch {}
+    }
+    loadReminders();
+    document.querySelectorAll("#rem-days .day-chip").forEach(btn => {
+      btn.addEventListener("click", () => btn.classList.toggle("on"));
+    });
+    document.getElementById("reminder-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = document.getElementById("rem-text").value.trim();
+      const time = document.getElementById("rem-time").value;
+      const days = [...document.querySelectorAll("#rem-days .day-chip.on")].map(b => parseInt(b.dataset.day));
+      if (!text) return;
+      try {
+        await api("/api/auth/reminders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, time, days }) });
+        document.getElementById("rem-text").value = "";
+        loadReminders();
+        showToast("Reminder added");
+        requestNotificationPermission();
+      } catch (err) { alert(err.message); }
+    });
+  }
+
+  if (activeTab === "notifications") {
+    document.getElementById("notif-prefs-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const d = await api("/api/auth/notif-prefs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            upload: document.getElementById("np-upload").checked,
+            approval: document.getElementById("np-approval").checked,
+            comment: document.getElementById("np-comment").checked,
+            mention: document.getElementById("np-mention").checked,
+            follow: document.getElementById("np-follow").checked,
+            group: document.getElementById("np-group").checked
+          })
+        });
+        state.notifPrefs = d.notifPrefs;
+        localStorage.setItem("auth", JSON.stringify(state));
+        localStorage.setItem("user", JSON.stringify(state.user));
+        showToast("Notification preferences saved");
+      } catch (err) { alert(err.message); }
+    });
+  }
+
+  if (activeTab === "account") {
+    document.getElementById("pw-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nw = document.getElementById("pw-new").value;
+      if (nw !== document.getElementById("pw-new2").value) {
+        return (document.getElementById("pw-error").textContent = "New passwords do not match");
+      }
+      if (nw.length < 8) {
+        return (document.getElementById("pw-error").textContent = "Password must be at least 8 characters");
+      }
+      if (!/[a-zA-Z]/.test(nw)) {
+        return (document.getElementById("pw-error").textContent = "Password must contain at least one letter");
+      }
+      if (!/[0-9]/.test(nw)) {
+        return (document.getElementById("pw-error").textContent = "Password must contain at least one number");
+      }
+      try {
+        await api("/api/auth/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oldPassword: document.getElementById("pw-old").value, newPassword: nw })
+        });
+        showToast("Password updated");
+        renderSettings();
+      } catch (err) {
+        document.getElementById("pw-error").textContent = err.message;
+      }
+    });
+
+    document.getElementById("sq-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await api("/api/auth/security-question", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: document.getElementById("sq-q").value,
+            answer: document.getElementById("sq-a").value
+          })
+        });
+        showToast("Recovery question saved");
+        renderSettings();
+      } catch (err) {
+        document.getElementById("sq-error").textContent = err.message;
+      }
+    });
+
+    document.getElementById("settings-logout")?.addEventListener("click", () => {
+      clearAuth();
+      location.hash = "#/login";
+    });
+  }
 }
 
 /* ---------- home ---------- */
@@ -3192,6 +3382,13 @@ async function renderCourseDetail(hash) {
               <div class="progress-bar"><div class="progress-fill" id="upload-pbar" style="width:0%"></div></div>
               <span class="muted small" id="upload-ptxt">0%</span>
             </div>
+            <label style="margin:8px 0">Category
+              <select id="up-category" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+                <option value="">Course material</option>
+                <option value="past-question">Past question</option>
+                ${state.user.role !== "student" ? '<option value="textbook">Textbook</option>' : ""}
+              </select>
+            </label>
             <p class="error" id="up-error"></p>
             <div class="modal-actions">
               <button type="button" class="btn btn-outline" id="up-cancel">Cancel</button>
@@ -3332,6 +3529,8 @@ async function renderCourseDetail(hash) {
           xhr.setRequestHeader("X-File-Name", encodeURIComponent(f.name));
           xhr.setRequestHeader("X-Original-Name", encodeURIComponent(f.name));
           xhr.setRequestHeader("X-Course-Id", id);
+          const catEl = document.getElementById("up-category");
+          if (catEl && catEl.value) xhr.setRequestHeader("X-Category", catEl.value);
           xhr.send(buf);
         });
         successCount++;
@@ -4109,28 +4308,45 @@ async function renderCollectionDetail(hash) {
 
 /* ---------- notifications page ---------- */
 
+function notifItemHtml(n) {
+  const typeIcons = { upload: "upload", approval: "check", comment: "chat", mention: "mail", follow: "users", system: "bell" };
+  return `<div class="notif-page-item ${n.read ? "read" : ""}" data-nid="${n.id}" ${n.link ? 'data-link="' + esc(n.link) + '" style="cursor:pointer"' : ""}>
+    <span class="notif-page-icon">${icon(typeIcons[n.type] || "bell")}</span>
+    <div class="notif-page-body">
+      <div class="notif-page-text">${esc(n.text)}</div>
+      <div class="notif-page-meta">
+        <span class="muted small">${fmtDate(n.at)}</span>
+        ${n.link ? '<span class="notif-page-arrow">' + icon("chevronRight") + "</span>" : ""}
+      </div>
+    </div>
+  </div>`;
+}
+
 async function renderNotifications() {
   if (!state.user) return (location.hash = "#/login");
   let notifications = [];
   try { notifications = (await api("/api/notifications")).notifications || []; } catch {}
   const unread = notifications.filter((n) => !n.read).length;
 
+  const unreadNotifs = notifications.filter((n) => !n.read);
+  const readNotifs = notifications.filter((n) => n.read);
+
   app.innerHTML = shell(`
     <div class="notif-page">
       <div class="notif-page-head">
-        <h1>Notifications</h1>
-        ${unread ? '<button class="btn btn-primary btn-sm" id="notif-mark-all">Mark all read</button>' : ""}
+        <h1>${icon("bell")} Notifications${unread ? ' <span class="badge-role">' + unread.length + " new</span>" : ""}</h1>
+        ${unread ? '<button class="btn btn-outline btn-sm" id="notif-mark-all">Mark all read</button>' : ""}
       </div>
-      ${notifications.length ? `<div class="notif-page-list">
-        ${notifications.map((n) => `
-          <div class="notif-page-item ${n.read ? "read" : ""}" data-nid="${n.id}" ${n.link ? 'data-link="' + esc(n.link) + '" style="cursor:pointer"' : ""}>
-            <div class="notif-page-text">${esc(n.text)}</div>
-            <div class="notif-page-meta">
-              <span class="muted small">${fmtDate(n.at)}</span>
-              ${n.link ? '<span class="notif-page-arrow">' + icon("chevronRight") + "</span>" : ""}
-            </div>
-          </div>`).join("")}
-      </div>` : emptyState("bell", "No notifications yet", "Notifications from courses and classmates will appear here.", "")}
+      ${notifications.length ? `
+        ${unreadNotifs.length ? `<h3 class="section-title muted small" style="margin:8px 0 4px">New</h3>
+        <div class="notif-page-list">
+          ${unreadNotifs.map((n) => notifItemHtml(n)).join("")}
+        </div>` : ""}
+        ${readNotifs.length ? `<h3 class="section-title muted small" style="margin:16px 0 4px">Earlier</h3>
+        <div class="notif-page-list">
+          ${readNotifs.map((n) => notifItemHtml(n)).join("")}
+        </div>` : ""}
+      ` : emptyState("bell", "No notifications yet", "Notifications from courses and classmates will appear here.", "")}
     </div>`);
 
   const markAllBtn = document.getElementById("notif-mark-all");

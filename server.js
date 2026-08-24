@@ -407,7 +407,8 @@ function fileInfo(f, user) {
     downloads: f.downloads || 0,
     views: f.views || 0,
     commentCount: (f.comments || []).length,
-    tags: f.tags || []
+    tags: f.tags || [],
+    category: f.category || ""
   };
   if (user && (user.role === "admin" || f.uploadedBy === user.id)) info.uploadedBy = f.uploadedBy;
   if (user) {
@@ -1274,8 +1275,15 @@ routes.push({
     const name = decodeURIComponent(req.headers["x-file-name"] || "");
     const courseId = req.headers["x-course-id"] || "";
     const originalName = decodeURIComponent(req.headers["x-original-name"] || "");
+    const category = req.headers["x-category"] || "";
     if (!courseId || !db.courses.some((c) => c.id === courseId)) {
       return send(res, 400, { error: "Invalid course" });
+    }
+    if (category === "textbook" && user.role === "student") {
+      return send(res, 403, { error: "Only lecturers and admins can upload textbooks" });
+    }
+    if (category === "past-question" && user.role === "student") {
+      // Students can upload past questions but they need approval
     }
     if (req.headers["content-type"] !== "application/octet-stream") {
       return send(res, 400, { error: "Upload the file as a binary body" });
@@ -1298,6 +1306,7 @@ routes.push({
       uploadedByName: user.username,
       role: user.role,
       approved: user.role === "admin",
+      category: category || "",
       size: buf.length,
       uploadedAt: new Date().toISOString(),
       downloads: 0,
@@ -2808,6 +2817,69 @@ const server = http.createServer((req, res) => {
   const pathname = url.pathname;
   if (pathname.startsWith("/api/")) return handleApi(req, res, pathname);
   return serveStatic(req, res, pathname);
+});
+
+/* ---------- notes (notepad) ---------- */
+
+routes.push({
+  method: "GET", path: "/api/notes",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    send(res, 200, { notes: user.notes || [] });
+  }
+});
+
+routes.push({
+  method: "POST", path: "/api/notes",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 65536)).toString() || "{}");
+    const title = String(body.title || "").trim().slice(0, 200);
+    const content = String(body.content || "").trim().slice(0, 50000);
+    if (!title && !content) return send(res, 400, { error: "Title or content required" });
+    if (!user.notes) user.notes = [];
+    const note = {
+      id: "n" + Date.now() + Math.random().toString(16).slice(2, 5),
+      title: title || "Untitled",
+      content,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    user.notes.unshift(note);
+    saveDb();
+    ok(res, { note });
+  }
+});
+
+routes.push({
+  method: "PUT", path: "/api/notes/:id",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const note = (user.notes || []).find((n) => n.id === params.id);
+    if (!note) return send(res, 404, { error: "Note not found" });
+    const body = JSON.parse((await readBody(req, 65536)).toString() || "{}");
+    if (body.title !== undefined) note.title = String(body.title).trim().slice(0, 200) || "Untitled";
+    if (body.content !== undefined) note.content = String(body.content).trim().slice(0, 50000);
+    note.updatedAt = new Date().toISOString();
+    saveDb();
+    ok(res, { note });
+  }
+});
+
+routes.push({
+  method: "DELETE", path: "/api/notes/:id",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const before = (user.notes || []).length;
+    user.notes = (user.notes || []).filter((n) => n.id !== params.id);
+    if (user.notes.length === before) return send(res, 404, { error: "Note not found" });
+    saveDb();
+    ok(res);
+  }
 });
 
 server.listen(PORT, () => {

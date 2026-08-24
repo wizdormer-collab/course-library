@@ -2147,7 +2147,66 @@ body.auth-page main {
     gap: 10px;
   }
 
-  .settings-grid {
+.profile-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 12px;
+  scrollbar-width: none;
+}
+
+.profile-tabs::-webkit-scrollbar { display: none; }
+
+.profile-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.profile-tab:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.profile-tab.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.profile-tab .ic { width: 16px; height: 16px; }
+
+.profile-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profile-tab-content textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.settings-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3078,19 +3137,37 @@ body.auth-page main {
 .notif-page-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 
 .notif-page-item {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 14px;
   transition: background 0.15s ease;
+}
+
+.notif-page-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--primary-bg, rgba(99, 102, 241, 0.1));
+  color: var(--primary);
+}
+
+.notif-page-icon .ic { width: 18px; height: 18px; }
+
+.notif-page-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .notif-page-item.read {
