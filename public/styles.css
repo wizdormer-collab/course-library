@@ -184,7 +184,7 @@ body::before {
   font-weight: 700;
 }
 
-main {
+main#app {
   padding: 54px 20px 100px;
 }
 
@@ -943,9 +943,11 @@ main {
 }
 
 .stat-num {
+  display: block;
   font-size: 1.9rem;
   font-weight: 800;
   letter-spacing: -0.03em;
+  line-height: 1.1;
   background: linear-gradient(135deg, var(--primary), var(--primary-2));
   -webkit-background-clip: text;
   background-clip: text;
@@ -1184,6 +1186,26 @@ main {
 
 .comment-del:hover {
   color: var(--danger);
+}
+
+/* ---------- offline banner ---------- */
+
+.offline-banner {
+  background: var(--danger);
+  color: #fff;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.toast-error {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
 }
 
 /* ---------- toast ---------- */
@@ -1630,7 +1652,7 @@ body.auth-page main {
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr));
   gap: 18px;
 }
 
@@ -2085,19 +2107,6 @@ body.auth-page main {
     font-size: 1.05rem;
   }
 
-  /* toast sits above the pill tab bar */
-.offline-banner {
-  background: var(--danger);
-  color: #fff;
-  text-align: center;
-  padding: 8px 16px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
 .toast {
     top: auto;
     bottom: calc(82px + env(safe-area-inset-bottom));
@@ -2296,15 +2305,6 @@ body.auth-page main {
 .ico-files { background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(14, 165, 233, 0.05)); color: #0284c7; }
 .ico-saved { background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.06)); color: #d97706; }
 .ico-recent { background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.06)); color: #059669; }
-
-.stat-num {
-  display: block;
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  color: var(--text);
-}
 
 .stat-lab {
   font-size: 0.72rem;
@@ -4357,7 +4357,7 @@ body.auth-page main {
   margin-top: 8px;
 }
 
-.pdf-frame {
+.pdf-frame-viewer {
   width: 100%;
   height: calc(100vh - 200px);
   min-height: 400px;
@@ -4365,7 +4365,7 @@ body.auth-page main {
 }
 
 @media (max-height: 500px) {
-  .pdf-frame {
+  .pdf-frame-viewer {
     height: calc(100dvh - 120px);
     min-height: 200px;
   }
@@ -4502,7 +4502,7 @@ body.auth-page main {
 
 /* ---------- student badge ---------- */
 
-.badge {
+.badge-role {
   display: inline-block;
   padding: 1px 6px;
   border-radius: 8px;

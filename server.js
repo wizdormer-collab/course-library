@@ -342,8 +342,11 @@ function readBody(req, limit = MAX_UPLOAD) {
 
 function getAuthUser(req) {
   const h = req.headers.authorization || "";
-  if (!h.startsWith("Bearer ")) return null;
-  return verifyToken(h.slice(7));
+  if (h.startsWith("Bearer ")) return verifyToken(h.slice(7));
+  const url = new URL(req.url, "http://localhost");
+  const qt = url.searchParams.get("token");
+  if (qt) return verifyToken(qt);
+  return null;
 }
 
 function notify(userId, text, type, link) {
@@ -1118,7 +1121,8 @@ routes.push({
     const c = db.courses.find((x) => x.id === params.id);
     if (!c) return send(res, 404, { error: "Course not found" });
     const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
-    const score = Math.min(5, Math.max(1, parseInt(body.score) || 0));
+    const raw = parseInt(body.score);
+    const score = Math.min(5, Math.max(1, isNaN(raw) ? 0 : raw));
     if (!score) return send(res, 400, { error: "Score 1-5 required" });
     if (!c.ratings) c.ratings = [];
     const existing = c.ratings.find((r) => r.userId === user.id);

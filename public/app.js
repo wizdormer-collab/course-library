@@ -47,8 +47,6 @@ function applyThemeSchedule() {
   }
 }
 
-if (state.themeSchedule && state.themeSchedule.enabled) setInterval(applyThemeSchedule, 60000);
-
 function token() {
   return localStorage.getItem("token");
 }
@@ -132,7 +130,11 @@ const ICONS = {
   mapPin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
   building: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22V12h6v10"/><path d="M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01"/>',
   bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
-  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>'
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
+  minus: '<line x1="5" y1="12" x2="19" y2="12"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  chevronDown: '<polyline points="6 9 12 15 18 9"/>'
 };
 
 function icon(name, cls) {
@@ -207,12 +209,14 @@ async function downloadPath(path, filename) {
 }
 
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, isError) {
   state.toast = msg;
+  state.toastError = !!isError;
   render();
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     state.toast = "";
+    state.toastError = false;
     render();
   }, 4000);
 }
@@ -279,7 +283,7 @@ function fileRow(f, opts = {}) {
         </span>
         ${tagsHtml}
         ${progressHtml}
-        ${opts.showCounts ? `
+        ${(opts.showCounts || opts.counts) ? `
           <span class="muted">
             <span class="stat" title="Views">${icon("eye")} ${fmtCount(f.views || 0)}</span>
             <span class="stat" title="Downloads">${icon("download")} ${fmtCount(f.downloads || 0)}</span>
@@ -465,7 +469,7 @@ async function bindRowActions({ showCourse = false, counts = false } = {}) {
         if (current) {
           await api("/api/files/" + fid + "/rating", { method: "DELETE" });
         } else {
-          await api("/api/files/" + fid + "/rating", { method: "POST", body: { score } });
+          await api("/api/files/" + fid + "/rating", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ score }) });
         }
         const stars = wrap.querySelectorAll(".star");
         stars.forEach((s, i) => s.classList.toggle("on", !current && i < score));
@@ -970,7 +974,7 @@ async function renderNav() {
 function shell(inner) {
   const offlineBanner = !navigator.onLine ? '<div class="offline-banner" role="alert">You are offline — viewing cached content only</div>' : "";
   return offlineBanner + inner + (state.toast
-    ? `<div class="toast" role="status" aria-live="polite">${esc(state.toast)}</div>`
+    ? `<div class="toast${state.toastError ? " toast-error" : ""}" role="status" aria-live="polite">${esc(state.toast)}</div>`
     : `<div aria-live="polite" class="sr-only" id="toast-region"></div>`);
 }
 
@@ -1779,6 +1783,8 @@ function renderForgot() {
   const btn = document.getElementById("fg-btn");
   const error = document.getElementById("fg-error");
 
+  document.getElementById("forgot-form").addEventListener("submit", (e) => { e.preventDefault(); btn.click(); });
+
   btn.addEventListener("click", async () => {
     error.textContent = "";
     if (!question) {
@@ -1963,6 +1969,7 @@ async function renderSettings() {
       });
       state.user.username = d.user.username;
       localStorage.setItem("auth", JSON.stringify(state));
+      localStorage.setItem("user", JSON.stringify(state.user));
       showToast("Display name updated");
       renderNav();
       renderSettings();
@@ -2003,6 +2010,7 @@ async function renderSettings() {
       });
       state.themeSchedule = d.themeSchedule;
       localStorage.setItem("auth", JSON.stringify(state));
+      localStorage.setItem("user", JSON.stringify(state.user));
       applyThemeSchedule();
       showToast("Theme schedule saved");
     } catch (err) {
@@ -2068,6 +2076,7 @@ async function renderSettings() {
       });
       state.notifPrefs = d.notifPrefs;
       localStorage.setItem("auth", JSON.stringify(state));
+      localStorage.setItem("user", JSON.stringify(state.user));
       showToast("Notification preferences saved");
     } catch (err) {
       alert(err.message);
@@ -2222,7 +2231,7 @@ function bindCourseMenus() {
         if (current) {
           await api("/api/courses/" + cid + "/rating", { method: "DELETE" });
         } else {
-          await api("/api/courses/" + cid + "/rating", { method: "POST", body: { score } });
+          await api("/api/courses/" + cid + "/rating", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ score }) });
         }
         const stars = wrap.querySelectorAll(".star");
         stars.forEach((s, i) => s.classList.toggle("on", !current && i < score));
@@ -2261,7 +2270,7 @@ async function renderHome() {
       <select id="filter-sem"><option value="">All semesters</option></select>
     </div>
     <div id="search-results"></div>
-    <div class="skeleton" class="mt-20"><div class="skel" style="height:80px;border-radius:18px"></div><div class="skel" style="height:120px;border-radius:18px"></div></div>`);
+    <div class="skeleton mt-20"><div class="skel" style="height:80px;border-radius:18px"></div><div class="skel" style="height:120px;border-radius:18px"></div></div>`);
 
   bindSearch();
   bindFilterToggle();
@@ -2412,7 +2421,7 @@ async function renderHome() {
     ${announcements.length || isAdmin || state.user.role === "lecturer" ? `
     <section class="home-section">
       <h2 class="section-title">${icon("bell")} Announcements</h2>
-      ${isAdmin || state.user.role === "lecturer" ? `<div class="ann-compose card" class="mb-12">
+      ${isAdmin || state.user.role === "lecturer" ? `<div class="ann-compose card mb-12">
         <textarea id="ann-input" class="ann-textarea" rows="2" placeholder="Post an announcement..." style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;resize:none;font:inherit;background:var(--card-2);color:var(--text);margin-bottom:8px"></textarea>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2433,7 +2442,7 @@ async function renderHome() {
           ? announcements.slice(0, 5).map((a) => `
           <div class="ann-card">
             <div class="ann-head">
-              <span class="ann-author">${esc(a.authorName)}${a.authorRole === "lecturer" ? ' <span class="badge">lecturer</span>' : ""}</span>
+              <span class="ann-author">${esc(a.authorName)}${a.authorRole === "lecturer" ? ' <span class="badge-role">lecturer</span>' : ""}</span>
               <span class="ann-date">${fmtDate(a.createdAt)}</span>
             </div>
             <div class="ann-text">${esc(a.text)}</div>
@@ -2639,7 +2648,7 @@ async function renderCourses(hash) {
                   <span class="muted small">${files.pct}%</span>
                 </div>
                 <div class="progress-bar"><div class="progress-fill" style="width:${files.pct}%"></div></div>
-              </div>` : `<p class="muted small" class="mt-8">No materials yet</p>`}
+              </div>` : `<p class="muted small mt-8">No materials yet</p>`}
               <span class="card-link">Open materials &rarr;</span>
             </a>`;
           }).join("")
@@ -2661,7 +2670,7 @@ async function renderCourses(hash) {
               ${c.category ? `<span class="tag">${esc(c.category)}</span>` : ""}
               ${c.semester ? `<span class="tag tag-outline">${esc(c.semester)}</span>` : ""}
             </div>
-            <p class="muted small" class="mt-8">${c.fileCount || 0} materials</p>
+            <p class="muted small mt-8">${c.fileCount || 0} materials</p>
             <span class="card-link">View &rarr;</span>
           </a>`;
         }).join("") || '<p class="muted" style="grid-column:1/-1;text-align:center;padding:16px">You\'re enrolled in all available courses!</p>'}
@@ -3438,12 +3447,12 @@ async function renderMaterialViewer(hash) {
           <button class="icon-btn heart ${f.liked ? "on" : ""}" data-like="${f.id}" title="Like">${icon("heart")} <span class="like-count">${f.likes || 0}</span></button>
           <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save">${icon("star")}</button>
           <button class="icon-btn" data-share="${f.id}" title="Share link">${icon("share")}</button>
-          <a href="/api/files/${f.id}/download" class="btn btn-outline btn-sm">${icon("download")} Download</a>
+          <a href="/api/files/${f.id}/download?token=${encodeURIComponent(token())}" class="btn btn-outline btn-sm">${icon("download")} Download</a>
         </div>
       </div>
       ${rp ? `<div class="progress-card"><div class="progress-row"><span class="muted small">Reading progress</span><span class="muted small">${rp.pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${rp.pct}%"></div></div></div>` : ""}
       <div class="material-viewer">
-        <iframe src="/api/files/${f.id}/inline" class="pdf-frame" title="${esc(f.name)}"></iframe>
+        <iframe src="/api/files/${f.id}/inline?token=${encodeURIComponent(token())}" class="pdf-frame-viewer" title="${esc(f.name)}"></iframe>
       </div>
       ${bookmarks.length ? `
       <div class="card" style="padding:16px;margin-top:12px">
@@ -3502,7 +3511,7 @@ async function renderMaterialViewer(hash) {
     app.innerHTML = shell(`<div class="empty-pad">
       <h2>Material not found</h2>
       <p class="muted">${esc(err.message)}</p>
-      <a href="#/" class="btn btn-primary" class="mt-12">Go home</a>
+      <a href="#/" class="btn btn-primary mt-12">Go home</a>
     </div>`);
   }
 }
@@ -3668,7 +3677,7 @@ async function renderAdmin() {
         <div class="file-row">
           <span class="file-icon">${u.role === "admin" ? icon("shield") : icon("user")}</span>
           <div class="file-info">
-            <div class="file-name">${esc(u.username)} ${u.id === state.user.id ? '<span class="badge">you</span>' : ""}</div>
+            <div class="file-name">${esc(u.username)} ${u.id === state.user.id ? '<span class="badge-role">you</span>' : ""}</div>
             <span class="muted">${esc(u.email || "")} &middot; Role: ${esc(u.role)}</span>
           </div>
           <div class="file-actions">
@@ -3882,7 +3891,7 @@ async function renderProfile(hash) {
             <button class="btn btn-primary btn-sm" id="edit-save">Save</button>
           </div>
         </div>` : ""}
-        <div class="stat-grid" class="mt-20">
+        <div class="stat-grid mt-20">
           <div class="stat-card"><div class="stat-num">${p.uploadCount}</div><div class="stat-lab">Uploads</div></div>
           <div class="stat-card"><div class="stat-num">${fmtCount(p.totalViews)}</div><div class="stat-lab">Views</div></div>
           <div class="stat-card"><div class="stat-num">${fmtCount(p.totalDownloads)}</div><div class="stat-lab">Downloads</div></div>
@@ -3973,6 +3982,7 @@ async function renderProfile(hash) {
             });
             state.user.bio = res.bio;
             localStorage.setItem("auth", JSON.stringify(state));
+      localStorage.setItem("user", JSON.stringify(state.user));
             showToast("Profile updated");
             renderProfile(hash);
           } catch (err) {
@@ -4002,6 +4012,7 @@ async function renderProfile(hash) {
             });
             state.user.avatarUrl = res.avatarUrl;
             localStorage.setItem("auth", JSON.stringify(state));
+      localStorage.setItem("user", JSON.stringify(state.user));
             showToast("Avatar updated");
             renderProfile(hash);
           } catch (err) {
@@ -4028,7 +4039,7 @@ async function renderProfile(hash) {
     app.innerHTML = shell(`<div class="empty-pad">
       <h2>Profile not found</h2>
       <p class="muted">${esc(err.message)}</p>
-      <a href="#/" class="btn btn-primary" class="mt-12">Go home</a>
+      <a href="#/" class="btn btn-primary mt-12">Go home</a>
     </div>`);
   }
 }
@@ -4091,7 +4102,7 @@ async function renderCollectionDetail(hash) {
     app.innerHTML = shell(`<div class="empty-pad">
       <h2>Collection not found</h2>
       <p class="muted">${esc(err.message)}</p>
-      <a href="#/" class="btn btn-primary" class="mt-12">Go home</a>
+      <a href="#/" class="btn btn-primary mt-12">Go home</a>
     </div>`);
   }
 }
@@ -4316,7 +4327,7 @@ async function renderGroupDetail(hash) {
     app.innerHTML = shell(`<div class="empty-pad">
       <h2>Group not found</h2>
       <p class="muted">${esc(err.message)}</p>
-      <a href="#/groups" class="btn btn-primary" class="mt-12">Back to groups</a>
+      <a href="#/groups" class="btn btn-primary mt-12">Back to groups</a>
     </div>`);
   }
 }
@@ -4341,6 +4352,7 @@ async function renderGroupDetail(hash) {
     try { await api("/api/auth/weekly-progress"); } catch {}
   }
   applyThemeSchedule();
+  if (state.themeSchedule && state.themeSchedule.enabled) setInterval(applyThemeSchedule, 60000);
   startReminderChecker();
   render();
 })();
@@ -4397,14 +4409,6 @@ if ("serviceWorker" in navigator) {
 }
 
 /* ---------- offline indicator ---------- */
-
-const offlineBar = document.getElementById("offline-bar");
-function updateOnlineStatus() {
-  if (offlineBar) offlineBar.classList.toggle("hidden", navigator.onLine);
-}
-window.addEventListener("online", updateOnlineStatus);
-window.addEventListener("offline", updateOnlineStatus);
-updateOnlineStatus();
 
 /* ---------- PWA install prompt ---------- */
 
