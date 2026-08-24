@@ -2193,6 +2193,10 @@ body.auth-page main {
   gap: 14px;
 }
 
+.profile-tabs-bottom {
+  margin-top: auto;
+}
+
 .profile-tab-content textarea {
   width: 100%;
   padding: 10px 12px;

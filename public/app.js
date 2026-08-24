@@ -2026,9 +2026,11 @@ async function renderSettings() {
         <h3>Account</h3>
         <p class="muted small">Signed in as ${esc(u.username)}${u.role === "admin" ? " (admin)" : ""}</p>
         ${u.role === "admin" ? '<p class="muted small"><a href="#/admin" class="view-all">Open admin panel</a></p>' : ""}
-        <button class="btn btn-danger" id="settings-logout">${icon("logout")} Log out</button>
       </div>`;
   }
+
+  const activeTabObj = tabs.find(t => t.id === activeTab);
+  const inactiveTabs = tabs.filter(t => t.id !== activeTab);
 
   app.innerHTML = shell(`
     <div class="page-head">
@@ -2038,9 +2040,13 @@ async function renderSettings() {
       </div>
     </div>
     <div class="profile-tabs">
-      ${tabs.map(t => `<button class="profile-tab${activeTab === t.id ? " active" : ""}" data-tab="${t.id}">${icon(t.icon)} ${t.label}</button>`).join("")}
+      ${activeTabObj ? `<button class="profile-tab active" data-tab="${activeTabObj.id}">${icon(activeTabObj.icon)} ${activeTabObj.label}</button>` : ""}
     </div>
-    <div class="profile-tab-content">${tabContent}</div>`);
+    <div class="profile-tab-content">${tabContent}</div>
+    <div class="profile-tabs profile-tabs-bottom">
+      ${inactiveTabs.map(t => `<button class="profile-tab" data-tab="${t.id}">${icon(t.icon)} ${t.label}</button>`).join("")}
+    </div>
+    <button class="btn btn-danger btn-block" id="settings-logout" style="margin-top:8px">${icon("logout")} Log out</button>`);
 
   // Tab switching
   document.querySelectorAll(".profile-tab").forEach(btn => {
