@@ -4082,7 +4082,7 @@ async function renderPastQuestions() {
     <a href="#/" class="back-link">${icon("chevronLeft")} Home</a>
     <div class="page-head">
       <div>
-        <h1>${icon("archive")} Past Questions</h1>
+        <h1>Past Questions ${icon("archive")}</h1>
         <p class="muted" id="pq-count">${files.length} past question${files.length !== 1 ? "s" : ""}</p>
       </div>
       ${state.user.role !== "student" ? '<button class="btn btn-primary btn-sm" id="pq-upload-btn">' + icon("plus") + " Upload</button>" : ""}
