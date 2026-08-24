@@ -2053,6 +2053,7 @@ async function renderSettings() {
     btn.addEventListener("click", () => {
       state.profileTab = btn.dataset.tab;
       renderSettings();
+      window.scrollTo(0, 0);
     });
   });
 
