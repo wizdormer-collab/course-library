@@ -1064,6 +1064,7 @@ async function render() {
     else if (hash.startsWith("/tag/")) { await renderTagFiles(hash); }
     else if (hash === "/notes") { await renderNotes(); }
     else if (hash === "/past-questions") { await renderPastQuestions(); }
+    else if (hash === "/textbooks") { await renderTextbooks(); }
     else { await renderHome(); }
     window.scrollTo({ top: 0 });
     loadUserData();
@@ -2650,7 +2651,7 @@ async function renderHome() {
         ${qaTile("#/courses", "t-all", "book", "All Materials")}
         ${qaTile("#/notes", "t-notes", "edit", "Notes")}
         ${qaTile("#/past-questions", "t-past", "archive", "Past Questions")}
-        ${qaTile("#/tag/textbook", "t-textbook", "bookOpen", "Textbooks")}
+        ${qaTile("#/textbooks", "t-textbook", "bookOpen", "Textbooks")}
       </div>
     </section>
 
@@ -3967,6 +3968,282 @@ async function renderCertificate(hash) {
   }
 }
 
+
+
+
+/* ---------- textbooks ---------- */
+
+async function renderTextbooks() {
+  if (!state.user) return (location.hash = "#/login");
+  let files = [];
+  try { const d = await api("/api/files?tag=textbook&limit=200"); files = d.files || []; } catch {}
+  const courses = state.courses || [];
+  const canUpload = state.user.role === "admin" || state.user.role === "lecturer";
+
+  function getCourseLabel(courseId) {
+    const c = courses.find(x => x.id === courseId);
+    return c ? c.code + " - " + c.name : "General";
+  }
+
+  function groupByCourse(list) {
+    const groups = {};
+    list.forEach(f => {
+      const cid = f.courseId || "_ungrouped";
+      if (!groups[cid]) groups[cid] = { label: getCourseLabel(cid), files: [] };
+      groups[cid].files.push(f);
+    });
+    return Object.entries(groups).sort((a, b) => {
+      if (a[0] === "_ungrouped") return 1;
+      if (b[0] === "_ungrouped") return -1;
+      return a[1].label.localeCompare(b[1].label);
+    });
+  }
+
+  let searchQ = "";
+  let sortBy = "date";
+
+  function render() {
+    let filtered = files;
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      filtered = files.filter(f => {
+        const cName = getCourseLabel(f.courseId).toLowerCase();
+        return cName.includes(q) || f.name.toLowerCase().includes(q);
+      });
+    }
+    if (sortBy === "downloads") filtered.sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
+    else if (sortBy === "views") filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+    else filtered.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+
+    const groups = groupByCourse(filtered);
+    const listEl = document.getElementById("tb-list");
+    const countEl = document.getElementById("tb-count");
+    if (countEl) countEl.textContent = filtered.length + " textbook" + (filtered.length !== 1 ? "s" : "");
+    if (!listEl) return;
+
+    if (!files.length) {
+      if (canUpload) {
+        listEl.innerHTML = emptyState("bookOpen", "No textbooks yet", "Upload textbooks for your students to access.",
+          '<button class="btn btn-primary" id="tb-upload-btn">' + icon("plus") + " Upload textbook</button>");
+      } else {
+        listEl.innerHTML = emptyState("bookOpen", "No textbooks yet", "Your lecturer will upload textbooks here. Check back soon!");
+      }
+      const upBtn = document.getElementById("tb-upload-btn");
+      if (upBtn) upBtn.addEventListener("click", () => openTBUpload());
+      return;
+    }
+    if (!filtered.length) {
+      listEl.innerHTML = emptyState("search", "No results", "No textbooks match your search.");
+      return;
+    }
+    let html = "";
+    groups.forEach(([cid, group]) => {
+      html += `<div class="pq-group">
+        <div class="pq-group-head">
+          <span class="pq-group-icon pq-group-icon-textbook">${icon("bookOpen")}</span>
+          <div>
+            <h3 class="pq-group-title">${esc(group.label)}</h3>
+            <span class="muted small">${group.files.length} textbook${group.files.length !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
+        <div class="pq-group-files">
+          ${group.files.map(f => `<div class="file-row" data-fid="${f.id}">
+            <span class="file-icon">${icon("pdf")}</span>
+            <div class="file-info">
+              <a href="#/material/${f.id}" class="file-name">${esc(f.name)}</a>
+              <span class="muted">
+                by ${esc(f.uploadedByName)} · ${fmtSize(f.size)} · ${fmtDate(f.uploadedAt)}
+                ${!f.approved ? '<span class="badge badge-pending">pending</span>' : ""}
+                <span class="badge" style="background:rgba(99,102,241,0.16);color:#6366f1">textbook</span>
+              </span>
+              <span class="muted">
+                <span class="stat" title="Views">${icon("eye")} ${fmtCount(f.views || 0)}</span>
+                <span class="stat" title="Downloads">${icon("download")} ${fmtCount(f.downloads || 0)}</span>
+              </span>
+            </div>
+            <div class="file-actions">
+              <button class="icon-btn heart ${f.liked ? "on" : ""}" data-like="${f.id}" title="Like">${icon("heart")} <span class="like-count">${f.likes || 0}</span></button>
+              <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save">${icon("star")}</button>
+              <button class="btn btn-outline btn-sm" data-download="${f.id}" data-name="${esc(f.originalName || f.name)}">${icon("download")} Download</button>
+            </div>
+          </div>`).join("")}
+        </div>
+      </div>`;
+    });
+    listEl.innerHTML = html;
+    bindRowActions({});
+  }
+
+  function openTBUpload() {
+    const enrolled = (state.user.enrolledCourses || []).map(cid => courses.find(c => c.id === cid)).filter(Boolean);
+    if (!enrolled.length) { showToast("Enroll in a course first to upload textbooks", true); return; }
+    const modal = document.getElementById("tb-upload-modal");
+    const courseSel = document.getElementById("tb-upload-course");
+    if (courseSel) {
+      courseSel.innerHTML = enrolled.map(c => `<option value="${c.id}">${esc(c.code)} - ${esc(c.name)}</option>`).join("");
+    }
+    if (modal) modal.classList.remove("hidden");
+  }
+
+  app.innerHTML = shell(`
+    <a href="#/" class="back-link">${icon("chevronLeft")} Home</a>
+    <div class="page-head">
+      <div>
+        <h1>Textbooks ${icon("bookOpen")}</h1>
+        <p class="muted" id="tb-count">${files.length} textbook${files.length !== 1 ? "s" : ""}</p>
+      </div>
+      ${canUpload ? '<button class="btn btn-primary btn-sm" id="tb-upload-btn">' + icon("plus") + " Upload</button>" : ""}
+    </div>
+    <div class="pq-toolbar">
+      <input type="text" id="tb-search" placeholder="Search by course or file name..." class="pq-search" />
+      <select id="tb-sort" class="pq-sort">
+        <option value="date">Newest</option>
+        <option value="downloads">Most downloaded</option>
+        <option value="views">Most viewed</option>
+      </select>
+    </div>
+    <div id="tb-list" class="pq-list"></div>
+
+    ${canUpload ? `<div class="modal-overlay hidden" id="tb-upload-modal">
+      <div class="modal">
+        <h2>Upload Textbook</h2>
+        <form id="tb-upload-form">
+          <div class="drop-zone" id="tb-drop-zone">
+            <span class="drop-icon">${icon("plus")}</span>
+            <p class="drop-text">Drag &amp; drop PDFs here, or click to browse</p>
+            <input type="file" id="tb-up-file" accept="application/pdf" class="drop-input" multiple />
+          </div>
+          <div class="drop-preview hidden" id="tb-drop-preview">
+            <span class="file-icon">${icon("pdf")}</span>
+            <span class="drop-fname" id="tb-drop-fname"></span>
+            <button type="button" class="icon-btn" id="tb-drop-clear">${icon("close")}</button>
+          </div>
+          <div class="multi-upload-list hidden" id="tb-multi-list"></div>
+          <div class="upload-progress hidden" id="tb-upload-progress">
+            <div class="progress-bar"><div class="progress-fill" id="tb-upload-pbar" style="width:0%"></div></div>
+            <span class="muted small" id="tb-upload-ptxt">0%</span>
+          </div>
+          <label style="margin:8px 0">Course
+            <select id="tb-upload-course" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)"></select>
+          </label>
+          <p class="error" id="tb-upload-error"></p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" id="tb-up-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="tb-up-submit">Upload</button>
+          </div>
+        </form>
+      </div>
+    </div>` : ""}
+  `);
+
+  render();
+  document.getElementById("tb-search")?.addEventListener("input", (e) => { searchQ = e.target.value; render(); });
+  document.getElementById("tb-sort")?.addEventListener("change", (e) => { sortBy = e.target.value; render(); });
+  document.getElementById("tb-upload-btn")?.addEventListener("click", () => openTBUpload());
+
+  const tbModal = document.getElementById("tb-upload-modal");
+  if (tbModal) {
+    document.getElementById("tb-up-cancel")?.addEventListener("click", () => tbModal.classList.add("hidden"));
+    tbModal.addEventListener("click", (e) => { if (e.target === tbModal) tbModal.classList.add("hidden"); });
+
+    const tbDrop = document.getElementById("tb-drop-zone");
+    const tbFileInput = document.getElementById("tb-up-file");
+    const tbPreview = document.getElementById("tb-drop-preview");
+    const tbFname = document.getElementById("tb-drop-fname");
+
+    if (tbDrop && tbFileInput) {
+      tbDrop.addEventListener("click", () => tbFileInput.click());
+      tbDrop.addEventListener("dragover", (e) => { e.preventDefault(); tbDrop.classList.add("dragover"); });
+      tbDrop.addEventListener("dragleave", () => tbDrop.classList.remove("dragover"));
+      tbDrop.addEventListener("drop", (e) => {
+        e.preventDefault(); tbDrop.classList.remove("dragover");
+        const dt = e.dataTransfer;
+        if (dt.files.length) { tbFileInput.files = dt.files; showTBPreview(dt.files[0]); }
+      });
+      tbFileInput.addEventListener("change", () => { if (tbFileInput.files.length) showTBPreview(tbFileInput.files[0]); });
+    }
+    function showTBPreview(f) {
+      if (tbPreview && tbFname) {
+        tbPreview.classList.remove("hidden");
+        tbFname.textContent = f.name + (tbFileInput.files.length > 1 ? " (+" + (tbFileInput.files.length - 1) + " more)" : "");
+        tbDrop.classList.add("hidden");
+      }
+    }
+    document.getElementById("tb-drop-clear")?.addEventListener("click", () => {
+      tbFileInput.value = "";
+      if (tbPreview) tbPreview.classList.add("hidden");
+      if (tbDrop) tbDrop.classList.remove("hidden");
+    });
+
+    document.getElementById("tb-upload-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pdfFiles = [...tbFileInput.files].filter(f => f.type.includes("pdf") || /\.pdf$/i.test(f.name));
+      if (!pdfFiles.length) return (document.getElementById("tb-upload-error").textContent = "Choose at least one PDF file");
+      const courseId = document.getElementById("tb-upload-course").value;
+      if (!courseId) return (document.getElementById("tb-upload-error").textContent = "Select a course");
+      const progress = document.getElementById("tb-upload-progress");
+      const pbar = document.getElementById("tb-upload-pbar");
+      const ptxt = document.getElementById("tb-upload-ptxt");
+      const submitBtn = document.getElementById("tb-up-submit");
+      const multiList = document.getElementById("tb-multi-list");
+      submitBtn.disabled = true;
+      progress.classList.remove("hidden");
+      if (pdfFiles.length > 1 && multiList) {
+        multiList.classList.remove("hidden");
+        multiList.innerHTML = pdfFiles.map((f, i) => `<div class="multi-upload-item" data-mui="${i}"><span>${esc(f.name)}</span><span class="muted small multi-status">Waiting...</span></div>`).join("");
+      }
+      let successCount = 0, failCount = 0;
+      for (let i = 0; i < pdfFiles.length; i++) {
+        const f = pdfFiles[i];
+        const statusEl = multiList ? multiList.querySelector(`[data-mui="${i}"] .multi-status`) : null;
+        if (statusEl) statusEl.textContent = "Uploading...";
+        pbar.style.width = Math.round(((i) / pdfFiles.length) * 100) + "%";
+        ptxt.textContent = (i + 1) + "/" + pdfFiles.length;
+        try {
+          const buf = await f.arrayBuffer();
+          await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener("progress", (ev) => {
+              if (ev.lengthComputable) {
+                const totalPct = Math.round(((i + ev.loaded / ev.total) / pdfFiles.length) * 100);
+                pbar.style.width = totalPct + "%";
+                ptxt.textContent = (i + 1) + "/" + pdfFiles.length + " (" + Math.round((ev.loaded / ev.total) * 100) + "%)";
+              }
+            });
+            xhr.onload = () => {
+              try { const d = JSON.parse(xhr.responseText); if (xhr.status >= 400) reject(new Error(d.error)); else resolve(d); }
+              catch { reject(new Error("Upload failed")); }
+            };
+            xhr.onerror = () => reject(new Error("Network error"));
+            xhr.open("POST", "/api/files");
+            const t = token();
+            if (t) xhr.setRequestHeader("Authorization", "Bearer " + t);
+            xhr.setRequestHeader("Content-Type", "application/octet-stream");
+            xhr.setRequestHeader("X-File-Name", encodeURIComponent(f.name));
+            xhr.setRequestHeader("X-Original-Name", encodeURIComponent(f.name));
+            xhr.setRequestHeader("X-Course-Id", courseId);
+            xhr.setRequestHeader("X-Category", "textbook");
+            xhr.send(buf);
+          });
+          successCount++;
+          if (statusEl) { statusEl.textContent = "Done"; statusEl.style.color = "var(--success)"; }
+        } catch (err) {
+          failCount++;
+          if (statusEl) { statusEl.textContent = "Failed: " + err.message; statusEl.style.color = "var(--danger)"; }
+        }
+      }
+      pbar.style.width = "100%";
+      ptxt.textContent = successCount + " uploaded" + (failCount ? ", " + failCount + " failed" : "");
+      if (successCount > 0) {
+        showToast(successCount + " textbook" + (successCount > 1 ? "s" : "") + " uploaded");
+        tbModal.classList.add("hidden");
+        setTimeout(() => renderTextbooks(), 600);
+      } else {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+}
 
 
 /* ---------- past questions ---------- */

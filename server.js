@@ -1315,7 +1315,7 @@ routes.push({
       viewedBy: [],
       comments: [],
       activity: [],
-      tags: [],
+      tags: category === "textbook" ? ["textbook"] : [],
       text
     };
     db.files.push(file);

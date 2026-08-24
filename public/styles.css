@@ -4905,6 +4905,10 @@ body.auth-page main {
 
 .pq-group-icon .ic { width: 18px; height: 18px; }
 
+.pq-group-icon-textbook {
+  background: #7c3aed;
+}
+
 .pq-group-title {
   font-size: 0.92rem;
   font-weight: 700;
