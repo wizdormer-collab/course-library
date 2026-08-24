@@ -1,4 +1,4 @@
-const CACHE_NAME = "courselib-v29";
+const CACHE_NAME = "courselib-v30";
 const STATIC_ASSETS = [
   "/",
   "/index.html",

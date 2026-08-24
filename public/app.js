@@ -1897,12 +1897,9 @@ function renderForgot() {
 
 async function renderSettings() {
   if (!state.user) return (location.hash = "#/login");
-  let hasQuestion = state.user.hasSecurityQuestion;
-  try {
-    const me = await api("/api/me");
+  api("/api/me").then(me => {
     state.user.hasSecurityQuestion = me.user.hasSecurityQuestion;
-    hasQuestion = me.user.hasSecurityQuestion;
-  } catch {}
+  }).catch(() => {});
   const u = state.user;
   const roleLabel = u.role === "admin" ? "Admin" : u.role === "lecturer" ? "Lecturer" : "Student";
   const avatarHtml = u.avatarUrl
@@ -2014,7 +2011,7 @@ async function renderSettings() {
       </div>
       <div class="card">
         <h3>Recovery Question</h3>
-        <p class="muted small">${hasQuestion ? "Set. Used to reset your password if you forget it." : "Not set yet. Add one to enable self-service password reset."}</p>
+        <p class="muted small">${u.hasSecurityQuestion ? "Set. Used to reset your password if you forget it." : "Not set yet. Add one to enable self-service password reset."}</p>
         <form id="sq-form" class="stack">
           <label>Question <input id="sq-q" placeholder="e.g. What city were you born in?" /></label>
           <label>Answer <input id="sq-a" placeholder="your answer" /></label>
@@ -2053,7 +2050,6 @@ async function renderSettings() {
     btn.addEventListener("click", () => {
       state.profileTab = btn.dataset.tab;
       renderSettings();
-      window.scrollTo(0, 0);
     });
   });
 
@@ -2325,6 +2321,7 @@ async function renderSettings() {
       location.hash = "#/login";
     });
   }
+  requestAnimationFrame(() => window.scrollTo(0, 0));
 }
 
 /* ---------- home ---------- */
