@@ -1861,7 +1861,6 @@ async function renderSettings() {
   const activeTab = state.profileTab || "overview";
   const tabs = [
     { id: "overview", label: "Profile", icon: "user" },
-    { id: "notes", label: "My Notes", icon: "edit" },
     { id: "display", label: "Display Name", icon: "edit" },
     { id: "theme", label: "Dark Mode", icon: "moon" },
     { id: "reminders", label: "Reminders", icon: "bell" },
@@ -1895,18 +1894,6 @@ async function renderSettings() {
           <div class="stat-card"><div class="stat-num">${fmtCount(u.totalDownloads || 0)}</div><div class="stat-lab">Downloads</div></div>
           <div class="stat-card"><div class="stat-num">${fmtCount(u.totalLikes || 0)}</div><div class="stat-lab">Likes</div></div>
         </div>
-      </div>`;
-  } else if (activeTab === "notes") {
-    tabContent = `
-      <div class="card">
-        <h3>My Notes</h3>
-        <p class="muted small">Personal notepad for your study notes and ideas.</p>
-        <form id="note-form" class="stack" style="margin-bottom:16px">
-          <label>Title <input id="note-title" placeholder="Note title" maxlength="200" /></label>
-          <label>Content <textarea id="note-content" rows="6" maxlength="50000" placeholder="Write your note here..."></textarea></label>
-          <button class="btn btn-primary" type="submit">Save note</button>
-        </form>
-        <div id="notes-list" class="stack"></div>
       </div>`;
   } else if (activeTab === "display") {
     tabContent = `
