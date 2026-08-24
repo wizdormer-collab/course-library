@@ -4320,7 +4320,7 @@ async function renderNotes() {
     <a href="#/" class="back-link">${icon("chevronLeft")} Home</a>
     <div class="page-head">
       <div>
-        <h1>${icon("edit")} My Notes</h1>
+        <h1>My Notes ${icon("edit")}</h1>
         <p class="muted">${notes.length} note${notes.length !== 1 ? "s" : ""}</p>
       </div>
       <button class="btn btn-primary btn-sm" id="new-note-btn">${icon("plus")} New Note</button>
