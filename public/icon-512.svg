@@ -1,5 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <defs>
+    <clipPath id="c">
+      <rect width="512" height="512" rx="96"/>
+    </clipPath>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4f46e5"/>
       <stop offset="50%" stop-color="#6d28d9"/>
@@ -10,8 +13,9 @@
       <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
     </radialGradient>
   </defs>
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <rect width="512" height="512" rx="96" fill="url(#shine)"/>
+  <g clip-path="url(#c)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <rect width="512" height="512" fill="url(#shine)"/>
   <g transform="translate(256,240)">
     <!-- Graduation cap - mortarboard top (diamond) -->
     <polygon points="0,-75 120,-25 0,5 -120,-25" fill="#fff" opacity="0.95"/>
@@ -37,5 +41,6 @@
     <line x1="25" y1="38" x2="55" y2="42" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
     <line x1="22" y1="48" x2="50" y2="51" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
     <line x1="19" y1="58" x2="45" y2="60" stroke="rgba(200,190,230,0.4)" stroke-width="1.5"/>
+  </g>
   </g>
 </svg>

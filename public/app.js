@@ -134,7 +134,8 @@ const ICONS = {
   minus: '<line x1="5" y1="12" x2="19" y2="12"/>',
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
-  chevronDown: '<polyline points="6 9 12 15 18 9"/>'
+  chevronDown: '<polyline points="6 9 12 15 18 9"/>',
+  shuffle: '<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>'
 };
 
 function icon(name, cls) {
@@ -1016,6 +1017,8 @@ async function render() {
     else if (hash.startsWith("/courses")) { await renderCourses(hash); }
     else if (hash.startsWith("/course/")) { await renderCourseDetail(hash); }
     else if (hash.startsWith("/material/")) { await renderMaterialViewer(hash); }
+    else if (hash.startsWith("/flashcards/")) { await renderFlashcards(hash); }
+    else if (hash.startsWith("/certificate/")) { await renderCertificate(hash); }
     else if (hash.startsWith("/tag/")) { await renderTagFiles(hash); }
     else { await renderHome(); }
     window.scrollTo({ top: 0 });
@@ -2784,6 +2787,14 @@ async function renderHome() {
 
 async function renderCourses(hash) {
   if (!state.user) return (location.hash = "#/login");
+  app.innerHTML = shell(`
+    <div class="page-head"><div><h1>My Courses</h1><p class="muted">Loading courses...</p></div></div>
+    <div class="skeleton mt-20">
+      <div class="skel" style="height:160px;border-radius:18px"></div>
+      <div class="skel" style="height:160px;border-radius:18px"></div>
+      <div class="skel" style="height:160px;border-radius:18px"></div>
+      <div class="skel" style="height:160px;border-radius:18px"></div>
+    </div>`);
   await loadCourses();
   const q = new URLSearchParams((hash.split("?")[1] || "")).get("q") || "";
   const semParam = new URLSearchParams((hash.split("?")[1] || "")).get("sem") || "";
@@ -2953,7 +2964,7 @@ function bindSearch() {
         box.innerHTML = "";
         return;
       }
-      box.innerHTML = '<p class="muted">Searching...</p>';
+      box.innerHTML = '<div class="skeleton"><div class="skel" style="height:64px;border-radius:14px"></div><div class="skel" style="height:64px;border-radius:14px"></div><div class="skel" style="height:64px;border-radius:14px"></div></div>';
       const filterCat = document.getElementById("filter-cat");
       const filterSem = document.getElementById("filter-sem");
       const catVal = filterCat ? filterCat.value : "";
@@ -3319,6 +3330,7 @@ async function renderCourseDetail(hash) {
             return `<button class="btn ${isEnrolled ? 'btn-outline' : 'btn-primary'} btn-sm" id="enroll-toggle-btn">${isEnrolled ? icon("minus") + ' Unenroll' : icon("plus") + ' Enroll'}</button>`;
           })()}
           <button class="btn btn-outline" data-download-zip="${id}" data-name="${esc(course.code || "course")}.zip">${icon("archive")} Download all (ZIP)</button>
+          <button class="btn btn-outline" id="request-material-btn">${icon("search")} Request material</button>
           <button class="btn btn-primary" id="upload-btn">${icon("plus")} Upload PDF</button>
         </div>
       </div>
@@ -3330,7 +3342,8 @@ async function renderCourseDetail(hash) {
             <span class="muted">${progress.viewed}/${progress.total} files (${progress.pct}%)</span>
           </div>
           <div class="progress-bar"><div class="progress-fill" style="width:${progress.pct}%"></div></div>
-        </div>` : ""}
+        </div>
+        ${progress.pct >= 100 ? `<div style="text-align:center;margin:12px 0"><a href="#/certificate/${id}" class="btn btn-primary">${icon("grad")} View Certificate</a></div>` : ""}` : ""}
 
       <div class="search-bar" style="margin:12px 0">
         <span class="search-icon">${icon("search")}</span>
@@ -3455,6 +3468,36 @@ async function renderCourseDetail(hash) {
   }
 
   document.getElementById("upload-btn").addEventListener("click", () => showModal("upload-modal"));
+
+  const reqBtn = document.getElementById("request-material-btn");
+  if (reqBtn) reqBtn.addEventListener("click", () => {
+    const modal = document.createElement("div");
+    modal.className = "modal-overlay";
+    modal.innerHTML = `<div class="modal">
+      <h2>Request Material</h2>
+      <p class="muted small">Describe what you need and admins will be notified.</p>
+      <form id="file-request-form" class="stack">
+        <label>What do you need? <textarea id="fr-desc" rows="3" maxlength="500" placeholder="e.g. Past questions for 2022/2023, textbook for chapter 5..." required></textarea></label>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="fr-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit request</button>
+        </div>
+      </form>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector("#fr-cancel").addEventListener("click", () => modal.remove());
+    modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+    modal.querySelector("#file-request-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const desc = document.getElementById("fr-desc").value.trim();
+      if (!desc) return;
+      try {
+        await api("/api/file-requests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ courseId: id, description: desc }) });
+        modal.remove();
+        showToast("Request submitted! Admins will be notified.");
+      } catch (err) { showToast(err.message, true); }
+    });
+  });
 
   const enrollBtn = document.getElementById("enroll-toggle-btn");
   if (enrollBtn) enrollBtn.addEventListener("click", async () => {
@@ -3627,6 +3670,12 @@ async function renderMaterialViewer(hash) {
   if (!state.user) return (location.hash = "#/login");
   const fileId = hash.split("/material/")[1];
   if (!fileId) return (location.hash = "#/");
+  app.innerHTML = shell(`
+    <div class="skeleton mt-20">
+      <div class="skel" style="height:40px;border-radius:10px;width:200px"></div>
+      <div class="skel" style="height:60px;border-radius:14px"></div>
+      <div class="skel" style="height:calc(100vh - 280px);min-height:300px;border-radius:12px"></div>
+    </div>`);
   try {
     const fileData = await api("/api/files/" + encodeURIComponent(fileId));
     const f = fileData.file;
@@ -3646,6 +3695,7 @@ async function renderMaterialViewer(hash) {
           <button class="icon-btn heart ${f.liked ? "on" : ""}" data-like="${f.id}" title="Like">${icon("heart")} <span class="like-count">${f.likes || 0}</span></button>
           <button class="icon-btn star ${f.saved ? "on" : ""}" data-save="${f.id}" title="Save">${icon("star")}</button>
           <button class="icon-btn" data-share="${f.id}" title="Share link">${icon("share")}</button>
+          <a href="#/flashcards/${f.id}" class="btn btn-outline btn-sm">${icon("book")} Flashcards</a>
           <a href="/api/files/${f.id}/download?token=${encodeURIComponent(token())}" class="btn btn-outline btn-sm">${icon("download")} Download</a>
         </div>
       </div>
@@ -3715,6 +3765,165 @@ async function renderMaterialViewer(hash) {
   }
 }
 
+/* ---------- flashcard study ---------- */
+
+async function renderFlashcards(hash) {
+  if (!state.user) return (location.hash = "#/login");
+  const fileId = hash.split("/flashcards/")[1];
+  if (!fileId) return (location.hash = "#/");
+  app.innerHTML = shell(`
+    <div class="skeleton mt-20">
+      <div class="skel" style="height:40px;border-radius:10px;width:200px"></div>
+      <div class="skel" style="height:220px;border-radius:16px"></div>
+    </div>`);
+  try {
+    const d = await api("/api/files/" + encodeURIComponent(fileId) + "/flashcards");
+    const cards = d.cards || [];
+    if (!cards.length) {
+      app.innerHTML = shell(`
+        <a href="#/material/${fileId}" class="back-link">${icon("chevronLeft")} Back to material</a>
+        <div class="empty-pad">
+          <div class="empty-icon">${icon("book")}</div>
+          <h2>No flashcards found</h2>
+          <p class="muted">This document doesn't have enough definable content to generate flashcards.</p>
+          <a href="#/material/${fileId}" class="btn btn-primary mt-12">Back to material</a>
+        </div>`);
+      return;
+    }
+    let idx = 0;
+    let flipped = false;
+    const known = new Set();
+    const unknown = new Set();
+    function renderCard() {
+      const c = cards[idx];
+      const pct = Math.round(((idx + 1) / cards.length) * 100);
+      app.innerHTML = shell(`
+        <a href="#/material/${fileId}" class="back-link">${icon("chevronLeft")} Back to material</a>
+        <div class="viewer-header">
+          <div class="viewer-info">
+            <h1 class="viewer-title">Flashcards</h1>
+            <p class="muted">${cards.length} cards &middot; ${known.size} known &middot; ${unknown.size} to review</p>
+          </div>
+          <div class="viewer-actions">
+            <button class="btn btn-outline btn-sm" id="fc-shuffle">${icon("shuffle")} Shuffle</button>
+            <button class="btn btn-outline btn-sm" id="fc-reset">Reset</button>
+          </div>
+        </div>
+        <div class="progress-bar" style="margin-bottom:16px"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <p class="muted small" style="text-align:center;margin-bottom:8px">Card ${idx + 1} of ${cards.length} &middot; Tap to flip</p>
+        <div class="flashcard" id="flashcard">
+          <div class="flashcard-inner ${flipped ? "flipped" : ""}" id="fc-inner">
+            <div class="flashcard-front">
+              <div class="flashcard-label">Question</div>
+              <div class="flashcard-text">${esc(c.front)}</div>
+            </div>
+            <div class="flashcard-back">
+              <div class="flashcard-label">Answer</div>
+              <div class="flashcard-text">${esc(c.back)}</div>
+            </div>
+          </div>
+        </div>
+        <div class="flashcard-nav" style="margin-top:16px">
+          <button class="btn btn-outline btn-sm" id="fc-prev" ${idx === 0 ? "disabled" : ""}>${icon("chevronLeft")} Prev</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm ${unknown.has(idx) ? "btn-primary" : "btn-outline"}" id="fc-unknown">${icon("x")} Hard</button>
+            <button class="btn btn-sm ${known.has(idx) ? "btn-primary" : "btn-outline"}" id="fc-known">${icon("check")} Known</button>
+          </div>
+          <button class="btn btn-outline btn-sm" id="fc-next" ${idx === cards.length - 1 ? "disabled" : ""}>Next ${icon("chevronRight")}</button>
+        </div>
+        ${known.size + unknown.size === cards.length ? `
+        <div class="card" style="padding:20px;margin-top:20px;text-align:center">
+          <h3>Session complete!</h3>
+          <p class="muted">${known.size} known &middot; ${unknown.size} to review</p>
+          <button class="btn btn-primary mt-12" id="fc-restart">Study again</button>
+        </div>` : ""}`);
+
+      document.getElementById("flashcard").addEventListener("click", () => {
+        flipped = !flipped;
+        document.getElementById("fc-inner").classList.toggle("flipped", flipped);
+      });
+      const prev = document.getElementById("fc-prev");
+      const next = document.getElementById("fc-next");
+      if (prev) prev.addEventListener("click", () => { if (idx > 0) { idx--; flipped = false; renderCard(); } });
+      if (next) next.addEventListener("click", () => { if (idx < cards.length - 1) { idx++; flipped = false; renderCard(); } });
+      document.getElementById("fc-known").addEventListener("click", () => { known.add(idx); unknown.delete(idx); renderCard(); });
+      document.getElementById("fc-unknown").addEventListener("click", () => { unknown.add(idx); known.delete(idx); renderCard(); });
+      document.getElementById("fc-shuffle").addEventListener("click", () => {
+        for (let i = cards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[cards[i], cards[j]] = [cards[j], cards[i]]; }
+        idx = 0; flipped = false; known.clear(); unknown.clear(); renderCard();
+      });
+      document.getElementById("fc-reset").addEventListener("click", () => { idx = 0; flipped = false; known.clear(); unknown.clear(); renderCard(); });
+      const restart = document.getElementById("fc-restart");
+      if (restart) restart.addEventListener("click", () => { idx = 0; flipped = false; known.clear(); unknown.clear(); renderCard(); });
+    }
+    renderCard();
+  } catch (err) {
+    app.innerHTML = shell(`<div class="empty-pad">
+      <h2>Could not load flashcards</h2>
+      <p class="muted">${esc(err.message)}</p>
+      <a href="#/" class="btn btn-primary mt-12">Go home</a>
+    </div>`);
+  }
+}
+
+/* ---------- completion certificate ---------- */
+
+async function renderCertificate(hash) {
+  if (!state.user) return (location.hash = "#/login");
+  const courseId = hash.split("/certificate/")[1];
+  if (!courseId) return (location.hash = "#/");
+  try {
+    const d = await api("/api/courses/" + encodeURIComponent(courseId) + "/certificate");
+    if (!d.completed) {
+      app.innerHTML = shell(`
+        <a href="#/course/${courseId}" class="back-link">${icon("chevronLeft")} Back to course</a>
+        <div class="empty-pad">
+          <div class="empty-icon">${icon("book")}</div>
+          <h2>Not yet complete</h2>
+          <p class="muted">You've viewed ${d.viewedCount}/${d.totalFiles} materials (${d.pct}%). Keep going!</p>
+          <div class="progress-bar mt-12" style="max-width:300px;margin:12px auto 0"><div class="progress-fill" style="width:${d.pct}%"></div></div>
+          <a href="#/course/${courseId}" class="btn btn-primary mt-12">Continue studying</a>
+        </div>`);
+      return;
+    }
+    const cert = d.certificate;
+    const dateStr = new Date(cert.completedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    app.innerHTML = shell(`
+      <a href="#/course/${courseId}" class="back-link">${icon("chevronLeft")} Back to course</a>
+      <div class="certificate">
+        <div class="cert-inner">
+          <div class="cert-logo">${icon("grad")}</div>
+          <h2 class="cert-title">Certificate of Completion</h2>
+          <p class="cert-subtitle">Course Library</p>
+          <div class="cert-divider"></div>
+          <p class="cert-text">This is to certify that</p>
+          <h3 class="cert-name">${esc(state.user.username)}</h3>
+          <p class="cert-text">has successfully completed all materials in</p>
+          <h3 class="cert-course">${esc(cert.courseCode)} — ${esc(cert.courseName)}</h3>
+          <p class="cert-text">${cert.materialCount} materials viewed &middot; ${dateStr}</p>
+          <div class="cert-divider"></div>
+          <p class="cert-id">Certificate ID: ${esc(cert.id)}</p>
+          <div class="cert-actions" style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+            <button class="btn btn-primary" id="cert-share">${icon("share")} Share</button>
+            <a href="#/profile/${state.user.id}" class="btn btn-outline">My Profile</a>
+          </div>
+        </div>
+      </div>`);
+    const shareBtn = document.getElementById("cert-share");
+    if (shareBtn) shareBtn.addEventListener("click", async () => {
+      const shareData = { title: `${cert.courseCode} Certificate`, text: `I completed ${cert.courseCode} — ${cert.courseName} on Course Library!`, url: location.href };
+      if (navigator.share) { try { await navigator.share(shareData); } catch {} }
+      else { try { await navigator.clipboard.writeText(shareData.text + " " + shareData.url); showToast("Copied to clipboard!"); } catch { showToast("Could not share", true); } }
+    });
+  } catch (err) {
+    app.innerHTML = shell(`<div class="empty-pad">
+      <h2>Certificate not found</h2>
+      <p class="muted">${esc(err.message)}</p>
+      <a href="#/" class="btn btn-primary mt-12">Go home</a>
+    </div>`);
+  }
+}
+
 /* ---------- tag files ---------- */
 
 async function renderTagFiles(hash) {
@@ -3757,6 +3966,7 @@ async function renderAdmin() {
   let topUsers = [];
   let courseStats = [];
   let users = [];
+  let fileRequests = [];
   try {
     pending = (await api("/api/files/pending")).files;
   } catch {}
@@ -3770,6 +3980,9 @@ async function renderAdmin() {
   } catch {}
   try {
     users = (await api("/api/users")).users;
+  } catch {}
+  try {
+    fileRequests = (await api("/api/file-requests")).requests || [];
   } catch {}
 
   const maxTrend = Math.max(1, ...uploadTrend.map((d) => d.count));
@@ -3870,6 +4083,22 @@ async function renderAdmin() {
           </div>`).join("")}
       </div>`}
 
+    ${fileRequests.length ? `
+    <h2 class="section-title">Material Requests (${fileRequests.filter((r) => r.status === "open").length} open)</h2>
+    <div class="file-list">
+      ${fileRequests.map((r) => `
+        <div class="file-row">
+          <span class="file-icon">${icon("search")}</span>
+          <div class="file-info">
+            <div class="file-name">${esc(r.description.slice(0, 80))}</div>
+            <span class="muted">${esc(r.username)} &middot; ${r.courseCode ? esc(r.courseCode) + " · " : ""}${new Date(r.createdAt).toLocaleDateString()}</span>
+          </div>
+          <div class="file-actions">
+            ${r.status === "open" ? `<button class="btn btn-primary btn-sm" data-fulfill-req="${r.id}">${icon("check")} Fulfilled</button>` : `<span class="badge" style="background:rgba(52,211,153,0.15);color:#34d399">Fulfilled</span>`}
+          </div>
+        </div>`).join("")}
+    </div>` : ""}
+
     <h2 class="section-title">Users (${users.length})</h2>
     <div class="file-list">
       ${users.map((u) => `
@@ -3952,6 +4181,15 @@ async function renderAdmin() {
       } catch (err) {
         alert(err.message);
       }
+    }));
+
+  document.querySelectorAll("[data-fulfill-req]").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      try {
+        await api("/api/file-requests/" + btn.dataset.fulfillReq + "/fulfill", { method: "PUT" });
+        showToast("Request marked as fulfilled");
+        renderAdmin();
+      } catch (err) { alert(err.message); }
     }));
 
   document.querySelectorAll("[data-user]").forEach((sel) =>
@@ -4046,6 +4284,20 @@ async function renderAdmin() {
 async function renderProfile(hash) {
   if (!state.user) return (location.hash = "#/login");
   const userId = hash.split("/profile/")[1];
+  app.innerHTML = shell(`
+    <div class="skeleton mt-20">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div class="skel" style="width:76px;height:76px;border-radius:20px"></div>
+        <div class="skel" style="height:20px;width:140px;border-radius:8px"></div>
+        <div class="skel" style="height:14px;width:100px;border-radius:6px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px">
+        <div class="skel" style="height:60px;border-radius:12px"></div>
+        <div class="skel" style="height:60px;border-radius:12px"></div>
+        <div class="skel" style="height:60px;border-radius:12px"></div>
+        <div class="skel" style="height:60px;border-radius:12px"></div>
+      </div>
+    </div>`);
   try {
     const [d, schoolsResp] = await Promise.all([
       api("/api/profile/" + userId),
@@ -4105,6 +4357,19 @@ async function renderProfile(hash) {
               <a href="#/course/${c.id}" class="profile-course-card">
                 <span class="profile-course-code">${esc(c.code)}</span>
                 <span class="profile-course-name">${esc(c.name)}</span>
+              </a>
+            `).join("")}
+          </div>
+        </section>` : ""}
+      ${p.certificates && p.certificates.length ? `
+        <section class="home-section">
+          <h2 class="section-title">${icon("grad")} Certificates</h2>
+          <div class="profile-courses-grid">
+            ${p.certificates.map((c) => `
+              <a href="#/certificate/${c.courseId}" class="profile-course-card" style="border-left:3px solid var(--primary)">
+                <span class="profile-course-code">${esc(c.courseCode)}</span>
+                <span class="profile-course-name">${esc(c.courseName)}</span>
+                <span class="muted small">${new Date(c.completedAt).toLocaleDateString()}</span>
               </a>
             `).join("")}
           </div>

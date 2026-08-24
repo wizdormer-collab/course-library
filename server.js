@@ -1574,6 +1574,99 @@ routes.push({
   }
 });
 
+if (!db.fileRequests) db.fileRequests = [];
+
+routes.push({
+  method: "POST", path: "/api/file-requests",
+  handler: async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const body = JSON.parse((await readBody(req, 2048)).toString() || "{}");
+    const courseId = String(body.courseId || "").trim();
+    const description = stripTags(String(body.description || "").trim().slice(0, 500));
+    if (!description) return send(res, 400, { error: "Please describe what material you need." });
+    const course = courseId ? db.courses.find((c) => c.id === courseId) : null;
+    const req_ = {
+      id: "fr" + Date.now() + Math.random().toString(16).slice(2, 6),
+      userId: user.id,
+      username: user.username,
+      courseId: courseId || null,
+      courseName: course ? course.name : "",
+      courseCode: course ? course.code : "",
+      description,
+      status: "open",
+      createdAt: new Date().toISOString()
+    };
+    db.fileRequests.unshift(req_);
+    if (db.fileRequests.length > 200) db.fileRequests.length = 200;
+    saveDb();
+    send(res, 201, { request: req_ });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/file-requests",
+  handler: (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const list = user.role === "admin"
+      ? db.fileRequests
+      : db.fileRequests.filter((r) => r.userId === user.id);
+    send(res, 200, { requests: list.slice(0, 50) });
+  }
+});
+
+routes.push({
+  method: "PUT", path: "/api/file-requests/:id/fulfill",
+  handler: async (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    if (user.role !== "admin") return send(res, 403, { error: "Admins only" });
+    const r = db.fileRequests.find((x) => x.id === params.id);
+    if (!r) return send(res, 404, { error: "Request not found" });
+    r.status = "fulfilled";
+    r.fulfilledAt = new Date().toISOString();
+    r.fulfilledBy = user.id;
+    saveDb();
+    notify(r.userId, `Your material request "${r.description.slice(0, 60)}" has been fulfilled!`, "upload", "/profile/" + r.userId);
+    send(res, 200, { request: r });
+  }
+});
+
+routes.push({
+  method: "GET", path: "/api/courses/:id/certificate",
+  handler: (req, res, params) => {
+    const user = getAuthUser(req);
+    if (!user) return send(res, 401, { error: "Not authenticated" });
+    const course = db.courses.find((c) => c.id === params.id);
+    if (!course) return send(res, 404, { error: "Course not found" });
+    const enrolled = (user.enrolledCourses || []).includes(params.id);
+    if (!enrolled) return send(res, 403, { error: "Not enrolled" });
+    const courseFiles = db.files.filter((f) => f.courseId === params.id && f.approved);
+    if (!courseFiles.length) return send(res, 400, { error: "No materials to complete" });
+    const rp = user.readProgress || {};
+    const viewedCount = courseFiles.filter((f) => rp[f.id] && rp[f.id].pct >= 80).length;
+    const pct = Math.round((viewedCount / courseFiles.length) * 100);
+    const completed = pct >= 100;
+    if (!user.certificates) user.certificates = [];
+    const existing = user.certificates.find((c) => c.courseId === params.id);
+    if (completed && !existing) {
+      const cert = {
+        id: "cert" + Date.now() + Math.random().toString(16).slice(2, 6),
+        courseId: params.id,
+        courseName: course.name,
+        courseCode: course.code,
+        completedAt: new Date().toISOString(),
+        materialCount: courseFiles.length
+      };
+      user.certificates.push(cert);
+      saveDb();
+      notify(user.id, `Congratulations! You completed ${course.code} — ${course.name}. Certificate earned!`, "upload", "/certificate/" + params.id);
+    }
+    send(res, 200, { completed, pct, viewedCount, totalFiles: courseFiles.length, certificate: completed ? (user.certificates.find((c) => c.courseId === params.id) || null) : null });
+  }
+});
+
 routes.push({
   method: "POST", path: "/api/files/:id/version",
   handler: async (req, res, params) => {
@@ -2604,6 +2697,7 @@ routes.push({
         totalDownloads,
         totalLikes,
         enrolledCourses,
+        certificates: (target.certificates || []).slice(0, 20),
         recentUploads: uploads.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)).slice(0, 5).map((f) => fileInfo(f, user)),
         activity: (target.activity || []).slice(0, 20)
       }
