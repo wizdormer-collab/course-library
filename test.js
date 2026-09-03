@@ -520,6 +520,16 @@ try {
   });
   check("student cannot use bulk action", bulkDenied.status === 403);
 
+  // bulkId2 was uploaded by admin then REJECTED -> unapproved -> the student
+  // cannot see it, so bulk-download must refuse it (returns 404, not the file).
+  const studentBulkDownload = await api("/api/files/bulk-action", {
+    method: "POST",
+    token: studentToken,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileIds: [bulkId2], action: "download" })
+  });
+  check("student cannot bulk download another's unapproved file", studentBulkDownload.status === 404, "dlStatus=" + studentBulkDownload.status);
+
   const logout = await api("/api/auth/logout", {
     method: "POST",
     token: adminToken
@@ -891,7 +901,7 @@ try {
   });
   check("XSS in comment sanitized", xssComment.status === 201);
   const xssComments = await api(`/api/files/${freshFileId}/comments`, { token: adminToken });
-  const xssCommentText = xssComments.comments?.[0]?.text || "";
+  const xssCommentText = (xssComments.data?.comments?.[0]?.text) || "";
   check("XSS comment has no script tag", !xssCommentText.includes("<script>"));
 
   const bookmarkUnapproved = await api("/api/files/" + freshFileId + "/save", { method: "POST", token: studentToken });
@@ -914,7 +924,7 @@ try {
   check("search with regex metacharacter", searchRegex.status === 200);
 
   const searchEmpty = await api("/api/search?q=xyznonexistent123", { token: adminToken });
-  check("search for nothing returns empty", searchEmpty.status === 200 && searchEmpty.files.length === 0);
+  check("search for nothing returns empty", searchEmpty.status === 200 && (searchEmpty.data.files || []).length === 0);
 
   const negPage = await api("/api/files?page=-1", { token: adminToken });
   check("negative pagination returns results", negPage.status === 200);
@@ -923,7 +933,7 @@ try {
   check("zero page returns results", zeroPage.status === 200);
 
   const hugePage = await api("/api/files?page=9999", { token: adminToken });
-  check("huge page returns empty", hugePage.status === 200 && hugePage.files.length === 0);
+  check("huge page returns empty", hugePage.status === 200 && (hugePage.data.files || []).length === 0);
 
   const annTargetCourse = await api("/api/announcements", {
     method: "POST", token: adminToken,
@@ -940,10 +950,24 @@ try {
   check("announcement targeting by university", annTargetUniv.status === 201);
 
   const loginLogs = await api("/api/login-logs", { token: adminToken });
-  check("login logs endpoint", loginLogs.status === 200 && Array.isArray(loginLogs.logs));
+  check("login logs endpoint", loginLogs.status === 200 && Array.isArray(loginLogs.data?.logs));
 
   const loginLogsNonAdmin = await api("/api/login-logs", { token: studentToken });
   check("login logs non-admin forbidden", loginLogsNonAdmin.status === 403);
+
+  const univReqGood = await api("/api/university-requests", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "University of Test", email: "test@test.com" })
+  });
+  check("university request accepted", univReqGood.status === 201);
+
+  const univReqBad = await api("/api/university-requests", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "test@test.com" })
+  });
+  check("university request missing name rejected", univReqBad.status === 400);
 
   const rateLimitCheck = await api("/api/auth/forgot/start", {
     method: "POST",
@@ -966,8 +990,9 @@ try {
   });
   check("course unenroll endpoint", unenrollCheck.status === 200);
 
-  const hstsCheck = await api("/", { token: adminToken });
-  check("HSTS header present", hstsCheck.status === 200);
+  const hstsRes = await fetch(BASE + "/", { headers: { Authorization: "Bearer " + adminToken } });
+  const hstsHeader = hstsRes.headers.get("strict-transport-security") || "";
+  check("HSTS header present", hstsRes.status === 200 && /max-age=\d+/i.test(hstsHeader));
 } catch (err) {
   results.push("ERROR " + err.message);
   if (serverLog) results.push("SERVER LOG: " + serverLog.slice(0, 2000));
@@ -979,7 +1004,7 @@ try {
 
 const out = path.join(__dirname, "test-results.txt");
 fs.writeFileSync(out, results.join("\n"));
-const failCount = results.filter((r) => r.startsWith("FAIL")).length;
-if (failCount > 0) console.log("FAILED " + failCount + " test(s)");
+const failCount = results.filter((r) => r.startsWith("FAIL") || r.startsWith("ERROR")).length;
+if (failCount > 0) console.log("FAILED " + failCount + " check(s)");
 console.log("done");
 process.exitCode = failCount > 0 ? 1 : 0;

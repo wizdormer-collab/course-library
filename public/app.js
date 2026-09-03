@@ -253,15 +253,11 @@ async function downloadPath(path, filename) {
 
 let toastTimer;
 function showToast(msg, isError) {
-  state.toast = msg;
-  state.toastError = !!isError;
-  render();
+  let root = document.getElementById("toast-root");
+  if (!root) { root = document.createElement("div"); root.id = "toast-root"; root.setAttribute("aria-live", "polite"); root.setAttribute("aria-atomic", "true"); document.body.appendChild(root); }
+  root.innerHTML = `<div class="toast${isError ? " toast-error" : ""}" role="status">${esc(msg)}</div>`;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    state.toast = "";
-    state.toastError = false;
-    render();
-  }, 4000);
+  toastTimer = setTimeout(() => { root.innerHTML = ""; }, 4000);
 }
 
 function requestNotificationPermission() {
@@ -286,6 +282,9 @@ function startReminderChecker() {
     const day = now.getDay();
     (state.reminders || []).forEach(r => {
       if (r.enabled && r.time === hhmm && (r.days || []).includes(day)) {
+        const key = day + "|" + r.time + "|" + r.id + "|" + (r.text || "");
+        if (state._lastReminderKey === key) return;
+        state._lastReminderKey = key;
         fireBrowserNotification("Study Reminder", r.text);
         showToast("Reminder: " + r.text);
       }
@@ -1018,9 +1017,7 @@ async function renderNav() {
 
 function shell(inner) {
   const offlineBanner = !navigator.onLine ? '<div class="offline-banner" role="alert">You are offline — viewing cached content only</div>' : "";
-  return offlineBanner + inner + (state.toast
-    ? `<div class="toast${state.toastError ? " toast-error" : ""}" role="status" aria-live="polite">${esc(state.toast)}</div>`
-    : `<div aria-live="polite" class="sr-only" id="toast-region"></div>`);
+  return offlineBanner + inner;
 }
 
 async function loadUserData() {
@@ -2176,7 +2173,6 @@ async function renderSettings() {
           body: JSON.stringify({ username: document.getElementById("username-input").value })
         });
         state.user.username = d.user.username;
-        localStorage.setItem("auth", JSON.stringify(state));
         localStorage.setItem("user", JSON.stringify(state.user));
         showToast("Display name updated");
         renderNav();
@@ -2201,7 +2197,6 @@ async function renderSettings() {
           })
         });
         state.themeSchedule = d.themeSchedule;
-        localStorage.setItem("auth", JSON.stringify(state));
         localStorage.setItem("user", JSON.stringify(state.user));
         applyThemeSchedule();
         showToast("Theme schedule saved");
@@ -2265,7 +2260,6 @@ async function renderSettings() {
           })
         });
         state.notifPrefs = d.notifPrefs;
-        localStorage.setItem("auth", JSON.stringify(state));
         localStorage.setItem("user", JSON.stringify(state.user));
         showToast("Notification preferences saved");
       } catch (err) { alert(err.message); }
@@ -2318,12 +2312,13 @@ async function renderSettings() {
         document.getElementById("sq-error").textContent = err.message;
       }
     });
-
-    document.getElementById("settings-logout")?.addEventListener("click", () => {
-      clearAuth();
-      location.hash = "#/login";
-    });
   }
+
+  document.getElementById("settings-logout")?.addEventListener("click", () => {
+    clearAuth();
+    location.hash = "#/login";
+  });
+
   requestAnimationFrame(() => window.scrollTo(0, 0));
 }
 
@@ -2676,8 +2671,8 @@ async function renderHome() {
       </div>` : ""}
       <div class="ann-list" id="ann-list">
         ${announcements.length
-          ? announcements.slice(0, 5).map((a) => `
-          <div class="ann-card">
+          ? announcements.map((a, i) => `
+          <div class="ann-card${i >= 5 ? " hidden" : ""}">
             <div class="ann-head">
               <span class="ann-author">${esc(a.authorName)}${a.authorRole === "lecturer" ? ' <span class="badge-role">lecturer</span>' : ""}</span>
               <span class="ann-date">${fmtDate(a.createdAt)}</span>
@@ -3334,7 +3329,14 @@ function openTagFile(id, tags) {
 async function renderCourseDetail(hash) {
   if (!state.user) return (location.hash = "#/login");
   const id = hash.split("/")[2];
-  const course = state.courses.find((c) => c.id === id);
+  let course = state.courses.find((c) => c.id === id);
+  if (!course) {
+    try {
+      const list = await api("/api/courses");
+      course = (list.courses || []).find((c) => c.id === id) || null;
+      if (course && !state.courses.some((c) => c.id === id)) state.courses.push(course);
+    } catch { course = null; }
+  }
   let files = [];
   let pagination = null;
   let progress = null;
@@ -3629,11 +3631,17 @@ async function renderCourseDetail(hash) {
     }
     pbar.style.width = "100%";
     ptxt.textContent = successCount + " uploaded" + (failCount ? ", " + failCount + " failed" : "");
+    if (input) input.value = "";
+    const dropPreviewEl = document.getElementById("drop-preview");
+    const dropZoneEl = document.getElementById("drop-zone");
+    if (dropPreviewEl) dropPreviewEl.classList.add("hidden");
+    if (dropZoneEl) dropZoneEl.classList.remove("hidden");
     if (successCount > 0) {
       showToast(successCount + " file" + (successCount > 1 ? "s" : "") + " uploaded");
       setTimeout(() => {
-        document.getElementById("upload-modal").classList.add("hidden");
-        renderCourseDetail(hash);
+        const m = document.getElementById("upload-modal");
+        if (m) m.classList.add("hidden");
+        if (location.hash.startsWith("#/course/")) renderCourseDetail(location.hash);
       }, 800);
     } else {
       submitBtn.disabled = false;
@@ -3768,6 +3776,31 @@ async function renderMaterialViewer(hash) {
       </div>`);
 
     bindRowActions({});
+    const mvFrame = document.querySelector(".pdf-frame-viewer");
+    if (mvFrame) {
+      let mvSaveTimer = null;
+      const saveProgress = (pct) => {
+        if (mvSaveTimer) return;
+        mvSaveTimer = setTimeout(() => {
+          mvSaveTimer = null;
+          api("/api/files/" + f.id + "/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pct }) }).catch(() => {});
+        }, 2000);
+      };
+      mvFrame.addEventListener("load", () => {
+        try {
+          const iDoc = mvFrame.contentDocument || mvFrame.contentWindow.document;
+          const scrollEl = iDoc.documentElement || iDoc.body;
+          if (scrollEl) {
+            scrollEl.addEventListener("scroll", () => {
+              const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+              if (maxScroll > 0) {
+                saveProgress(Math.round((scrollEl.scrollTop / maxScroll) * 100));
+              }
+            }, { passive: true });
+          }
+        } catch {}
+      });
+    }
     const bf = document.getElementById("bookmark-form");
     if (bf) bf.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -4155,8 +4188,8 @@ async function renderTextbooks() {
 
     if (tbDrop && tbFileInput) {
       tbDrop.addEventListener("click", () => tbFileInput.click());
-      tbDrop.addEventListener("dragover", (e) => { e.preventDefault(); tbDrop.classList.add("dragover"); });
-      tbDrop.addEventListener("dragleave", () => tbDrop.classList.remove("dragover"));
+      tbDrop.addEventListener("dragover", (e) => { e.preventDefault(); tbDrop.classList.add("drag-over"); });
+      tbDrop.addEventListener("dragleave", () => tbDrop.classList.remove("drag-over"));
       tbDrop.addEventListener("drop", (e) => {
         e.preventDefault(); tbDrop.classList.remove("dragover");
         const dt = e.dataTransfer;
@@ -4426,8 +4459,8 @@ async function renderPastQuestions() {
     const pqFname = document.getElementById("pq-drop-fname");
     if (pqDrop && pqFileInput) {
       pqDrop.addEventListener("click", () => pqFileInput.click());
-      pqDrop.addEventListener("dragover", (e) => { e.preventDefault(); pqDrop.classList.add("dragover"); });
-      pqDrop.addEventListener("dragleave", () => pqDrop.classList.remove("dragover"));
+      pqDrop.addEventListener("dragover", (e) => { e.preventDefault(); pqDrop.classList.add("drag-over"); });
+      pqDrop.addEventListener("dragleave", () => pqDrop.classList.remove("drag-over"));
       pqDrop.addEventListener("drop", (e) => {
         e.preventDefault(); pqDrop.classList.remove("dragover");
         const dt = e.dataTransfer;
@@ -4587,10 +4620,12 @@ async function renderNotes() {
     list.querySelectorAll("[data-del-note]").forEach(btn => {
       btn.addEventListener("click", async () => {
         if (!confirm("Delete this note?")) return;
-        try { await api("/api/notes/" + btn.dataset.delNote, { method: "DELETE" }); } catch {}
-        notes = notes.filter(n => n.id !== btn.dataset.delNote);
-        renderList();
-        showToast("Note deleted");
+        try {
+          await api("/api/notes/" + btn.dataset.delNote, { method: "DELETE" });
+          notes = notes.filter(n => n.id !== btn.dataset.delNote);
+          renderList();
+          showToast("Note deleted");
+        } catch (err) { showToast(err.message || "Failed to delete note", true); }
       });
     });
   }
@@ -4622,9 +4657,9 @@ async function renderNotes() {
           notes.unshift(d.note);
           showToast("Note saved");
         }
-      } catch (err) { showToast(err.message, true); }
-      editor.classList.remove("open");
-      renderList();
+        editor.classList.remove("open");
+        renderList();
+      } catch (err) { showToast(err.message || "Failed to save note", true); }
     };
     cancelBtn.onclick = () => editor.classList.remove("open");
   }
@@ -4636,7 +4671,7 @@ async function renderNotes() {
 
 async function renderTagFiles(hash) {
   if (!state.user) return (location.hash = "#/login");
-  const tag = decodeURIComponent(hash.split("/")[2] || "").toLowerCase();
+  const tag = decodeURIComponent(hash.split("?")[0].split("/")[2] || "").toLowerCase();
   const qs = new URLSearchParams((hash.split("?")[1] || ""));
   const pageParam = parseInt(qs.get("page")) || 1;
   let files = [];
@@ -5153,8 +5188,7 @@ async function renderProfile(hash) {
               body: JSON.stringify({ bio })
             });
             state.user.bio = res.bio;
-            localStorage.setItem("auth", JSON.stringify(state));
-      localStorage.setItem("user", JSON.stringify(state.user));
+          localStorage.setItem("user", JSON.stringify(state.user));
             showToast("Profile updated");
             renderProfile(hash);
           } catch (err) {
@@ -5183,8 +5217,7 @@ async function renderProfile(hash) {
               body: buf
             });
             state.user.avatarUrl = res.avatarUrl;
-            localStorage.setItem("auth", JSON.stringify(state));
-      localStorage.setItem("user", JSON.stringify(state.user));
+          localStorage.setItem("user", JSON.stringify(state.user));
             showToast("Avatar updated");
             renderProfile(hash);
           } catch (err) {

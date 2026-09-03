@@ -17,6 +17,7 @@
   --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.14);
   --nav-bg: rgba(255, 255, 255, 0.72);
   --primary-bg: rgba(79, 70, 229, 0.08);
+  --hover: rgba(79, 70, 229, 0.06);
 }
 
 [data-theme="dark"] {
@@ -37,6 +38,7 @@
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
   --nav-bg: rgba(10, 15, 30, 0.72);
   --primary-bg: rgba(109, 106, 246, 0.12);
+  --hover: rgba(109, 106, 246, 0.14);
 }
 
 * {
@@ -3406,6 +3408,10 @@ body.auth-page main {
     width: 30px;
     height: 30px;
   }
+
+  .stats-card {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* ---------- sort bar ---------- */
@@ -3924,7 +3930,7 @@ body.auth-page main {
 .profile-bio {
   margin: 10px auto 0;
   max-width: 400px;
-  color: var(--text-secondary, var(--muted));
+  color: var(--muted);
 }
 
 .profile-social-row {

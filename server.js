@@ -526,7 +526,7 @@ routes.push({
         });
       }
     }
-    let username = String(body.username || "").trim() || email.split("@")[0];
+    let username = stripTags(String(body.username || "").trim()) || email.split("@")[0];
     if (username.length < 3) return send(res, 400, { error: "Username must be at least 3 characters" });
     const taken = (base) =>
       db.users.some((u) => u.username.toLowerCase() === base.toLowerCase());
@@ -555,7 +555,7 @@ routes.push({
       role,
       notifications: [],
       verified: true,
-      securityQuestion: String(body.securityQuestion || "").trim() || null,
+      securityQuestion: stripTags(String(body.securityQuestion || "").trim()) || null,
       securityAnswerHash: String(body.securityAnswer || "").trim()
         ? hashPassword(String(body.securityAnswer).trim().toLowerCase())
         : null
@@ -799,7 +799,7 @@ routes.push({
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
-    const question = String(body.question || "").trim();
+    const question = stripTags(String(body.question || "").trim());
     const answer = String(body.answer || "").trim();
     if (!question || !answer) return send(res, 400, { error: "Question and answer are required" });
     user.securityQuestion = question;
@@ -963,8 +963,10 @@ routes.push({
 
 routes.push({
   method: "POST", path: "/api/university-requests",
-  handler: (req, res) => {
-    const body = readBody(req);
+  handler: async (req, res) => {
+    let body = {};
+    try { body = JSON.parse((await readBody(req, 4096)).toString() || "{}"); }
+    catch { return send(res, 400, { error: "Invalid JSON" }); }
     const name = (body.name || "").trim();
     if (!name) return send(res, 400, { error: "University name is required" });
     const email = (body.email || "").trim();
@@ -976,7 +978,7 @@ routes.push({
       requestedAt: new Date().toISOString()
     });
     saveDb();
-    send(res, 200, { message: "Request submitted successfully." });
+    send(res, 201, { message: "Request submitted successfully." });
   }
 });
 
@@ -1004,8 +1006,9 @@ routes.push({
       const ratings = c.ratings || [];
       const avgRating = ratings.length ? Math.round((ratings.reduce((s, r) => s + r.score, 0) / ratings.length) * 10) / 10 : 0;
       const myRating = ratings.find((r) => r.userId === user.id)?.score || 0;
+      const { ratings: _rat, ...rest } = c;
       return {
-        ...c,
+        ...rest,
         enrolled: enrolledIds.includes(c.id),
         fileCount: files.length,
         viewedCount: viewed,
@@ -1029,11 +1032,11 @@ routes.push({
     if (!body.name || !body.code) return send(res, 400, { error: "Name and code are required" });
     const course = {
       id: "c" + Date.now(),
-      name: String(body.name).trim(),
-      code: String(body.code).trim(),
-      description: String(body.description || "").trim(),
-      category: String(body.category || "").trim(),
-      semester: String(body.semester || "").trim()
+      name: stripTags(String(body.name).trim()),
+      code: stripTags(String(body.code).trim()),
+      description: stripTags(String(body.description || "").trim()),
+      category: stripTags(String(body.category || "").trim()),
+      semester: stripTags(String(body.semester || "").trim())
     };
     db.courses.push(course);
     saveDb();
@@ -1052,7 +1055,7 @@ routes.push({
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
     if (body.name !== undefined) course.name = String(body.name).trim() || course.name;
     if (body.code !== undefined) course.code = String(body.code).trim() || course.code;
-    if (body.description !== undefined) course.description = String(body.description).trim();
+    if (body.description !== undefined) course.description = stripTags(String(body.description).trim());
     if (body.category !== undefined) course.category = String(body.category).trim();
     if (body.semester !== undefined) course.semester = String(body.semester).trim();
     saveDb();
@@ -1272,9 +1275,9 @@ routes.push({
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const ip = req.socket.remoteAddress || "unknown";
     if (!uploadLimiter(ip)) return send(res, 429, { error: "Too many uploads. Try again in a minute." });
-    const name = decodeURIComponent(req.headers["x-file-name"] || "");
+    const name = stripTags(decodeURIComponent(req.headers["x-file-name"] || ""));
     const courseId = req.headers["x-course-id"] || "";
-    const originalName = decodeURIComponent(req.headers["x-original-name"] || "");
+    const originalName = stripTags(decodeURIComponent(req.headers["x-original-name"] || ""));
     const category = req.headers["x-category"] || "";
     if (!courseId || !db.courses.some((c) => c.id === courseId)) {
       return send(res, 400, { error: "Invalid course" });
@@ -1505,7 +1508,7 @@ routes.push({
       return send(res, 403, { error: "Not allowed" });
     }
     const body = JSON.parse((await readBody(req, 1024 * 16)).toString() || "{}");
-    const name = String(body.name || "").trim();
+    const name = stripTags(String(body.name || "").trim());
     if (!name) return send(res, 400, { error: "Name is required" });
     f.name = name;
     saveDb();
@@ -1718,7 +1721,7 @@ routes.push({
     if ((action === "approve" || action === "reject") && user.role !== "admin") return send(res, 403, { error: "Admins only" });
     if (action === "delete" && user.role !== "admin") return send(res, 403, { error: "Admins only" });
     if (action === "download") {
-      const files = ids.map((id) => db.files.find((x) => x.id === id)).filter(Boolean);
+      const files = ids.map((id) => db.files.find((x) => x.id === id)).filter(Boolean).filter((f) => canSeeFile(f, user));
       if (!files.length) return send(res, 404, { error: "No matching files" });
       const entries = [];
       for (const f of files) {
@@ -2340,14 +2343,14 @@ routes.push({
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const body = JSON.parse((await readBody(req, 1024 * 4)).toString() || "{}");
-    const name = String(body.name || "").trim();
+    const name = stripTags(String(body.name || "").trim());
     if (!name) return send(res, 400, { error: "Collection name is required" });
     if (!user.collections) user.collections = [];
     if (user.collections.length >= 20) return send(res, 400, { error: "Maximum 20 collections" });
     const col = {
       id: "col" + Date.now(),
       name,
-      description: String(body.description || "").trim(),
+      description: stripTags(String(body.description || "").trim()),
       fileIds: [],
       createdAt: new Date().toISOString()
     };
@@ -2469,13 +2472,13 @@ routes.push({
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
-    const name = String(body.name || "").trim();
+    const name = stripTags(String(body.name || "").trim());
     if (!name) return send(res, 400, { error: "Group name required" });
     if (name.length > 60) return send(res, 400, { error: "Name too long" });
     const g = {
       id: "grp" + Date.now() + Math.random().toString(16).slice(2, 6),
       name,
-      description: String(body.description || "").trim().slice(0, 200),
+      description: stripTags(String(body.description || "").trim().slice(0, 200)),
       ownerId: user.id,
       memberIds: [user.id],
       collectionIds: [],
@@ -2585,7 +2588,7 @@ routes.push({
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
     const body = JSON.parse((await readBody(req, 1024)).toString() || "{}");
-    user.bio = String(body.bio || "").trim().slice(0, 500);
+    user.bio = stripTags(String(body.bio || "").trim().slice(0, 500));
     saveDb();
     ok(res, { bio: user.bio });
   }
@@ -2666,7 +2669,7 @@ routes.push({
   handler: (req, res, params) => {
     const user = getAuthUser(req);
     if (!user) return send(res, 401, { error: "Not authenticated" });
-    const target = db.users.find((u) => u.id === params.id);
+    const target = db.users.find((u) => u.id === params.id) || db.users.find((u) => u.username.toLowerCase() === String(params.id).toLowerCase());
     if (!target) return send(res, 404, { error: "User not found" });
     const uploads = db.files.filter((f) => f.uploadedBy === target.id);
     const totalViews = uploads.reduce((s, f) => s + (f.views || 0), 0);
@@ -2905,7 +2908,8 @@ const server = http.createServer((req, res) => {
   const start = Date.now();
   res.on("finish", () => {
     const dur = Date.now() - start;
-    console.log(req.method + " " + req.url + " " + res.statusCode + " " + dur + "ms");
+    const safeUrl = req.url.replace(/([?&]token=)[^&]*/gi, "$1[REDACTED]");
+    console.log(req.method + " " + safeUrl + " " + res.statusCode + " " + dur + "ms");
   });
   const url = new URL(req.url, "http://localhost");
   const pathname = url.pathname;
@@ -2955,8 +2959,8 @@ routes.push({
     const note = (user.notes || []).find((n) => n.id === params.id);
     if (!note) return send(res, 404, { error: "Note not found" });
     const body = JSON.parse((await readBody(req, 65536)).toString() || "{}");
-    if (body.title !== undefined) note.title = String(body.title).trim().slice(0, 200) || "Untitled";
-    if (body.content !== undefined) note.content = String(body.content).trim().slice(0, 50000);
+    if (body.title !== undefined) note.title = stripTags(String(body.title).trim().slice(0, 200) || "Untitled");
+    if (body.content !== undefined) note.content = stripTags(String(body.content).trim().slice(0, 50000));
     note.updatedAt = new Date().toISOString();
     saveDb();
     ok(res, { note });
@@ -2978,7 +2982,6 @@ routes.push({
 
 server.listen(PORT, () => {
   console.log(`Course Library running at http://localhost:${PORT}`);
-  console.log(`Seeded logins -> admin/admin123, student1/student123`);
 });
 
 process.on("uncaughtException", (err) => {

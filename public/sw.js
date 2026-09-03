@@ -1,4 +1,4 @@
-const CACHE_NAME = "courselib-v34";
+const CACHE_NAME = "courselib-v35";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -9,20 +9,14 @@ const STATIC_ASSETS = [
   "/icon-192.svg",
   "/icon-192.png",
   "/icon-512.png",
+  "/icon-512.svg",
+  "/robots.txt",
   "/schools.json"
-];
-
-const CACHEABLE_API = [
-  "/api/courses",
-  "/api/me",
-  "/api/files/progress",
-  "/api/auth/reminders",
-  "/api/notifications"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS).catch(() => {}))
   );
   self.skipWaiting();
 });
@@ -38,18 +32,14 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith("/api/")) {
-    if (event.request.method !== "GET") return;
-    const canCache = CACHEABLE_API.some((p) => url.pathname === p || url.pathname.startsWith(p + "/"));
-    if (!canCache) return;
+  // Never cache API responses: they are user-specific/authenticated, and
+  // cross-account caching of /api/me, /api/notifications, per-course progress,
+  // etc. can leak one user's private data to another on a shared device.
+  if (url.pathname.startsWith("/api/")) return;
+  if (event.request.mode === "navigate") {
     event.respondWith(
-      caches.open(CACHE_NAME).then((cache) =>
-        fetch(event.request).then((response) => {
-          if (response && response.status === 200) {
-            cache.put(event.request, response.clone());
-          }
-          return response;
-        }).catch(() => cache.match(event.request))
+      fetch(event.request).catch(() =>
+        caches.match("/index.html").then((r) => r || caches.match("/"))
       )
     );
     return;
